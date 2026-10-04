@@ -11,7 +11,7 @@ const STR = {
   noExercise: "No exercise details — muscles not inferred",
   sleepNotSynced: "Sleep not synced yet",
   noData: "No data yet",
-  waiting: "Waiting for Steve's first sync",
+  waiting: `Waiting for ${AGENT}'s first sync`,
   noGoals: "No goals set",
   noPlan: "Nothing planned",
   noCoachLLM: "Coach chat not connected",
@@ -143,7 +143,7 @@ AG.sheets["data-status"] = function () {
     ${badge(statusLabel(v.status), v.status === "ok" ? "ok" : v.status === "partial" ? "warn" : v.status === "missing" ? "" : "bad")}</div>`).join("");
   openSheet("Data freshness", `<p class="small muted">Build for ${fmt.dateLong(D.meta.build_date)} · last sync ${ds.last_sync ? fmt.dt(ds.last_sync) : "never"}.
     ${ds.sleep_missing ? "<b>Last night's sleep has not synced yet.</b>" : ""}</p><div class="list">${rows}</div>
-    <p class="cap" style="margin-top:12px">Source of truth: Apple HealthKit, imported each morning by Steve. Stale values stay visible with their timestamp; missing values are never shown as zero.</p>`);
+    <p class="cap" style="margin-top:12px">Source of truth: Apple HealthKit, imported each morning by ${esc(AGENT)}. Stale values stay visible with their timestamp; missing values are never shown as zero.</p>`);
 };
 
 /* ---------- factor & insight rows ---------- */

@@ -292,5 +292,5 @@ function trReview() {
     <div class="card"><h3>Four-week log</h3><table class="tbl"><tr><th>Week</th><th class="r">Distance</th><th class="r">Time</th><th class="r">Load</th></tr>${w.four_week_log.map(x => `<tr><td>${fmt.date(x.week)}</td><td class="r">${fmt.dist(x.totals.distance_m)}</td><td class="r">${fmt.mins(x.totals.duration_s)}</td><td class="r">${fmt.n(x.totals.load)}</td></tr>`).join("")}</table></div></div>
     <div class="stack"><div class="card"><h3>Goal trajectories</h3>${w.goals.length ? w.goals.map(g => `<div class="spread small" style="padding:6px 0"><span>${esc(g.title)}</span><span>${isNum(g.progress_pct) ? fmt.n(g.progress_pct) + "% " : ""}${goalStatusBadge(g.status)}</span></div>`).join("") : empty(STR.noGoals)}</div>
     <div class="card"><h3>Next week</h3>${w.next_week_intent.length ? `<div class="list">${w.next_week_intent.map(s => `<div class="li"><div class="grow"><div class="t">${esc(s.title || s.type)}</div><div class="s">${fmt.dow(s.date)} ${fmt.date(s.date)}</div></div><span class="tag">${esc(s.type)}</span></div>`).join("")}</div>` : empty(STR.noPlan)}</div>
-    <p class="cap">Steve reads the same data from dist/weekly_review.json every Monday.</p></div></div>`;
+    <p class="cap">${esc(AGENT)} reads the same data from dist/weekly_review.json every Monday.</p></div></div>`;
 }

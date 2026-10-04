@@ -63,7 +63,7 @@ def weight_summary(ctx):
         "status": status,
         "current": mv(round(current, 1), "kg", kind="computed", method="7_day_median", as_of=cur_as_of, status="stale" if stale else "ok",
                       latest=pts[-1][2], latest_date=pts[-1][1].isoformat()),
-        "trend_kg_per_week": mv(round(slope, 2) if slope is not None else None, "kg/week", method="ols_28d",
+        "trend_kg_per_week": mv(round(slope, 2) if slope is not None else None, "kg/week", method="ols_28d", as_of=cur_as_of if slope is not None else None,
                                 note=None if slope is not None else f"Need {cfg['trend_min_points']} weigh-ins over {cfg['trend_min_span_days']} days (have {len(recent)})"),
         "points": [{"date": d.isoformat(), "v": round(v, 2)} for d, v in sorted(daily.items()) if (ctx.d - d).days <= 730],
         "weekly": weekly[-104:],

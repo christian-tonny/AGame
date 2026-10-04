@@ -4,7 +4,8 @@
 const AG = { screens: {}, charts: {}, ui: {}, online: false };
 const D = JSON.parse(document.getElementById("agame-data").textContent);
 const P = D.profile || {};
-const TZ = D.meta.timezone || "Africa/Kigali";
+const TZ = D.meta.timezone || "UTC";
+const AGENT = D.meta.sync_agent || "your sync agent";
 const IMPERIAL = D.meta.units === "imperial";
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));

@@ -20,7 +20,7 @@ function activityList() {
   if (flt === "planned") rows = rows.filter(a => a.planned);
   if (flt === "unplanned") rows = rows.filter(a => !a.planned);
   if (q) rows = rows.filter(a => (a.name + " " + a.sport + " " + a.date).toLowerCase().includes(q));
-  if (!D.activities.list.length) return empty(STR.noData, "Workouts appear after Steve imports them from HealthKit");
+  if (!D.activities.list.length) return empty(STR.noData, `Workouts appear after ${AGENT} imports them from HealthKit`);
   const groups = {};
   rows.slice(0, 200).forEach(a => { const k = a.date.slice(0, 7); (groups[k] = groups[k] || []).push(a); });
   return `<div class="stack"><label class="sr" for="act-q">Search activities</label><input id="act-q" type="search" placeholder="Search activities" value="${esc(uiGet("act-q", ""))}" data-search>

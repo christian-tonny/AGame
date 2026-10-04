@@ -343,6 +343,9 @@ def data_status(ctx):
         c = cur.get(dom) or {}
         as_of = c.get("last_sample") or p.get("as_of")
         st = c.get("status") or p.get("status") or "missing"
+        received = c.get("received")
+        if p.get("status") == "missing" and p.get("fixture") != "empty":
+            st, received = "missing", False  # file absent or emptied after the manifest was written
         age_h = None
         if as_of:
             try:
@@ -350,9 +353,10 @@ def data_status(ctx):
             except ValueError:
                 age_h = None
         out[dom] = {"as_of": as_of, "last_sync": c.get("last_sync") or p.get("generated_at"), "status": st,
-                    "received": c.get("received"), "expected_for": c.get("expected_for"), "note": c.get("note"), "age_h": age_h,
+                    "received": received, "expected_for": c.get("expected_for"), "note": c.get("note"), "age_h": age_h,
                     "source": p.get("source")}
-    sleep_missing = (cur.get("sleep") or {}).get("expected_for") == ctx.d.isoformat() and (cur.get("sleep") or {}).get("received") is False
+    sleep_missing = ((cur.get("sleep") or {}).get("expected_for") == ctx.d.isoformat() and (cur.get("sleep") or {}).get("received") is False) \
+        or (out["sleep"]["status"] == "missing" and out["sleep"]["received"] is False)
     morning = max((v["last_sync"] for v in out.values() if v.get("last_sync")), default=None)
     synced_today = bool(morning and tu.local_date(morning, ctx.tz) == ctx.d)
     overall = "ok" if synced_today and not sleep_missing else ("partial" if synced_today else ("stale" if morning else "missing"))

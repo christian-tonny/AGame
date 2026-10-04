@@ -128,7 +128,7 @@ def one_action(ctx, rec_call, sync, sleep, nutrition, today_sessions, weight, be
     icfg = ctx.cfg["insights"]
     planned = [s for s in today_sessions if s["type"] not in ("REST", "NPU")]
     if sync.get("overall") == "missing":
-        return {"id": "no_data", "text": "Waiting for the first sync", "detail": "Steve's morning import fills this in", "kind": "data"}
+        return {"id": "no_data", "text": "Waiting for the first sync", "detail": f"{ctx.cfg['sync']['agent_name']}'s morning import fills this in", "kind": "data"}
     if sync.get("sleep_missing"):
         return {"id": "sync", "text": "Sleep not synced yet", "detail": "Check back after the morning sync", "kind": "data"}
     if rec_call["call"] == "rest":

@@ -66,7 +66,7 @@ AG.screens.sleep = {
   title: "Sleep",
   render() {
     const S = D.sleep;
-    if (!S.last_night) return empty(STR.noData, "Sleep appears after Steve imports HealthKit sleep stages");
+    if (!S.last_night) return empty(STR.noData, `Sleep appears after ${AGENT} imports HealthKit sleep stages`);
     const ln = S.last_night;
     const rng = chipVal("sleep-range", "30");
     const hist = sliceDays(S.history, rangeDays(rng));

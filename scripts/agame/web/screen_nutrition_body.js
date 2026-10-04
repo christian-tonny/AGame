@@ -5,7 +5,7 @@ AG.screens.nutrition = {
   title: "Nutrition",
   render() {
     const N = D.nutrition;
-    if (!N.connected) return `${empty(STR.noNutrition, "Log meals through your AGame server, or have Steve import nutrition from HealthKit. Calories and protein never show as zero when nothing is logged.")}
+    if (!N.connected) return `${empty(STR.noNutrition, `Log meals through your AGame server, or have ${AGENT} import nutrition from HealthKit. Calories and protein never show as zero when nothing is logged.`)}
       <div class="card" style="margin-top:12px"><h3>Add a meal</h3>${mealForm()}</div>`;
     const tab = chipVal("nut-tab", "today");
     const body = { today: nutToday, diary: nutDiary, trends: nutTrends, plan: nutPlan }[tab]();

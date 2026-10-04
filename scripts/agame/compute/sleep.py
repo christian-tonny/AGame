@@ -252,7 +252,8 @@ def summary(ctx, strain_by_day=None):
         sc["status"] = "stale"
     out.update({
         "last_night": nm, "last_date": last_date.isoformat(), "stale": stale,
-        "score": sc, "need": need, "debt": mv(debt, "min", method="sleep_debt_decay.v1", nights=seen, status="stale" if stale else None),
+        "score": sc, "need": dict(need, as_of=nm["end"]) if need["v"] is not None else need,
+        "debt": mv(debt, "min", method="sleep_debt_decay.v1", nights=seen, status="stale" if stale else None, as_of=nm["end"] if debt is not None else None),
         "regularity": reg, "status": "stale" if stale else sc["status"],
         "naps": [n for d in sorted(naps) if (ctx.d - d).days <= 14 for n in naps[d]],
         "base_need": base_need(ctx)[0],
