@@ -61,13 +61,27 @@ def daily_totals(ctx):
             cutoff = ctx.target("caffeine_cutoff")
             if cutoff and dt.strftime("%H:%M") > cutoff:
                 r["caffeine_after_cutoff_mg"] = r.get("caffeine_after_cutoff_mg", 0) + c["mg"]
+    hk_days = {}
+    for t in n.get("daily_totals", []):
+        d = tu.parse_date(t["date"])
+        if d > ctx.d:
+            continue
+        r = days[d]
+        for k in NUTRIENTS:
+            if t.get(k) is not None:
+                r[k] = (r[k] or 0.0) + t[k]
+        if t.get("water_ml") is not None:
+            r["water_ml"] = r.get("water_ml", 0) + t["water_ml"]
+        for g, v in (t.get("micros") or {}).items():
+            r["micros"][g] += v
+        hk_days[d] = bool(t.get("partial"))
     status = {tu.parse_date(s["date"]): s["complete"] for s in n.get("day_status", [])}
     out = []
     for d in sorted(days):
         r = days[d]
         complete = status.get(d)
         if complete is None:
-            complete = None if d == ctx.d else (r["meals"] >= 3)
+            complete = None if d >= ctx.d else (r["meals"] >= 3 or (d in hk_days and not hk_days[d]))
         row = {"date": d.isoformat(), **{k: (round(r[k], 1) if r[k] is not None else None) for k in NUTRIENTS},
                "meals": r["meals"], "water_ml": r.get("water_ml"), "caffeine_after_cutoff_mg": r.get("caffeine_after_cutoff_mg"),
                "food_groups": {k: round(v) for k, v in r["food_groups"].items()} or None, "micros": {k: round(v, 1) for k, v in r["micros"].items()} or None,
@@ -143,9 +157,7 @@ def summary(ctx):
     days = daily_totals(ctx)
     for row in days:
         d = tu.parse_date(row["date"])
-        row["score"] = score_day(ctx, row)
-        if row["score"]:
-            row["score"]["partial"] = row["complete"] is not True
+        row["score"] = score_day(ctx, row) if (d < ctx.d and row["complete"] is True) else None  # only finished, fully logged days
         eo = energy_out(ctx, d)
         row["energy_out"] = eo
         if eo and row.get("kcal") is not None:
@@ -167,11 +179,33 @@ def summary(ctx):
         "per_meal_today": [{"meal": m["meal"], "protein_g": m["protein_g"], "t": m["t"]} for m in (today or {}).get("per_meal", [])],
     }
     recipes = (ctx.data.get("nutrition") or {}).get("recipes", [])
+    scored = [r for r in days if r.get("score")]
     return {"connected": True, "status": "ok", "days": days[-120:], "today": today, "yesterday": yday, "protein": protein,
+            "last_score": {"date": scored[-1]["date"], **scored[-1]["score"]} if scored else None,
+            "quick": quick_meals(ctx),
             "targets": {k: ctx.target(k) for k in ("protein_g", "kcal", "carbs_g", "fat_g", "fiber_g", "water_ml", "caffeine_mg_max", "vegetables_g", "caffeine_cutoff")},
             "recipes": recipes, "favorites": (ctx.data.get("nutrition") or {}).get("favorites", []),
             "planned": [p for p in (ctx.data.get("nutrition") or {}).get("planned_meals", []) if p["date"] >= ctx.d.isoformat()],
             "glucose": glucose_overlay(ctx)}
+
+
+def quick_meals(ctx, days=60, n=5):
+    """Your own meals to log again in one tap: the latest distinct ones and the ones you eat most (last `days` days)."""
+    groups = {}
+    for dt, m in _meals(ctx):
+        if (ctx.d - dt.date()).days > days or not m.get("items"):
+            continue
+        name = (m.get("name") or ", ".join(i["name"] for i in m["items"])).strip()
+        key = name.lower()
+        g = groups.setdefault(key, {"name": name, "count": 0})
+        g["count"] += 1
+        g.update(meal_id=m["id"], last=dt.isoformat(), meal=m.get("meal"),
+                 kcal=round(sum(i.get("kcal") or 0 for i in m["items"])) if any(i.get("kcal") is not None for i in m["items"]) else None,
+                 protein_g=round(sum(i.get("protein_g") or 0 for i in m["items"]), 1) if any(i.get("protein_g") is not None for i in m["items"]) else None)
+    rows = list(groups.values())
+    recent = sorted(rows, key=lambda g: g["last"], reverse=True)[:n]
+    frequent = [g for g in sorted(rows, key=lambda g: (-g["count"], g["name"])) if g["count"] >= 2 and g not in recent][:n]
+    return {"recent": recent, "frequent": frequent}
 
 
 def glucose_overlay(ctx):

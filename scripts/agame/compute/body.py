@@ -57,6 +57,12 @@ def weight_summary(ctx):
     # current = last 7-day median (or latest week median)
     last7 = [v for d, v in daily.items() if (ctx.d - d).days < 7]
     current = median(last7) if last7 else weekly[-1]["median"]
+    rolling = []  # the same 7-day median, day by day, for tiles and "vs yesterday"
+    for k in range(89, -1, -1):
+        day = ctx.d - timedelta(days=k)
+        win = [v for d, v in daily.items() if 0 <= (day - d).days < 7]
+        if win:
+            rolling.append({"date": day.isoformat(), "v": round(median(win), 2)})
     cur_as_of = pts[-1][3]["t"]
     stale = (ctx.d - pts[-1][1]).days > 7
     out = {
@@ -67,6 +73,7 @@ def weight_summary(ctx):
                                 note=None if slope is not None else f"Need {cfg['trend_min_points']} weigh-ins over {cfg['trend_min_span_days']} days (have {len(recent)})"),
         "points": [{"date": d.isoformat(), "v": round(v, 2)} for d, v in sorted(daily.items()) if (ctx.d - d).days <= 730],
         "weekly": weekly[-104:],
+        "median_7d": rolling,
         "weigh_ins_28d": len(recent),
     }
     g = weight_goal(ctx)
@@ -127,6 +134,28 @@ def _smooth(points, days):
         vals = [v for dd, v in points if abs((dd - d).days) <= days]
         out.append((d, sum(vals) / len(vals)))
     return out
+
+
+@metric("body.wrist_temp", unit="°C", method="deviation_vs_own_28d_median.v1", inputs=["metrics.wrist_temp_c"])
+def wrist_temp(ctx):
+    """Sleeping wrist temperature against the owner's own recent nights. No population norm is ever used."""
+    cfg = ctx.cfg["body"]
+    daily = ctx.daily("wrist_temp_c", "mean")
+    if not daily:
+        return None
+    need, win = cfg["wrist_temp_baseline_min_nights"], cfg["wrist_temp_baseline_days"]
+
+    def dev(day):
+        base = [daily[d] for d in daily if 0 < (day - d).days <= win]
+        return (round(daily[day] - median(base), 2), round(median(base), 2), len(base)) if len(base) >= need else (None, None, len(base))
+    last = max(daily)
+    d_now, base, n = dev(last)
+    prev = max((d for d in daily if d < last), default=None)
+    d_prev = dev(prev)[0] if prev else None
+    series = [{"date": d.isoformat(), "v": dev(d)[0]} for d in sorted(daily) if (ctx.d - d).days < 30]
+    return {"date": last.isoformat(), "v": round(daily[last], 2), "baseline": base, "deviation": d_now, "nights": n, "needed": need,
+            "delta": round(d_now - d_prev, 2) if (d_now is not None and d_prev is not None) else None,
+            "stale": (ctx.d - last).days > 1, "series": series}
 
 
 @metric("body.vo2max", unit="ml/kg/min", method="vo2max_raw_plus_rolling_mean.v1", inputs=["metrics.vo2max_ml_kg_min"])

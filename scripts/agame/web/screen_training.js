@@ -206,7 +206,7 @@ function trPlan() {
       <div class="hide-m" style="margin-top:16px">${weekGrid(wk)}</div><div class="hide-d" style="margin-top:16px">${weekStrip(wk)}${weekList(wk)}</div>
       <div class="spread hide-m" style="margin-top:12px;flex-wrap:wrap"><div class="legend"><span><i style="border:2px solid var(--ok)"></i>As planned</span><span><i style="border:2px solid var(--warn)"></i>Partial</span><span><i style="border:2px dashed var(--bad)"></i>Missed</span><span><i style="border:2px solid var(--text-3)"></i>Unplanned</span></div>${isNum(wk.header.compliance_pct) ? `<span class="small muted">${wk.header.compliance_pct}% compliance</span>` : ""}</div>
       ${AG.online ? `<div class="actions">${editBtn("session-new", "", "Add session")}${editBtn("event-add", undefined, "Add event")}${editBtn("plan-new", undefined, "New plan")}</div>` : ""}</div>
-    ${p.adaptations.length ? `<div class="card">${cardHead("Suggested changes", "", "Originals stay visible and nothing changes until you accept. An accepted change notes the original on the session.")}${p.adaptations.map(a => `<div class="suggest"><div class="grow"><b>${fmt.dow(a.date)}: ${esc(adaptText(a))}</b><span>${esc(adaptReason(a))}</span></div>${adaptButtons(a)}</div>`).join("")}</div>` : ""}
+    ${p.adaptations.length ? `<div class="card">${cardHead("Suggested changes", "", "Originals stay visible and nothing changes until you accept. An accepted change notes the original on the session.")}${p.adaptations.map(a => `<div class="suggest"><div class="grow"><b>${fmt.dow(a.date)}: ${esc(a.title)}</b><span>${esc(a.sub)}</span></div>${adaptButtons(a)}</div>`).join("")}</div>` : ""}
     ${p.conflicts.length ? `<div class="card">${cardHead("Calendar conflicts")}<div class="list">${p.conflicts.map(c => `<div class="li"><div class="grow"><div class="t">${fmt.dow(c.date)} ${fmt.date(c.date)}</div><div class="s wrap">${esc(c.event || "")} · ${esc(c.reason)}</div></div></div>`).join("")}</div></div>` : ""}
     ${(() => { const later = which === "this" ? p.upcoming.filter(s => s.date > wk.days[6]) : p.upcoming; return later.length ? `<div class="card">${cardHead("Coming up")}<div class="list" data-upcoming>${later.map(s => `<button class="li" data-open="session" data-arg="${esc(s.id)}"><span class="icon-dot" style="color:${sportColor(s.sport === "strength" ? "strength" : "run")}">${sportIcon(s.sport === "strength" ? "strength" : "run")}</span><div class="grow"><div class="t">${esc(s.title || s.label)}</div><div class="s">${fmt.dow(s.date)} ${fmt.date(s.date)} · ${esc(s.label || s.type)}${s.origin === "template" ? " · template" : ""}</div></div><div class="r small">${s.duration_s ? fmt.mins(s.duration_s) : ""}</div></button>`).join("")}</div></div>` : ""; })()}
     <div class="card">${cardHead(fmt.date(D.meta.build_date, { month: "long", year: "numeric" }))}${monthGrid(cal)}</div></div>
@@ -222,9 +222,8 @@ function trPlan() {
 AG.sheets.routine = function (id) {
   const rt = D.plans.routines.find(r => r.id === id);
   if (!rt) return;
-  openSheet(rt.name, `${stepList(rt.steps)}${AG.online ? `<div class="edit-row"><button class="btn sm" data-open="routine-schedule" data-arg="${esc(rt.id)}">Schedule…</button></div>` : ""}${sectionTitle("Apple Watch export")}<p class="small muted">${esc(rt.watch_export.note)}</p>
-    <pre style="white-space:pre-wrap;font-size:11px;background:var(--surface-2);padding:10px;border-radius:10px;max-height:240px;overflow:auto">${esc(JSON.stringify(rt.watch_export, null, 1))}</pre>
-    <p class="cap">${STR.companion}</p>`);
+  openSheet(rt.name, `${stepList(rt.steps)}${AG.online ? `<div class="edit-row"><button class="btn sm" data-open="routine-schedule" data-arg="${esc(rt.id)}">Schedule…</button></div>` : ""}${(D.profile.integrations || {}).companion_app ? `${sectionTitle("Apple Watch export")}<p class="small muted">${esc(rt.watch_export.note)}</p>
+    <pre style="white-space:pre-wrap;font-size:11px;background:var(--surface-2);padding:10px;border-radius:10px;max-height:240px;overflow:auto">${esc(JSON.stringify(rt.watch_export, null, 1))}</pre>` : ""}`);
 };
 function monthGrid(cal) {
   const days = cal.days;

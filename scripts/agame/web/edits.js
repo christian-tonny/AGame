@@ -247,10 +247,17 @@ AG.sheets["planned-meal"] = id => confirmSheet("Planned meal", "Remove this plan
 /* ================= Quick log (Today header) ================= */
 AG.sheets["quick-log"] = () => {
   const items = [["meal-add", "nutrition", "Meal"], ["water-add", "droplet", "Water"], ["caffeine-add", "coffee", "Caffeine"], ["measure-add", "scale", "Weight"], ["mood-add", "mood", "Mood"], ["note-add", "note", "Note"]];
-  const recipes = D.nutrition.recipes.filter(r => r.favorite);
+  const recipes = (D.nutrition.recipes || []).filter(r => r.favorite);
+  const q = D.nutrition.quick || { recent: [], frequent: [] };
+  const again = (title, rows) => rows.length ? sectionTitle(title) + `<div class="list">${rows.map(m => `<button type="button" class="li" data-relog="${esc(m.meal_id)}"><div class="grow"><div class="t">${esc(m.name)}</div><div class="s">${[isNum(m.kcal) ? fmt.n(m.kcal) + " kcal" : "", isNum(m.protein_g) ? fmt.n(m.protein_g) + " g protein" : "", m.count > 1 ? m.count + "× in 60 days" : ""].filter(Boolean).join(" · ")}</div></div><span class="go" aria-hidden="true">${icon("plus")}</span></button>`).join("")}</div>` : "";
   openSheet("Log", `<div class="more-grid">${items.map(([id, ic, label]) => `<button type="button" data-open="${id}">${icon(ic)}<span>${label}</span></button>`).join("")}</div>
+    ${again("Recent", q.recent)}${again("Often", q.frequent)}
     ${recipes.length ? sectionTitle("Favorite meals") + `<div class="list">${recipes.map(r => `<button type="button" class="li" data-open="recipe" data-arg="${esc(r.id)}"><div class="grow"><div class="t">${esc(r.name)}</div><div class="s">${r.items.map(i => esc(i.name)).join(", ")}</div></div><span class="go" aria-hidden="true">${icon("arrow")}</span></button>`).join("")}</div>` : ""}`);
 };
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-relog]");
+  if (b) act("meal.copy", { meal_id: b.dataset.relog, date: nowInput().slice(0, 10), t: new Date().toISOString() }, "Meal logged").catch(() => {});
+});
 AG.sheets["meal-add"] = () => openSheet("Add meal", mealForm(), { after: bindMealForm });
 AG.sheets["mood-add"] = () => {
   const labels = ["Awful", "Low", "Okay", "Good", "Great"];
@@ -262,6 +269,32 @@ document.addEventListener("click", e => {
 });
 AG.sheets["note-add"] = () => formSheet("Note", [{ name: "text", label: "Note", required: true, full: true }],
   v => save("POST", "entries/journal.entries", { date: nowInput().slice(0, 10), type: "note", value: null, habit_id: null, text: v.text }, "Note saved"));
+
+/* ================= Apple Health export (one-time backfill) ================= */
+AG.sheets["health-export"] = () => openSheet("Import Apple Health export", `<form class="form" id="hx-form"><label>export.zip <input type="file" id="hx-file" accept=".zip,application/zip" required></label>
+  <div class="actions" style="margin-top:0"><button class="btn" type="submit">Upload</button></div><p class="small muted" id="hx-status" role="status"></p></form>`, { after: sh => {
+  const f = $("#hx-form", sh), out = $("#hx-status", sh);
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const file = $("#hx-file", sh).files[0];
+    if (!file) return;
+    f.querySelector("button").disabled = true;
+    out.textContent = "Uploading…";
+    try {
+      const r = await fetch("api/import/apple-health-export", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/zip" }, body: file });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "HTTP " + r.status);
+      const poll = async () => {
+        const s2 = await fetch("api/agent/job?id=" + encodeURIComponent(j.job), { credentials: "same-origin" }).then(x => x.json());
+        if (s2.status === "running") { out.textContent = s2.step || "Importing…"; setTimeout(poll, 3000); return; }
+        if (s2.status === "done") { toast("Apple Health history imported"); setTimeout(() => location.reload(), 700); return; }
+        out.textContent = s2.error || "Import failed";
+        f.querySelector("button").disabled = false;
+      };
+      poll();
+    } catch (err) { out.textContent = err.message; f.querySelector("button").disabled = false; }
+  };
+} });
 
 /* ================= Body ================= */
 AG.sheets["measure-add"] = () => formSheet("Add measurement", [

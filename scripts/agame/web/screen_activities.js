@@ -80,14 +80,14 @@ AG.screens.activity = {
     if (!a) return empty("Activity not found", "It may be older than this snapshot");
     const det = D.activities.details[a.id];
     if (!det) return `<h2 class="page-title">${esc(a.name)}</h2><div class="card">${feedCard(a)}</div>${empty("Details not embedded", `Only the latest ${D.meta.detail_max_activities} activities carry full streams in this snapshot`)}`;
-    const tab = chipVal("act-detail-tab", "summary");
+    const tab = chipVal("act-detail-tab", "summary") === "chat" && !AG.llm ? "summary" : chipVal("act-detail-tab", "summary");
     const tags = [a.race ? badge("Race", "accent") : "", a.private ? badge("Private", "est") : ""].join("");
     const when = `${fmt.date(a.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" })} · ${fmt.time(a.start)}${det.end ? "–" + fmt.time(det.end) : ""}`;
     const badgeIc = cls => `<span class="act-badge ${cls}" style="--c:${sportColor(a.family)}">${sportIcon(a.family)}</span>`;
-    const hero = det.map ? `<div class="act-hero hide-d">${mapSvg(det.map, { label: "Activity route", w: 390, h: 300, cls: "hero-map" })}${badgeIc("")}</div>` : "";
+    const hero = det.map ? `<div class="act-hero hide-d">${mapSvg(det.map, { label: "Activity route", w: 390, h: 300, cls: "hero-map", pad: { t: 72, r: 32, b: 44, l: 32 } })}${badgeIc("")}</div>` : "";
     const head = `<div class="act-head">${det.map ? badgeIc("inline hide-m") : badgeIc("inline")}<div class="grow"><h2 class="page-title">${esc(a.name)}</h2>
       <div class="act-meta"><span>${icon("calendar")}${when}</span>${det.device ? `<span>${icon("watch")}${esc(det.device)}</span>` : ""}</div>${tags ? `<div class="row" style="margin-top:8px">${tags}</div>` : ""}</div></div>`;
-    const tb = tabs("act-detail-tab", [["summary", "Summary"], ["analysis", "Analysis"], ["chat", "Chat"], ["planned", "Planned"]], tab);
+    const tb = tabs("act-detail-tab", [["summary", "Summary"], ["analysis", "Analysis"]].concat(AG.llm ? [["chat", "Chat"]] : [], [["planned", "Planned"]]), tab);
     const body = { summary: actSummary, analysis: actAnalysis, chat: actChat, planned: actPlanned }[tab](a, det);
     return `${hero}${head}${tb}${body}`;
   },
@@ -100,7 +100,7 @@ function actStats(a) {
   if (a.family === "strength" || !isNum(a.distance_m)) return [bstat("Duration", fmt.dur(a.duration_s)), bstat("Avg HR", hr, "bpm"), bstat("Max HR", mx, "bpm"), bstat("Active energy", kc, "kcal")].join("");
   const speed = a.family === "ride" ? bstat("Avg speed", isNum(a.speed_kph) ? fmt.n(a.speed_kph, 1) : "—", "km/h") : bstat("Avg pace", fmt.pace(a.pace_s_per_km, false), fmt.paceUnit());
   return [bstat("Distance", fmt.distNum(a.distance_m, 2), fmt.distUnit()), bstat("Moving time", fmt.dur(a.moving_s || a.duration_s)), speed, bstat("Elevation gain", fmt.elev(a.elevation_gain_m)),
-    bstat("Avg HR", hr, "bpm"), bstat("Max HR", mx, "bpm"), bstat("Active energy", kc, "kcal"), a.moving_s && a.moving_s < a.duration_s ? bstat("Elapsed time", fmt.dur(a.duration_s)) : ""].join("");
+    bstat("Avg HR", hr, "bpm"), bstat("Max HR", mx, "bpm"), bstat("Active energy", kc, "kcal"), a.moving_s && fmt.dur(a.moving_s) !== fmt.dur(a.duration_s) ? bstat("Elapsed time", fmt.dur(a.duration_s)) : ""].join("");
 }
 function hrCard(a, det) {
   const s = det.series;
@@ -166,10 +166,11 @@ function actSummary(a, det) {
         series: [{ name: "Pace", color: "var(--accent)", values: det.matched.rows.map(r => r.pace_s_per_km), dots: true }], fmtX: d => fmt.date(d), fmtY: v => fmt.pace(v), fmtYAxis: v => fmt.pace(v, false) })}</div>` : "";
   const weather = det.weather ? `<div class="card">${cardHead("Weather", det.weather.conditions ? `<span class="small muted">${esc(det.weather.conditions)}</span>` : "")}<div class="bstats three">${bstat("Temp", fmt.temp(det.weather.temp_c))}${bstat("Humidity", fmt.pct(det.weather.humidity_pct))}${bstat("Wind", isNum(det.weather.wind_kph) ? fmt.n(det.weather.wind_kph) : "—", "km/h")}</div></div>` : "";
   const muscles = trained ? `<div class="card">${cardHead("Muscles trained")}${muscleMap({}, "freshness", trained)}</div>` : a.family === "strength" ? `<div class="card">${empty(STR.noExercise, "Log sets in the Strength Builder to see trained muscles")}</div>` : "";
-  const map = `<div class="card map-card hide-m">${det.map ? mapSvg(det.map, { label: "Activity route", w: 560, h: 340 }) : empty(STR.noRoute, a.family === "strength" ? "Indoor session" : "No GPS samples")}</div>`;
+  const map = `<div class="card map-card hide-m">${det.map ? mapSvg(det.map, { label: "Activity route", w: 560, h: 340, pad: 28 }) : empty(STR.noRoute, a.family === "strength" ? "Indoor session" : "No GPS samples")}</div>`;
   const rpe = `<div class="card">${cardHead("Perceived effort")}${rpeForm(a, det)}</div>`;
+  const hr = hrCard(a, det) || (det.has_samples === false && a.family !== "strength" ? `<div class="card">${cardHead(`${icon("heart")}Heart rate`)}${empty("No heart-rate samples", "Zones, the heart-rate chart and best efforts need the workout's samples")}</div>` : "");
   const o = (n, html) => html ? `<div class="o" style="order:${n}">${html}</div>` : "";
-  return `<div class="flow2"><div class="flow-a">${o(0, map)}${o(3, hrCard(a, det))}${o(4, zones)}${o(5, splitsCard(det))}${o(6, intervalsCard(det))}${o(10, muscles)}</div>
+  return `<div class="flow2"><div class="flow-a">${o(0, map)}${o(3, hr)}${o(4, zones)}${o(5, splitsCard(det))}${o(6, intervalsCard(det))}${o(10, muscles)}</div>
     <div class="flow-b">${o(1, race)}${o(1, strain)}${o(2, stats)}${o(7, plan)}${o(8, notes)}${o(9, efforts)}${o(11, matched)}${o(12, rpe)}${o(13, weather)}</div></div>`;
 }
 

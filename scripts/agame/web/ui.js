@@ -246,12 +246,14 @@ function activityRow(a) {
 function project(lines, w, h, pad = 10) {
   const pts = lines.flat();
   if (!pts.length) return null;
+  const p4 = typeof pad === "number" ? { t: pad, r: pad, b: pad, l: pad } : pad;
   const lat0 = pts.reduce((s, p) => s + p[0], 0) / pts.length;
   const kx = Math.cos(lat0 * Math.PI / 180);
   const xs = pts.map(p => p[1] * kx), ys = pts.map(p => -p[0]);
   const minx = Math.min(...xs), maxx = Math.max(...xs), miny = Math.min(...ys), maxy = Math.max(...ys);
-  const sc = Math.min((w - 2 * pad) / ((maxx - minx) || 1e-6), (h - 2 * pad) / ((maxy - miny) || 1e-6));
-  const ox = (w - (maxx - minx) * sc) / 2, oy = (h - (maxy - miny) * sc) / 2;
+  const iw = w - p4.l - p4.r, ih = h - p4.t - p4.b;
+  const sc = Math.min(iw / ((maxx - minx) || 1e-6), ih / ((maxy - miny) || 1e-6));
+  const ox = p4.l + (iw - (maxx - minx) * sc) / 2, oy = p4.t + (ih - (maxy - miny) * sc) / 2;
   return p => [ox + (p[1] * kx - minx) * sc, oy + (-p[0] - miny) * sc];
 }
 function mapSvg(lines, opts = {}) {

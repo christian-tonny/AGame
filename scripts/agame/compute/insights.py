@@ -132,10 +132,9 @@ def one_action(ctx, rec_call, sync, sleep, nutrition, today_sessions, weight, be
     if sync.get("sleep_missing"):
         return {"id": "sync", "text": "Sleep not synced yet", "detail": "Check back after the morning sync", "kind": "data"}
     if rec_call["call"] == "rest":
-        return {"id": "rest", "text": "Rest today", "detail": rec_call["why"], "kind": "recovery"}
+        return {"id": "rest", "text": "Rest today", "detail": None, "kind": "recovery"}
     if rec_call["call"] == "reduce" and planned and planned[0]["type"] in ctx.cfg["plans"]["hard_types"]:
-        dur = round((planned[0].get("duration_s") or 2700) * 0.8 / 60)
-        return {"id": "swap", "text": f"Swap {planned[0]['title']} for an easy {dur} min", "detail": rec_call["why"], "kind": "training"}
+        return {"id": "swap", "text": f"Keep the {planned[0]['title'].lower()} easy", "detail": None, "kind": "training"}
     if nutrition and nutrition.get("connected"):
         p = nutrition["protein"]
         if p["target"] and p["yesterday"] is not None:
@@ -144,10 +143,10 @@ def one_action(ctx, rec_call, sync, sleep, nutrition, today_sessions, weight, be
                 return {"id": "protein", "text": f"Protein {round(short)} g short yesterday", "detail": f"Target {round(p['target'])} g", "kind": "nutrition"}
     debt = ((sleep or {}).get("debt") or {}).get("v")
     if debt is not None and debt >= icfg["sleep_debt_action_min"] and bedtime:
-        return {"id": "bedtime", "text": f"Bed by {bedtime}", "detail": f"Sleep debt {round(debt)} min", "kind": "sleep"}
+        return {"id": "bedtime", "text": f"Bed by {bedtime}", "detail": "To pay back sleep debt", "kind": "sleep"}
     traj = (weight or {}).get("goal") or {}
     if traj.get("status") == "behind" and traj.get("required_kg_per_week") is not None and traj.get("actual_kg_per_week") is not None:
-        return {"id": "weight", "text": f"Weight trend {traj['actual_kg_per_week']:+.2f} kg/wk", "detail": f"Need {traj['required_kg_per_week']:+.2f} kg/wk", "kind": "body"}
+        return {"id": "weight", "text": "Weight is moving slower than your goal needs", "detail": None, "kind": "body"}
     if planned:
         s = planned[0]
         return {"id": "session", "text": f"{s['title']}", "detail": s.get("objective") or s.get("label"), "kind": "training"}
@@ -243,7 +242,7 @@ def activity_insights(ctx, w, det, planned=None):
         v = m["vs_prior_avg_s_per_km"]
         facts.append({"id": "matched", "text": f"Same route: {abs(round(v))} s/km {'faster' if v < 0 else 'slower'} than your average ({m['count'] - 1} prior)",
                       "evidence": {"rank": m["rank"], "count": m["count"]}})
-    if planned:
+    if planned and planned.get("compliance") in ("as_planned", "partial", "done"):
         facts.append({"id": "compliance", "text": {"as_planned": "Completed as planned", "partial": "Partly completed vs plan", "done": "Planned session done"}.get(planned.get("compliance"), "Planned session"),
                       "evidence": {"ratio": planned.get("ratio"), "planned_s": planned.get("duration_s"), "actual_s": planned.get("actual_duration_s")}})
     # improvements

@@ -25,7 +25,8 @@ function nutToday() {
   const mp = day && day.macro_pct;
   const dm = (pct, color) => { const n = Math.round((pct || 0) / 100 * 60); return `<div class="dm">${Array.from({ length: 60 }, (_, i) => `<i style="${59 - i < n ? "background:" + color : ""}"></i>`).join("")}</div>`; };
   const net = day && isNum(day.net_kcal) ? day.net_kcal : null;
-  const score = day && day.score;
+  const score = N.last_score;
+  const scoreWhen = score ? (score.date === addDays(D.meta.build_date, -1) ? "Yesterday" : fmt.dateY(score.date)) : "";
   const left = k => isNum(tgt[k]) && t && isNum(t[k]) ? Math.max(0, tgt[k] - t[k]) : null;
   return `<div class="cols"><div class="stack">
     <div class="card">${cardHead("Protein", `<span class="small muted">${pr.target ? `Target ${fmt.n(pr.target)} g` : "No target set"}</span>`)}
@@ -38,10 +39,10 @@ function nutToday() {
     <div class="card">${cardHead("Net energy")}${net !== null ? `<div class="stat"><span class="v">${fmt.signed(net)}<small>kcal</small></span></div><div class="row small muted">${icon("flame")} ${fmt.n(day.energy_out.total)} out · ${fmt.n(day.kcal)} in</div>
       <div style="position:relative;height:10px;border-radius:999px;margin:12px 0 4px;background:linear-gradient(90deg,var(--strain),var(--carbs),var(--sleep))"><i style="position:absolute;top:-3px;width:4px;height:16px;border-radius:2px;background:var(--text);left:calc(${Math.max(0, Math.min(100, (net + 500) / 10))}% - 2px)"></i></div>
       <div class="spread cap"><span>−500</span><span>0</span><span>+500</span></div>${day.net_partial ? `<div class="st-line partial"><span class="dot"></span>${day.complete === true ? "Energy out incomplete" : "Day in progress"}</div>` : ""}` : `<p class="small muted" style="margin:0">Needs logged food and HealthKit energy</p>`}</div></div>
-    <div class="stack"><div class="card">${cardHead("Nutrition score", score && score.partial ? badge("Partial day", "est") : "")}
+    <div class="stack"><div class="card">${cardHead("Nutrition score", scoreWhen ? `<span class="small muted">${esc(scoreWhen)}</span>` : "")}
       ${score ? `<div class="stat hero" style="margin-bottom:8px"><span class="v">${score.score}<small>/ 100</small></span></div><div class="list">${Object.entries(score.components).map(([k, v]) => `<div class="li"><div class="grow small">${esc(fmt.sport(k))}</div><div class="r small">${v}</div></div>`).join("")}</div>
       ${score.contributors.length ? `<div class="sub-h">Quality</div>` + score.contributors.map(c => `<div class="row" style="gap:10px;margin:6px 0"><span class="small" style="width:96px">${esc(c.label)}</span><div class="bar thin" style="flex:1"><i style="width:${Math.min(100, Math.abs(c.points) * 10)}%;background:${c.points >= 0 ? "var(--ok)" : "var(--bad)"}"></i></div><span class="small num" style="width:36px;text-align:right">${fmt.signed(c.points, 0)}</span></div>`).join("") : ""}
-      ${score.missing_components.length ? `<div class="st-line partial"><span class="dot"></span>No ${esc(score.missing_components.join(", "))} target</div>` : ""}` : `<p class="small muted" style="margin:0">Needs logged food and targets</p>`}</div>
+      ${score.missing_components.length ? `<div class="st-line partial"><span class="dot"></span>No ${esc(score.missing_components.join(", "))} target</div>` : ""}` : `<p class="small muted" style="margin:0">Scored once a fully logged day is over</p>`}</div>
     <div class="card">${cardHead("Hydration & caffeine", `${editBtn("water-add", undefined, "+ Water")}${editBtn("caffeine-add", undefined, "+ Caffeine")}`)}<div class="stats-grid">${stat("Water", t && isNum(t.water_ml) ? fmt.n(t.water_ml) : "—", "ml", { d: isNum(tgt.water_ml) ? `<span class="cap">of ${fmt.n(tgt.water_ml)} ml</span>` : "" })}${stat("Caffeine", t && isNum(t.caffeine_mg) ? fmt.n(t.caffeine_mg) : "—", "mg", { d: tgt.caffeine_cutoff ? `<span class="cap">cutoff ${esc(tgt.caffeine_cutoff)}</span>` : "" })}</div></div>
     <div class="card">${cardHead("Meals today")}${t && t.per_meal.length ? `<div class="list">${t.per_meal.map(m => `<div class="li" ${AG.online ? `role="button" tabindex="0" data-open="meal-edit" data-arg="${esc(m.id)}"` : ""}><div class="grow"><div class="t">${esc(m.name || fmt.sport(m.meal))}</div><div class="s">${fmt.time(m.t)} · ${esc(m.items.join(", "))}</div></div><div class="r small">${fmt.n(m.kcal)} kcal<div class="cap">${fmt.n(m.protein_g)} g protein</div></div></div>`).join("")}</div>` : `<p class="small muted" style="margin:0">Nothing logged yet today</p>`}
       ${AG.online ? `<details style="margin-top:12px"><summary class="link" style="cursor:pointer">Add a meal</summary>${mealForm()}</details>` : ""}</div>
@@ -113,7 +114,7 @@ function bodyOverview() {
   const go = t => `#/body?tab=${t}`;
   const latestLine = x => x && x.latest_date ? statusLine(`${x.latest_date === D.meta.build_date ? "" : fmt.date(x.latest_date) + " · "}7-day avg ${fmt.n(x.avg_7, x.avg_7 < 100 ? 1 : 0)} ${x.unit}`, null) : statusLine("No data", null);
   const rows = [
-    W.status !== "missing" ? trendRow({ label: "Weight · 7-day median", value: fmt.kgNum(W.current.v), unit: fmt.wUnit(), href: go("weight"), spark: tail(W.points, 90), color: "var(--accent)",
+    W.status !== "missing" ? trendRow({ label: "Weight · 7-day median", value: fmt.kgNum(W.current.v), unit: fmt.wUnit(), href: go("weight"), spark: tail(W.median_7d, 90), color: "var(--accent)",
       status: isNum(W.trend_kg_per_week.v) ? statusLine(`${fmt.signed(IMPERIAL ? W.trend_kg_per_week.v * 2.20462 : W.trend_kg_per_week.v, 2)} ${fmt.wUnit()} a week`, null, W.trend_kg_per_week.v < 0 ? "down" : "up") : "" }) : "",
     m.hrv_sdnn_ms ? trendRow({ label: "HRV", value: fmt.n(m.hrv_sdnn_ms.latest, 1), unit: "ms", href: "#/recovery", spark: tail(m.hrv_sdnn_ms.points), color: "var(--recovery)", status: latestLine(m.hrv_sdnn_ms) }) : "",
     m.resting_hr_bpm ? trendRow({ label: "Resting HR", value: fmt.n(m.resting_hr_bpm.latest, 1), unit: "bpm", href: "#/recovery", spark: tail(m.resting_hr_bpm.points), color: "var(--bad)", status: latestLine(m.resting_hr_bpm) }) : "",
@@ -141,7 +142,7 @@ function bodyWeight() {
   const medSeries = pts.map(p => { const ws = Object.keys(wkMap).filter(k => k <= p.date).pop(); return ws ? conv(wkMap[ws]) : null; });
   let proj = null;
   if (g && g.target_date && isNum(W.current.v)) proj = [conv(W.current.v), conv(g.target)];
-  return `<div class="cols"><div class="stack"><div class="card">${cardHead("Weight", "", "", W.current)}<div class="spread" style="align-items:flex-end"><div class="stat hero"><span class="v">${fmt.kgNum(W.current.v)}<small>${fmt.wUnit()}</small></span><span class="cap">7-day median · latest ${fmt.kg(W.current.latest)} on ${fmt.date(W.current.latest_date)}</span></div>
+  return `<div class="cols"><div class="stack"><div class="card">${cardHead("Weight", "", `7-day median of your weigh-ins.${isNum(W.current.latest) ? ` Latest weigh-in ${fmt.kg(W.current.latest)} on ${fmt.dateY(W.current.latest_date)}.` : ""}`, W.current)}<div class="spread" style="align-items:flex-end"><div class="stat hero"><span class="v">${fmt.kgNum(W.current.v)}<small>${fmt.wUnit()}</small></span></div>
       <div style="text-align:right">${stat("4-week trend", isNum(W.trend_kg_per_week.v) ? fmt.signed(conv(W.trend_kg_per_week.v), 2) : "—", fmt.wUnit() + "/wk", { d: !isNum(W.trend_kg_per_week.v) ? `<span class="cap">${esc(W.trend_kg_per_week.note)}</span>` : "" })}</div></div>${stLine(W.current)}</div>
     ${g ? `<div class="card">${cardHead(`Goal · ${fmt.kg(g.target)} by ${fmt.date(g.target_date, { day: "numeric", month: "short", year: "numeric" })}`, goalStatusBadge(g.status), `${isNum(g.weeks_left) ? fmt.n(g.weeks_left) + " weeks left. " : ""}The projection uses your current 4-week trend.`)}
       <div class="stats-grid s3">${stat("Remaining", fmt.kg(Math.abs(g.remaining_kg)))}${stat("Needed", isNum(g.required_kg_per_week) ? fmt.signed(conv(g.required_kg_per_week), 2) : "—", fmt.wUnit() + "/wk")}${stat("Projected", g.projected_date ? fmt.date(g.projected_date, { month: "short", year: "numeric" }) : "—")}</div>

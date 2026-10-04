@@ -37,7 +37,7 @@ AG.sheets.session = function (id) {
     ${pre.objective ? `<p class="small" style="margin:12px 0 4px"><b>Objective</b> · ${esc(pre.objective)}</p>` : ""}
     ${pre.guiding_metric ? `<p class="small muted" style="margin:0">Guide by ${esc(pre.guiding_metric.toUpperCase())} · ${esc(pre.watch || "")}</p>` : ""}
     ${tg.hr || tg.pace ? `<div class="row wrap" style="margin-top:10px">${tg.hr ? badge(`Zone ${tg.hr.zone}: ${tg.hr.low}–${tg.hr.high} bpm`, "info") : ""}${tg.pace ? badge(paceRange(tg.pace), "info") : ""}</div>` : ""}
-    ${adapt.map(a => `<div class="suggest" style="margin-top:12px"><div class="grow"><b>${esc(adaptText(a))}</b><span>${esc(adaptReason(a))}</span></div>${adaptButtons(a)}</div>`).join("")}
+    ${adapt.map(a => `<div class="suggest" style="margin-top:12px"><div class="grow"><b>${esc(a.title)}</b><span>${esc(a.sub)}</span></div>${adaptButtons(a)}</div>`).join("")}
     ${s.steps && s.steps.length ? sectionTitle("Steps") + stepList(s.steps) : ""}
     ${s.workout_id ? `<a class="btn secondary" style="margin-top:12px;width:100%" href="#/activity/${encodeURIComponent(s.workout_id)}">Open completed activity</a>` : ""}
     ${alts.length ? sectionTitle("Workout Wizard") + `<div class="list">${alts.map(a => `<div class="li"><div class="grow"><div class="t">${esc(a.title)}</div><div class="s">${esc(a.note)}</div></div><div class="r small">${a.duration_s ? fmt.mins(a.duration_s) : "—"}<div class="cap">${isNum(a.est_load) ? "load ~" + fmt.n(a.est_load) : ""}</div></div>${AG.online && s.date >= D.meta.build_date ? `<button type="button" class="btn sm secondary" data-wizard="${esc(a.kind)}" data-sid="${esc(s.id)}">Use</button>` : ""}</div>`).join("")}</div>
@@ -53,19 +53,6 @@ document.addEventListener("click", e => {
   if (ad) act("plan.adaptation", { session_id: ad.dataset.sid, rule: ad.dataset.rule, decision: ad.dataset.adapt }, ad.dataset.adapt === "accepted" ? "Change applied" : "Kept original").catch(() => {});
   if (sk) act("plan.skip", { session_id: sk.dataset.skip }, "Session skipped").catch(() => {});
 });
-function adaptReason(a) {
-  const s = [].concat(D.plans.today, D.plans.upcoming).find(x => x && x.id === a.session_id);
-  const instead = s ? `Instead of ${s.title || s.label}${s.duration_s ? " · " + fmt.mins(s.duration_s) : ""}` : "";
-  return a.reason === "Recovery below your reduce threshold" ? (instead || "Recovery is low today") : a.reason;
-}
-function adaptText(a) {
-  const lbl = t => (D.plans.this_week.sessions.find(s => s.type === t) || {}).label || ({ AER: "Aerobic", REC: "Recovery", REST: "Rest", MOB: "Mobility" }[t] || t);
-  if (a.action === "swap") return `Swap to ${lbl(a.to)}`;
-  if (a.action === "shorten") return `Shorten to ${Math.round(a.factor * 100)}%`;
-  if (a.action === "move") return `Move to ${fmt.dow(a.to_date)} ${fmt.date(a.to_date)}`;
-  if (a.action === "adjust_pace") return `Run ${a.pct_slower}% slower`;
-  return fmt.sport(a.action);
-}
 
 AG.sheets.bigday = function (i) {
   const b = (D.today.big_day || [])[+i || 0];
@@ -88,22 +75,6 @@ AG.sheets.factors = function () {
     <p class="cap" style="margin-top:12px">Thresholds come from config (recovery bands, form, sleep debt). Fitness information, not medical advice.</p>`);
 };
 
-const FACTOR_PHRASE = { sleep: "short sleep", sleep_debt: "sleep debt", hrv: "a dip in HRV", rhr: "a raised resting heart rate", tsb: "built-up fatigue", ramp: "a fast ramp in load", strain: "yesterday's strain", status: "how you're feeling", resp: "a higher breathing rate" };
-function joinPhrases(list) { return list.length < 2 ? list.join("") : list.slice(0, -1).join(", ") + " and " + list[list.length - 1]; }
-/* One plain sentence that says what to do and why, from the computed call and factors. */
-function coachingLine(rec, t) {
-  const hurting = rec.factors.filter(f => f.direction === "hurting").slice(0, 2).map(f => FACTOR_PHRASE[f.id] || f.label.toLowerCase());
-  const helping = rec.factors.filter(f => f.direction === "helping").slice(0, 1).map(f => FACTOR_PHRASE[f.id] ? null : f.label.toLowerCase()).filter(Boolean);
-  const session = (t.plan || []).find(s => s.type !== "REST");
-  const what = session ? (session.title || session.label || "today's session").toLowerCase() : "today";
-  if (rec.call === "reduce") return `${hurting.length ? cap1(joinPhrases(hurting)) + (hurting.length > 1 ? " are" : " is") + " holding your recovery back. " : ""}Keep ${what === "today" ? "today" : "the " + what} easy and conversational.`;
-  if (rec.call === "rest") return `${hurting.length ? cap1(joinPhrases(hurting)) + (hurting.length > 1 ? " are" : " is") + " weighing on you. " : ""}Take the day off and let your body catch up.`;
-  if (rec.call === "train") return `You're recovered${helping.length ? "" : " and ready"}. ${session ? "Go ahead with the " + what + " as planned." : "A good day for a quality session."}`;
-  if (rec.call === "rest_day") return "Rest day on your plan. Enjoy it, and get to bed on time.";
-  if (rec.call === "open") return "Nothing planned today. Move if you feel like it.";
-  return t.action ? t.action.text : rec.why;
-}
-function cap1(s) { return s ? s[0].toUpperCase() + s.slice(1) : s; }
 function seriesTail(points, key, n) { return (points || []).slice(-n).map(p => isNum(p[key]) ? p[key] : null); }
 
 /* Bevel status line: filled icon + coloured words. good: true/false/null (neutral). */
@@ -114,10 +85,18 @@ function statusLine(text, good, dir) {
 }
 function healthTile(label, ic, value, unit, d, betterHigher, spark, color, href, dUnit = "") {
   const good = !isNum(d) || d === 0 || betterHigher === null ? null : (d > 0) === betterHigher;
-  const dTxt = isNum(d) && d !== 0 ? `${d > 0 ? "+" : "−"}${Math.abs(d) < 10 && d % 1 ? fmt.n(Math.abs(d), 1) : fmt.n(Math.abs(d))}${dUnit} vs yesterday` : "Same as yesterday";
+  const dTxt = isNum(d) && d !== 0 ? `${d > 0 ? "+" : "−"}${Math.abs(d) < 10 && d % 1 ? fmt.n(Math.abs(d), 1) : fmt.n(Math.abs(d))}${dUnit} vs yesterday` : isNum(d) ? "Same as yesterday" : "";
   return `<a class="card tile" href="${href}"><div class="tile-h">${icon(ic)}<span>${esc(label)}</span></div>
     <div class="tile-v">${value === null ? "—" : value}${value !== null && unit ? `<small>${esc(unit)}</small>` : ""}</div>${value === null ? statusLine("No data", null) : statusLine(dTxt.replace(" vs yesterday", ""), good, isNum(d) && d !== 0 ? (d > 0 ? "up" : "down") : null) + (isNum(d) && d !== 0 ? `<span class="st-sub">vs yesterday</span>` : "")}
     <div class="tile-spark">${spark ? sparkline(spark, color, 40) : ""}</div></a>`;
+}
+/* Wrist temperature against your own baseline: the computed deviation, never an absolute norm. */
+function tempTile(T) {
+  const k = IMPERIAL ? 1.8 : 1, unit = IMPERIAL ? "°F" : "°C";
+  if (!T) return healthTile("Temp", "thermometer", null, unit, null, null, null, "var(--warn)", "#/body?tab=charts");
+  const dev = isNum(T.deviation) ? `${T.deviation > 0 ? "+" : T.deviation < 0 ? "−" : ""}${fmt.n(Math.abs(T.deviation * k), 1)}` : null;
+  if (dev === null) return `<a class="card tile" href="#/body?tab=charts"><div class="tile-h">${icon("thermometer")}<span>Temp</span></div><div class="tile-v">—</div>${statusLine(`Baseline ${T.nights} of ${T.needed} nights`, null)}<div class="tile-spark"></div></a>`;
+  return healthTile("Temp", "thermometer", dev, unit, isNum(T.delta) ? T.delta * k : null, null, T.series.map(p => p.v), "var(--warn)", "#/body?tab=charts", " " + unit);
 }
 function energyTicks(pct, n = 32) {
   const on = isNum(pct) ? Math.round(Math.max(0, Math.min(100, pct)) / 100 * n) : 0;
@@ -139,10 +118,10 @@ AG.screens.today = {
     const tile = (kind, href, v, label) => `<a class="ring-tile" href="${href}">${ring(kind, v, { label, sub: v && v.status === "stale" ? "stale" : "" })}<span class="label">${label}</span></a>`;
     const hero = `<section class="t-hero"><div class="card hero-card">
       <div class="rings">${tile("strain", "#/strain", r.strain, "Strain")}${tile("recovery", "#/recovery", r.recovery, "Recovery")}${tile("sleep", "#/sleep", r.sleep, "Sleep")}</div>
-      <button class="coach-note ${callCls}" data-open="factors" aria-label="Why this call"><span class="coach-t">${esc(coachingLine(rec, t))}</span><span class="coach-x" aria-hidden="true">${icon("expand")}</span></button></div></section>`;
+      <button class="coach-note ${callCls}" data-open="factors" aria-label="Why this call"><span class="coach-t">${esc(t.coach_line)}</span><span class="coach-x" aria-hidden="true">${icon("expand")}</span></button></div></section>`;
 
     const adapts = t.adaptations || [];
-    const suggest = a => `<div class="suggest"><span class="ic-sm">${icon("sparkles")}</span><div class="grow"><b>${esc(adaptText(a))}</b><span>${esc(adaptReason(a))}</span></div>${adaptButtons(a)}</div>`;
+    const suggest = a => `<div class="suggest"><span class="ic-sm">${icon("sparkles")}</span><div class="grow"><b>${esc(a.title)}</b><span>${esc(a.sub)}</span></div>${adaptButtons(a)}</div>`;
     const planRows = t.plan.map(s => sessionRow(s) + adapts.filter(a => a.session_id === s.id).map(suggest).join("")).join("");
     const orphan = adapts.filter(a => !t.plan.some(s => s.id === a.session_id)).map(suggest).join("");
     const bigday = (t.big_day || []).map((b, i) => `<button class="li" data-open="bigday" data-arg="${i}"><span class="icon-dot" style="color:var(--accent)">${icon("flame")}</span><div class="grow"><div class="t">Big day brief</div><div class="s">${esc(b.evening.bedtime ? "Bed by " + b.evening.bedtime : b.title)}</div></div>${goArrow()}</button>`).join("");
@@ -170,7 +149,9 @@ AG.screens.today = {
       ${healthTile("HRV", "heart", isNum(sy.hrv.v) ? fmt.n(sy.hrv.v) : null, "ms", sy.hrv.delta, true, seriesTail(hrvPts, "v", 21), "var(--recovery)", "#/recovery", " ms")}
       ${healthTile("Resting HR", "activities", isNum(sy.rhr.v) ? fmt.n(sy.rhr.v) : null, "bpm", sy.rhr.delta, false, seriesTail(rhrPts, "v", 21), "var(--bad)", "#/recovery", " bpm")}
       ${healthTile("Sleep", "sleep", isNum(sy.sleep.v) ? fmt.hm(sy.sleep.v) : null, "", isNum(sy.sleep.delta) ? Math.round(sy.sleep.delta) : null, true, seriesTail(D.sleep.history, "asleep_min", 21), "var(--sleep-2)", "#/sleep", "m")}
-      ${healthTile("Weight", "scale", isNum(sy.weight.v) ? fmt.kgNum(sy.weight.v) : null, fmt.wUnit(), isNum(sy.weight.delta) ? (IMPERIAL ? sy.weight.delta * 2.20462 : sy.weight.delta) : null, null, seriesTail(D.body.weight.points, "v", 30), "var(--accent)", "#/body", " " + fmt.wUnit())}</div></section>`;
+      ${healthTile("Weight", "scale", isNum(sy.weight.v) ? fmt.kgNum(sy.weight.v) : null, fmt.wUnit(), isNum(sy.weight.delta) ? (IMPERIAL ? sy.weight.delta * 2.20462 : sy.weight.delta) : null, null, seriesTail(D.body.weight.median_7d, "v", 30), "var(--accent)", "#/body", " " + fmt.wUnit())}
+      ${tempTile(sy.temp)}
+      ${healthTile("Blood oxygen", "lungs", isNum(sy.spo2.v) ? fmt.n(sy.spo2.v) : null, "%", sy.spo2.delta, null, seriesTail((D.body.metrics.spo2_pct || {}).points, "v", 21), "var(--info)", "#/body?tab=charts", "%")}</div></section>`;
 
     const days = Object.keys(D.timeline).sort();
     const tday = days.includes(D.meta.build_date) ? D.meta.build_date : days[days.length - 1];

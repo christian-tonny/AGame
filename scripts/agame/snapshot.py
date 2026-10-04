@@ -14,6 +14,7 @@ from agame.compute import load as loadm
 from agame.compute import muscles as musm
 from agame.compute import nutrition as nutm
 from agame.compute import plans as plansm
+from agame.compute import wording
 from agame.compute import recovery as recm
 from agame.compute import routes as routesm
 from agame.compute import sleep as sleepm
@@ -37,6 +38,15 @@ def _delta(cur, prev):
     if cur is None or prev is None:
         return None
     return round(cur - prev, 1)
+
+
+def _weight_since(weight, d):
+    """Today's 7-day median weight and its change since yesterday's 7-day median."""
+    roll = {r["date"]: r["v"] for r in weight.get("median_7d") or []}
+    cur = (weight.get("current") or {})
+    today, yday = roll.get(d.isoformat()), roll.get((d - timedelta(days=1)).isoformat())
+    return {"v": cur.get("v"), "delta": _delta(today, yday), "unit": "kg", "method": "7_day_median",
+            "latest": cur.get("latest"), "latest_date": cur.get("latest_date"), "note": None if cur.get("v") is not None else "No weigh-ins"}
 
 
 def build_snapshot(data, build_date):
@@ -126,7 +136,6 @@ def build_snapshot(data, build_date):
     hrv_d = recm.daily_hrv(ctx)
     rhr_d = ctx.daily("resting_hr_bpm")
     prev_night = sleep["history"][-2] if len(sleep["history"]) >= 2 else None
-    wpts = weight.get("points") or []
     since = {
         "hrv": {"v": round(hrv_d[ctx.d], 1) if ctx.d in hrv_d else None, "delta": _delta(hrv_d.get(ctx.d), hrv_d.get(ctx.d - timedelta(days=1))), "unit": "ms",
                 "note": None if ctx.d in hrv_d else "No HRV this morning"},
@@ -135,8 +144,10 @@ def build_snapshot(data, build_date):
         "sleep": {"v": (sleep.get("last_night") or {}).get("asleep_min") if not sleep.get("stale") else None,
                   "delta": _delta((sleep.get("last_night") or {}).get("asleep_min"), (prev_night or {}).get("asleep_min")) if not sleep.get("stale") else None,
                   "unit": "min", "note": "Sleep not synced yet" if sleep.get("stale") or sleep.get("last_night") is None else None},
-        "weight": {"v": wpts[-1]["v"] if wpts else None, "delta": _delta(wpts[-1]["v"], wpts[-2]["v"]) if len(wpts) >= 2 else None, "unit": "kg",
-                   "date": wpts[-1]["date"] if wpts else None, "note": None if wpts else "No weigh-ins"},
+        "weight": _weight_since(weight, ctx.d),
+        "temp": bodym.wrist_temp(ctx),
+        "spo2": {"v": round(ctx.daily("spo2_pct").get(ctx.d), 1) if ctx.d in ctx.daily("spo2_pct") else None,
+                 "delta": _delta(ctx.daily("spo2_pct").get(ctx.d), ctx.daily("spo2_pct").get(ctx.d - timedelta(days=1))), "unit": "%"},
     }
     yday = [r for r in rows if r["date"] == (ctx.d - timedelta(days=1)).isoformat()]
     todays_acts = [r for r in rows if r["date"] == ctx.d.isoformat()]
@@ -145,8 +156,14 @@ def build_snapshot(data, build_date):
         g = next((g for g in goals if g["type"] == typ), None)
         if g:
             goals_strip.append(g)
+    all_sessions = list(plans["today"]) + list(plans.get("tomorrow") or []) + list(plans.get("upcoming") or []) \
+        + list((plans.get("this_week") or {}).get("sessions") or []) + list((plans.get("next_week") or {}).get("sessions") or [])
+    for a in plans["adaptations"]:
+        a.update(wording.adaptation(a, all_sessions))
+    coach_line = wording.coach_line(call, plans["today"], action, status.get("sleep_missing"))
+    rec["score"]["headline"] = wording.recovery_headline(rec["score"]) if rec.get("score") else None
     today = {
-        "date": ctx.d.isoformat(), "brief": brief, "recommendation": call, "action": action,
+        "date": ctx.d.isoformat(), "brief": brief, "recommendation": call, "action": action, "coach_line": coach_line,
         "rings": {"strain": strain["score"], "recovery": rec["score"], "sleep": sleep["score"]},
         "energy": eb, "stress": stress["score"], "stress_latest": stress.get("latest"),
         "load": {"tsb": mv(pmc_today["tsb"] if pmc_today else None, "", method="pmc_ewma.v1", status=pmc["status"] if pmc_today else None,

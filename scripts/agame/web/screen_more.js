@@ -76,7 +76,7 @@ function rtSegments() {
     <div class="cols"><div>${mapSvg(s.lines, { label: s.name, h: 140 })}</div><div>
     <div class="stats-grid s3">${stat("PR", s.pr ? fmt.dur(s.pr.time_s) : "—")}${stat("Efforts", s.count)}${stat("Last", s.efforts.length ? fmt.dur(s.efforts[s.efforts.length - 1].time_s) : "—")}</div>
     ${s.efforts.length > 1 ? chart({ id: "seg-" + s.id, label: "Segment times", x: s.efforts.map(e => e.date), h: 120, invertY: true, series: [{ name: "Time", color: "var(--accent)", values: s.efforts.map(e => e.time_s), dots: true }], fmtX: d => fmt.date(d), fmtY: v => fmt.dur(v) }) : ""}
-    <div class="list" style="margin-top:8px"><div class="li"><div class="grow"><div class="t">Leaderboard</div><div class="s">${s.leaderboard_status === "connected" ? s.leaderboard.length + " efforts" : STR.noLeaderboard}</div></div></div><div class="li"><div class="grow"><div class="t">Live progress</div><div class="s">Needs the companion app</div></div></div></div></div></div></div>`).join("")}</div>`;
+    ${s.leaderboard_status === "connected" ? `<div class="list" style="margin-top:8px"><div class="li"><div class="grow"><div class="t">Leaderboard</div><div class="s">${s.leaderboard.length} efforts</div></div></div></div>` : ""}</div></div></div>`).join("")}</div>`;
 }
 function rtBuilder() {
   const tiles = D.routes.tiles;
@@ -110,7 +110,7 @@ AG.screens.coach = {
     const facts = r.factors.slice(0, 4).map(factorRow).join("");
     return `<div class="cols c21"><div class="stack">
       <div class="card coach-card"><div class="coach-hero"><div class="orb" aria-hidden="true"></div><div class="coach-hi">${first ? "Morning, " + esc(first) : "Your coach"}</div><div class="small muted">${fmt.dateLong(D.meta.build_date)}</div></div><div class="chat" id="chat">
-        <div class="msg coach">${esc(coachingLine(r, D.today))}</div>
+        <div class="msg coach">${esc(D.today.coach_line)}</div>
         ${facts ? `<div class="msg coach card-msg"><div class="msg-k">What I looked at</div><div class="list">${facts}</div></div>` : ""}
         ${threads ? threads.messages.slice(-6).map(m => `<div class="msg ${m.role === "user" ? "user" : "coach"}">${esc(m.text)}</div>`).join("") : ""}</div>
       ${AG.llm ? `<div class="ask-chips">${C.suggestions.map(s => `<button class="chip" data-ask="${esc(s)}">${icon("sparkles")}${esc(s)}</button>`).join("")}</div>
@@ -191,12 +191,11 @@ AG.screens.profile = {
       ${srow({ icon: "apps", color: "var(--strength)", title: "Modules", sub: `${Object.values(p.modules || {}).filter(Boolean).length} of ${Object.keys(p.modules || {}).length} on`, open: AG.online ? "edit-modules" : null })}</div>`;
     const data = `${sectionTitle("Data")}<div class="card list-card">
       ${srow({ icon: "cloud-check", color: "var(--ok)", title: "Freshness", sub: `Last sync ${ds.last_sync ? fmt.dt(ds.last_sync) : "never"} · ${esc(statusLabel(ds.overall))}`, open: "data-status" })}
-      ${AG.online ? srow({ icon: "download", color: "var(--info)", title: "Export my data", href: "api/export" }) + srow({ icon: "history", color: "var(--warn)", title: "Edit history & undo", open: "history" }) + srow({ icon: "trash", color: "var(--bad)", title: "Delete my entries", open: "delete-all", danger: true }) : ""}</div>`;
+      ${AG.online ? srow({ icon: "apple", color: "var(--bad)", title: "Import Apple Health export", open: "health-export" }) + srow({ icon: "download", color: "var(--info)", title: "Export my data", href: "api/export" }) + srow({ icon: "history", color: "var(--warn)", title: "Edit history & undo", open: "history" }) + srow({ icon: "trash", color: "var(--bad)", title: "Delete my entries", open: "delete-all", danger: true }) : ""}</div>`;
     const integs = `${sectionTitle("Integrations", info("Integrations", "No Strava or Bevel data is ever imported. These statuses reflect your configuration."))}<div class="card list-card">
       ${srow({ icon: "heart", color: "var(--bad)", title: `Apple Health via ${esc(AGENT)}`, sub: ds.last_sync ? "Last import " + fmt.dt(ds.last_sync) : "No import yet", right: ds.last_sync ? conn(true) : `<span class="faint">Waiting</span>` })}
-      ${[["Map tiles", "routes", integ.map_tiles_url], ["Nutrition source", "nutrition", integ.nutrition_source], ["Calendar", "calendar", integ.calendar_source], ["Food database", "database", integ.food_database], ["Photo recognition", "cpu", integ.vision_service], ["Coach chat", "coach", AG.llm], ["Companion app", "watch", integ.companion_app]].map(([l, ic, v]) => srow({ icon: ic, color: "var(--text-2)", title: esc(l), right: conn(v) })).join("")}
-      ${srow({ icon: "bell", color: "var(--text-2)", title: "Smart alarm", sub: (p.smart_alarm || {}).enabled ? "Configured · needs the companion app" : "Off · needs the companion app", open: AG.online ? "edit-companion" : null })}
-      ${srow({ icon: "share2", color: "var(--text-2)", title: "Beacon live sharing", sub: `${Array.isArray((p.beacon || {}).contacts) ? p.beacon.contacts.length : ((p.beacon || {}).contacts || 0)} contacts · needs the companion app`, open: AG.online ? "edit-companion" : null })}</div>`;
+      ${[["Map tiles", "routes", integ.map_tiles_url], ["Nutrition source", "nutrition", integ.nutrition_source], ["Calendar", "calendar", integ.calendar_source], ["Food database", "database", integ.food_database], ["Photo recognition", "cpu", integ.vision_service], ["Coach chat", "coach", AG.llm], ["Companion app", "watch", integ.companion_app]].filter(([, , v]) => v).map(([l, ic, v]) => srow({ icon: ic, color: "var(--text-2)", title: esc(l), right: conn(v) })).join("")}
+      ${integ.companion_app ? srow({ icon: "bell", color: "var(--text-2)", title: "Smart alarm", sub: (p.smart_alarm || {}).enabled ? "On" : "Off", open: AG.online ? "edit-companion" : null }) + srow({ icon: "share2", color: "var(--text-2)", title: "Beacon live sharing", sub: `${Array.isArray((p.beacon || {}).contacts) ? p.beacon.contacts.length : ((p.beacon || {}).contacts || 0)} contacts`, open: AG.online ? "edit-companion" : null }) : ""}</div>`;
     return `<div class="flow2"><div class="flow-a"><div class="o" style="order:0">${ident}</div><div class="o" style="order:1">${physio}</div><div class="o" style="order:2">${targets}</div><div class="o" style="order:5">${sched}</div></div>
       <div class="flow-b"><div class="o" style="order:3">${settings}</div><div class="o" style="order:4">${data}</div><div class="o" style="order:6">${integs}</div>
       <div class="o" style="order:7"><p class="small faint" style="margin:8px 4px 0">AGame ${esc(D.meta.version)} · build ${esc(D.meta.build_date)} · Fitness information, not medical advice.</p></div></div></div>`;

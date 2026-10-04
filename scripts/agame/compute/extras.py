@@ -302,7 +302,7 @@ def recaps(ctx, sleep_hist, recovery_hist, weight_points, goals_progress):
 
 # ----------------------------------------------------------------- weekly review
 def weekly_review(ctx, snap):
-    """Machine-readable weekly review for Steve (dist/weekly_review.json). Uses only computed keys."""
+    """Machine-readable weekly review for the agent (dist/weekly_review.json). Uses only computed keys."""
     ws = tu.week_start(ctx.d, ctx.week_start)
     last_ws = ws - timedelta(days=7)  # most recent completed week
     we = last_ws + timedelta(days=6)
