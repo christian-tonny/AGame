@@ -11,12 +11,12 @@ AG.screens.recovery = {
     const hist = sliceDays(R.history, rangeDays(rng));
     const hrvTrend = D.body.metrics.hrv_sdnn_ms, rhrTrend = D.body.metrics.resting_hr_bpm, rrTrend = D.body.metrics.respiratory_rate_brpm;
     const comps = t ? t.components : {};
-    const tile = (c, label, unit, betterHigher) => `<div class="card">${c ? stat(label, fmt.n(c.value, 1), unit, { d: `<span class="d ${(c.z > 0) === betterHigher ? "up" : "down"}">${icon(c.z > 0 ? "caret-up" : "caret-down", "tiny")} <span class="muted" style="font-weight:500">usual ${fmt.n(c.baseline, 1)}</span></span>` }) : stat(label, "—", "", { d: `<span class="cap">${esc((t && t.missing.find(m => m.id === (label === "Resting HRV" ? "hrv" : "rhr")) || {}).reason || "No data")}</span>` })}</div>`;
-    const headline = t ? (sc.v < 50 ? "Take it easy" : sc.v >= 67 ? "Primed to train" : "Train as planned") : "";
-    const hero = `<div class="card">${cardHead(esc(sc.date ? fmt.dateLong(sc.date) : fmt.dateLong(D.meta.build_date)), prov(sc, "Recovery"))}
-      <div style="display:flex;justify-content:center;margin:4px 0 12px">${ring("recovery", sc, { lg: true, label: "Recovery", sub: "Recovered" })}</div>
-      <div style="text-align:center">${headline ? `<div style="font-size:var(--f-h3);font-weight:700">${headline}</div>` : ""}
-      <div class="small muted" style="margin-top:2px">${[sc.confidence ? fmt.sport(sc.confidence) + " confidence" : "", isNum(sc.coverage) && sc.coverage < 1 ? fmt.n(sc.coverage * 100) + "% of inputs" : ""].filter(Boolean).join(" · ")}</div></div>${stLine(sc)}</div>`;
+    const tile = (c, label, unit, ic, color, pts) => `<div class="card tile"><div class="tile-h">${icon(ic)}<span>${label}</span></div>${c ? `<div class="tile-v">${fmt.n(c.value, 1)}<small>${unit}</small></div>${statusLine(`usual ${fmt.n(c.baseline, 1)} ${unit}`, c.z > 0, c.value >= c.baseline ? "up" : "down")}` : `<div class="tile-v">—</div>${statusLine((t && t.missing.find(m => m.id === (ic === "heart" ? "hrv" : "rhr")) || {}).reason || "No data", null)}`}<div class="tile-spark">${pts ? sparkline(seriesTail(pts, "v", 21), color, 40) : ""}</div></div>`;
+    const headline = t ? ({ high: "High recovery", low: "Low recovery" }[sc.band] || "Moderate recovery") : "";
+    const recAbout = "Recovery compares last night's HRV, resting heart rate and sleep debt with your own 60-day baseline.";
+    const hero = `<div class="card score-hero">${cardHead(esc(sc.date ? fmt.dateLong(sc.date) : fmt.dateLong(D.meta.build_date)), "", recAbout, sc)}
+      <div class="score-hero-b">${ring("recovery", sc, { lg: true, label: "Recovery" })}
+      <div class="score-meta">${headline ? `<div class="hero-h">${headline}</div>` : ""}<p class="small muted">${[sc.confidence ? fmt.sport(sc.confidence) + " confidence" : "", isNum(sc.coverage) && sc.coverage < 1 ? fmt.n(sc.coverage * 100) + "% of inputs" : ""].filter(Boolean).join(" · ")}</p>${stLine(sc)}</div></div></div>`;
     const compRows = t ? Object.entries(comps).map(([k, c]) => `<div class="factor ${c.contribution > 1 ? "helping" : c.contribution < -1 ? "hurting" : "neutral"}"><span class="ic">${icon(c.contribution > 1 ? "up" : c.contribution < -1 ? "down" : "minus")}</span><div class="grow"><div class="t">${esc(c.label)}</div><div class="s">${fmt.signed(c.contribution, 1)} points · ${fmt.n(c.weight * 100)}% weight</div></div><span class="r">${k === "sleep_debt" ? fmt.hm(c.value) : fmt.n(c.value, 1) + " " + c.unit}</span></div>`).join("") +
       t.missing.map(m => `<div class="factor neutral"><span class="ic">${icon("question")}</span><div class="grow"><div class="t">${esc(fmt.sport(m.id))}</div><div class="s">Excluded · ${esc(m.reason)}</div></div><span class="r">—</span></div>`).join("") : "";
     const recChart = hist.length ? chart({ id: "rec-ch", label: "Recovery score history", x: hist.map(h => h.date), h: 170, yMin: 0, yMax: 100, gapMs: 2.5 * 86400000,
@@ -34,12 +34,12 @@ AG.screens.recovery = {
     const st = D.stress;
     const eb = D.energy;
     const ph = D.plans.prehab, phl = D.plans.prehab_log;
-    return `<div class="cols"><div class="stack">${hero}<div class="grid g2">${tile(comps.hrv, "Resting HRV", "ms", true)}${tile(comps.rhr, "Resting HR", "bpm", false)}</div>
+    return `<div class="cols"><div class="stack">${hero}<div class="grid g2 tiles">${tile(comps.hrv, "Resting HRV", "ms", "heart", "var(--recovery)", (hrvTrend || {}).points)}${tile(comps.rhr, "Resting HR", "bpm", "activities", "var(--bad)", (rhrTrend || {}).points)}</div>
       <div class="card">${cardHead("What's driving it", "", "Each input is compared with your own rolling baseline. Missing inputs are excluded, not counted as zero.")}<div class="list">${compRows || empty(STR.noData, sc.note)}</div></div>
-      <div class="card">${cardHead("Helping & hurting", `<a class="link" href="#/coach">More</a>`)}${helpingList(chipVal("hh-win", "90"), 4)}</div>
+      <div class="card">${cardHead("Helping & hurting", `<a class="link" href="#/coach">More</a>`)}${helpingList(["30", "90"].includes(chipVal("hh-win", "90")) ? chipVal("hh-win", "90") : "90", 4)}</div>
       <div class="card">${cardHead("Stress", badge((st.latest && st.latest.date !== D.meta.build_date ? fmt.date(st.latest.date) + " · " : "") + "Estimate", "est"), "Estimated from daytime heart rate against your resting baseline, excluding workouts and sleep.")}${st.latest ? chart({ id: "stress-h", type: "bar", label: "Hourly stress estimate", x: st.latest.hourly.map(h => h.hour), h: 120, yMin: 0, yMax: 100,
         series: [{ name: "Stress", color: (i, v) => v >= 67 ? "var(--bad)" : v >= 34 ? "var(--warn)" : "var(--ok)", values: st.latest.hourly.map(h => h.v) }], fmtX: h => `${String(h).padStart(2, "0")}:00`, fmtY: v => fmt.n(v) }) : empty("Not enough daytime heart-rate samples", "Stress is estimated only from real daytime HR samples")}</div>
-      <div class="card">${cardHead("Energy bank", eb ? `<span class="small muted">${fmt.n(eb.current)}% at ${fmt.time(eb.as_of)}</span>` : "", "Charged by recovery and sleep, drained by strain and stress. It stops at the last sample and never extrapolates.")}${eb && eb.curve.length < 2 ? `<div class="stat"><span class="v">${fmt.n(eb.current)}<small>%</small></span></div><div class="energy" style="margin-top:8px" role="img" aria-label="Energy ${fmt.n(eb.current)} percent"><i style="width:${eb.current}%"></i></div>` : eb ? chart({ id: "eb", label: "Energy bank through the day", x: eb.curve.map(c => c.t), h: 120, yMin: 0, yMax: 100, series: [{ name: "Energy", color: "var(--recovery)", values: eb.curve.map(c => c.v), area: true }], fmtX: t => fmt.time(t), fmtY: v => fmt.n(v) + "%" }) : empty("Energy bank needs recovery or sleep")}</div>
+      <div class="card">${cardHead("Energy bank", eb ? `<span class="small muted">${fmt.n(eb.current)}% at ${fmt.time(eb.as_of)}</span>` : "", "Charged by recovery and sleep, drained by strain and stress. It stops at the last sample and never extrapolates.")}${eb && eb.curve.length < 2 ? `<div class="energy-row"><span class="bolt">${icon("bolt-fill")}</span>${energyTicks(eb.current)}<b>${fmt.n(eb.current)}%</b></div>` : eb ? chart({ id: "eb", label: "Energy bank through the day", x: eb.curve.map(c => c.t), h: 120, yMin: 0, yMax: 100, series: [{ name: "Energy", color: "var(--recovery)", values: eb.curve.map(c => c.v), area: true }], fmtX: t => fmt.time(t), fmtY: v => fmt.n(v) + "%" }) : empty("Energy bank needs recovery or sleep")}</div>
 </div>
       <div class="stack"><div class="card">${cardHead("Recovery", seg("rec-range", RANGES_DWMY, rng))}${recChart}</div>
       <div class="card">${cardHead("Resting HRV")}${trendChart(hrvTrend, "HRV", "var(--recovery)", "ms")}</div>
@@ -60,7 +60,8 @@ function helpingList(win, limit) {
   const ok = rows.filter(r => r.status === "ok");
   if (!ok.length) {
     const best = rows.reduce((m, r) => Math.max(m, r.n || 0), 0);
-    return `<p class="small muted" style="margin:0">Needs more days (${best} of ${rows[0] ? rows[0].needed : 21})</p>`;
+    const needed = rows[0] ? rows[0].needed : 21;
+    return `<p class="small muted" style="margin:0">${best >= needed ? `No clear effect in the last ${esc(win)} days` : `Needs more days (${best} of ${needed})`}</p>`;
   }
   return `<div class="list">${ok.slice(0, limit || 99).map(r => `<div class="factor ${r.direction}"><span class="ic">${icon(r.direction === "helping" ? "up" : "down")}</span><div class="grow"><div class="t">${esc(r.label)}</div><div class="s">${r.direction === "helping" ? "More → better recovery" : "More → lower recovery"} · ${r.n} days</div></div><span class="r">${isNum(r.effect_points) ? fmt.signed(r.effect_points, 1) + " pts" : ""}</span></div>`).join("")}</div>`;
 }
@@ -80,7 +81,7 @@ AG.screens.sleep = {
     const corr = S.recovery_correlation;
     return `<div class="cols"><div class="stack">
       ${S.stale ? `<div class="empty inline"><b>${STR.sleepNotSynced}</b><span class="cap">Showing ${fmt.dateLong(S.last_date)}</span></div>` : ""}
-      <div class="card ${S.stale ? "is-stale" : ""}">${cardHead(`${esc(fmt.dateLong(ln.date))}`, prov(S.score, "Sleep score"))}<div class="spread"><div><div class="stat"><span class="v" style="font-size:40px">${fmt.hm(ln.asleep_min)}</span></div>
+      <div class="card ${S.stale ? "is-stale" : ""}">${cardHead(esc(fmt.dateLong(ln.date)), "", "", S.score)}<div class="spread"><div><div class="stat"><span class="v" style="font-size:40px">${fmt.hm(ln.asleep_min)}</span></div>
         <div class="small muted">${isNum(need.v) ? "of " + fmt.hm(need.v) + " needed" : esc(need.note || "")}</div></div>${ring("sleep", S.score, { label: "Sleep score", sub: "score" })}</div>
         <div class="stats-grid s4" style="margin-top:16px">${stat("Efficiency", isNum(ln.efficiency) ? fmt.n(ln.efficiency * 100) + "%" : "—")}${stat("Sleep debt", debt && isNum(debt.v) ? fmt.hm(debt.v) : "—")}${stat("Consistency", isNum(reg.midpoint_sd_7) ? "±" + fmt.n(reg.midpoint_sd_7) + "m" : "—")}${stat("Disruptions", fmt.n(ln.disruptions.length))}</div>
         ${S.score.missing_components && S.score.missing_components.length ? `<div class="st-line partial"><span class="dot"></span>Partial: no ${esc(S.score.missing_components.join(", "))}</div>` : ""}</div>
@@ -97,7 +98,7 @@ AG.screens.sleep = {
         ${chart({ id: "sl-dur", type: "bar", label: "Sleep duration and need per night", x: hist.map(h => h.date), h: 170,
           series: [{ name: "Asleep", color: "var(--sleep)", values: hist.map(h => isNum(h.asleep_min) ? h.asleep_min / 60 : null) }],
           refLines: isNum(S.base_need) ? [{ y: S.base_need / 60, label: "base need" }] : [], fmtX: d => fmt.date(d), fmtY: v => fmt.hm(v * 60), fmtYAxis: v => fmt.n(v) + "h", range: rangeLabel(hist) })}</div>
-      <div class="card">${cardHead("Bedtime & wake", isNum(reg.midpoint_sd_14) ? `<span class="small muted">±${fmt.n(reg.midpoint_sd_14)} min</span>` : "", "Variation is the standard deviation of your sleep midpoint over the last 14 nights.")}${chart({ id: "sl-bw", label: "Bedtime and wake time", x: bedPts.map(p => p.date), h: 160, invertY: true,
+      <div class="card">${cardHead("Bedtime & wake", isNum(reg.midpoint_sd_14) ? `<span class="small muted">±${fmt.n(reg.midpoint_sd_14)} min</span>` : "", "Variation is the standard deviation of your sleep midpoint over the last 14 nights.")}${chart({ padR: 46, id: "sl-bw", label: "Bedtime and wake time", x: bedPts.map(p => p.date), h: 160, invertY: true,
           series: [{ name: "Bedtime", color: "var(--sleep-2)", values: bedPts.map(p => p.bed), dots: true }, { name: "Wake", color: "var(--strain-2)", values: bedPts.map(p => p.wake), dots: true }],
           fmtX: d => fmt.date(d), fmtY: v => minToClock(v), fmtYAxis: v => minToClock(v), yTicks: 6 })}</div>
       <div class="card">${cardHead("Stages over time")}${chart({ id: "sl-st", type: "bar", stacked: true, label: "Sleep stage percentages per night", x: hist.map(h => h.date), h: 150, yMin: 0, yMax: 100,

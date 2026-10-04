@@ -16,6 +16,11 @@ from agame.values import mv
 PHENO_CODES = ("albumin", "creatinine", "glucose", "crp", "lymphocyte_pct", "mcv", "rdw", "alp", "wbc")
 
 
+def _hm(minutes):
+    m = round(minutes)
+    return f"{m // 60}h {m % 60:02d}m" if m >= 60 else f"{m}m"
+
+
 def _to_unit(code, value, unit):
     u = (unit or "").lower().replace(" ", "")
     if code == "albumin":
@@ -180,13 +185,13 @@ def timeline(ctx, sleep_block, recovery_hist, days=14):
         items = []
         n = nights.get(ds)
         if n:
-            items.append({"t": n["bed"], "type": "sleep", "title": "Sleep", "detail": f"{round(n['asleep_min'] or 0)} min asleep", "score": n.get("score"),
+            items.append({"t": n["bed"], "type": "sleep", "title": "Sleep", "detail": f"{_hm(n['asleep_min'])} asleep" if n.get("asleep_min") is not None else "Time asleep not recorded", "score": n.get("score"),
                           "end": n["wake"]})
         if ds in rec_by:
             items.append({"t": n["wake"] if n else f"{ds}T06:00:00", "type": "score", "title": "Recovery", "detail": f"{rec_by[ds]}%"})
         for w in ctx.workouts_by_day.get(d, []):
             items.append({"t": w["_start"].isoformat(), "type": "workout", "title": w.get("name") or w["sport"], "id": w["source_id"],
-                          "detail": f"{round(w['_dur'] / 60)} min" + (f" · {w['distance_m'] / 1000:.1f} km" if w.get("distance_m") else ""), "sport": w["sport"]})
+                          "detail": _hm(w["_dur"] / 60) + (f" · {w['distance_m'] / 1000:.1f} km" if w.get("distance_m") else ""), "sport": w["sport"]})
         for m in meals:
             dt = tu.local_dt(m["t"], ctx.tz)
             if dt.date() == d and dt <= ctx.now:

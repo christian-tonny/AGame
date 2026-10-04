@@ -53,9 +53,11 @@ let resizeT;
 window.addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => drawCharts(), 150); });
 
 function layout(s, w) {
-  const h = s.h || 170;
-  const padL = s.padL !== undefined ? s.padL : 34, padR = s.series && s.series.some(x => x.axis === "right") ? 34 : 8;
-  return { w, h, padL, padR, padT: 8, padB: s.noX ? 6 : 20, iw: w - padL - padR, ih: h - 8 - (s.noX ? 6 : 20) };
+  const h = Math.round((s.h || 170) * (w > 720 && !s.fixedH ? 1.25 : 1));
+  const dual = s.series && s.series.some(x => x.axis === "right");
+  const yRight = !dual && !s.leftAxis && s.padL === undefined;
+  const padL = s.padL !== undefined ? s.padL : yRight ? 4 : 34, padR = dual ? 34 : yRight ? (s.padR || 36) : 8;
+  return { w, h, padL, padR, padT: 10, padB: s.noX ? 6 : 22, iw: w - padL - padR, ih: h - 10 - (s.noX ? 6 : 22), yRight };
 }
 
 function yScale(vals, s, L, axis) {
@@ -102,12 +104,12 @@ function pathFor(xs, vals, X, Y, gapMs, from = 0, to = vals.length - 1) {
 
 function axes(s, L, Y, X, Yr) {
   let g = `<g class="grid">`;
-  const ticks = niceTicks(Y.lo, Y.hi, s.yTicks || 4);
+  const ticks = s.yTickValues ? s.yTickValues.filter(v => v >= Y.lo && v <= Y.hi) : niceTicks(Y.lo, Y.hi, s.yTicks || 4);
   const tstep = ticks.length > 1 ? Math.abs(ticks[1] - ticks[0]) : 1;
-  const fy = s.fmtYAxis || (v => Math.abs(v) >= 10000 ? fmt.n(v / 1000, 0) + "k" : fmt.n(v, tstep < 1 ? (tstep < 0.1 ? 2 : 1) : 0));
+  const fy = s.fmtYAxis || (v => tstep >= 1000 ? fmt.n(v / 1000, tstep % 1000 ? 1 : 0) + "k" : fmt.n(v, tstep < 1 ? (tstep < 0.1 ? 2 : 1) : 0));
   ticks.forEach(t => { const y = Y(t); if (y >= L.padT - 1 && y <= L.padT + L.ih + 1) g += `<line x1="${L.padL}" x2="${L.w - L.padR}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/>`; });
   g += `</g><g class="axis">`;
-  ticks.forEach(t => { const y = Y(t); if (y >= L.padT - 1 && y <= L.padT + L.ih + 1) g += `<text x="${L.padL - 5}" y="${(y + 3).toFixed(1)}" text-anchor="end">${esc(fy(t))}</text>`; });
+  ticks.forEach(t => { const y = Y(t); if (y >= L.padT - 1 && y <= L.padT + L.ih + 1) g += L.yRight ? `<text x="${L.w - L.padR + 7}" y="${(y + 3.5).toFixed(1)}" text-anchor="start">${esc(fy(t))}</text>` : `<text x="${L.padL - 6}" y="${(y + 3.5).toFixed(1)}" text-anchor="end">${esc(fy(t))}</text>`; });
   if (Yr) niceTicks(Yr.lo, Yr.hi, 4).forEach(t => { const y = Yr(t); if (y >= L.padT && y <= L.padT + L.ih) g += `<text x="${L.w - L.padR + 5}" y="${(y + 3).toFixed(1)}">${esc((s.fmtYRight || (v => fmt.n(v)))(t))}</text>`; });
   if (!s.noX && X) {
     const n = s.x.length;
@@ -119,7 +121,7 @@ function axes(s, L, Y, X, Yr) {
       const x = X(i);
       if (x - last < 40) continue;
       last = x;
-      g += `<text x="${x.toFixed(1)}" y="${L.h - 5}" text-anchor="${k === 0 ? "start" : k === want - 1 ? "end" : "middle"}">${esc(fx(s.x[i]))}</text>`;
+      g += `<text x="${x.toFixed(1)}" y="${L.h - 4}" text-anchor="${k === 0 ? "start" : k === want - 1 ? "end" : "middle"}">${esc(fx(s.x[i]))}</text>`;
     }
   }
   return g + "</g>";
@@ -154,6 +156,11 @@ function lineSvg(s, w) {
   s.series.forEach(se => {
     const YY = se.axis === "right" ? Yr : Y;
     const n = se.values.length;
+    if (se.vStops) {
+      const gid = "vg" + (++chartSeq), span = (YY.hi - YY.lo) || 1;
+      body += `<defs><linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="0" y1="${YY(YY.lo).toFixed(1)}" x2="0" y2="${YY(YY.hi).toFixed(1)}">${se.vStops.map(st => `<stop offset="${Math.max(0, Math.min(1, (st.v - YY.lo) / span)).toFixed(3)}" stop-color="${st.color}"/>`).join("")}</linearGradient></defs>`;
+      se = Object.assign({}, se, { color: `url(#${gid})` });
+    }
     if (se.area) {
       const base = YY(Math.max(YY.lo, Math.min(YY.hi, se.areaBase !== undefined ? se.areaBase : YY.lo)));
       let d = "", start = null, last = null;
@@ -164,7 +171,8 @@ function lineSvg(s, w) {
         last = i;
       }
       if (start !== null) d += `L${X(last).toFixed(1)} ${base.toFixed(1)}L${X(start).toFixed(1)} ${base.toFixed(1)}Z`;
-      body += `<path d="${d}" fill="${se.color}" opacity="${se.areaOpacity || 0.22}"/>`;
+      const gid = "ag" + (++chartSeq);
+      if (String(se.color).startsWith("url(")) body += `<path d="${d}" fill="${se.color}" opacity="${se.areaOpacity || 0.2}"/>`; else body += `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${se.color}" stop-opacity="${Math.min(0.55, (se.areaOpacity || 0.22) * 1.9)}"/><stop offset="1" stop-color="${se.color}" stop-opacity="0.02"/></linearGradient></defs><path d="${d}" fill="url(#${gid})"/>`;
     }
     if (isNum(se.dashFrom)) {
       body += `<path d="${pathFor(s.x, se.values, X, YY, s.gapMs, 0, se.dashFrom)}" fill="none" stroke="${se.color}" stroke-width="${se.width || 2}" stroke-linejoin="round"/>`;
@@ -208,7 +216,7 @@ function barSvg(s, w) {
       const y0 = s.stacked ? Y(acc + v) : Y(Math.max(0, v));
       const y1 = s.stacked ? Y(acc) : Y(Math.min(0, v));
       const col = typeof se.color === "function" ? se.color(i, v) : se.color;
-      body += `<rect x="${x0.toFixed(1)}" y="${Math.min(y0, y1).toFixed(1)}" width="${Math.max(1, w2 - (s.stacked ? 0 : 1)).toFixed(1)}" height="${Math.max(1, Math.abs(y1 - y0)).toFixed(1)}" rx="${Math.min(3, w2 / 3).toFixed(1)}" fill="${col}" ${s.partialIndex === i ? 'opacity=".55"' : ""}/>`;
+      body += `<rect x="${x0.toFixed(1)}" y="${Math.min(y0, y1).toFixed(1)}" width="${Math.max(1, w2 - (s.stacked ? 0 : 1)).toFixed(1)}" height="${Math.max(1, Math.abs(y1 - y0)).toFixed(1)}" rx="${s.stacked ? Math.min(2, w2 / 4).toFixed(1) : Math.min(5, w2 / 2.4).toFixed(1)}" fill="${col}" ${s.partialIndex === i ? 'opacity=".5"' : ""}/>`;
       if (s.stacked) acc += v;
     });
   }
@@ -314,13 +322,40 @@ function bindChart(el, s) {
 }
 
 /* ---------- small helpers ---------- */
-function sparkline(values, color, h = 28) {
+/* Bevel sparkline: line, soft area under it, a ringed dot on the latest value. opts.band = {low, high} shades a range. */
+let sparkSeq = 0;
+function sparkline(values, color, h = 28, opts = {}) {
   const vs = values.filter(isNum);
   if (vs.length < 2) return "";
-  const lo = Math.min(...vs), hi = Math.max(...vs), w = 100;
-  let d = "", pen = false;
-  values.forEach((v, i) => { if (!isNum(v)) { pen = false; return; } const x = i / (values.length - 1) * w, y = h - 2 - (hi === lo ? 0.5 : (v - lo) / (hi - lo)) * (h - 4); d += (pen ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1); pen = true; });
-  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px" aria-hidden="true"><path d="${d}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+  let lo = Math.min(...vs), hi = Math.max(...vs);
+  if (opts.band) { lo = Math.min(lo, opts.band.low); hi = Math.max(hi, opts.band.high); }
+  const w = 100, pad = 4, n = values.length;
+  const X = i => i / (n - 1) * w, Y = v => h - pad - (hi === lo ? 0.5 : (v - lo) / (hi - lo)) * (h - 2 * pad);
+  let d = "", area = "", pen = false, first = null, last = null;
+  values.forEach((v, i) => {
+    if (!isNum(v)) { pen = false; return; }
+    d += (pen ? "L" : "M") + X(i).toFixed(2) + " " + Y(v).toFixed(2); pen = true;
+    if (first === null) first = i;
+    last = i;
+  });
+  let segmentStart = null, segmentEnd = null;
+  const closeArea = () => {
+    if (segmentStart === null) return;
+    area += `L${X(segmentEnd).toFixed(2)} ${h}L${X(segmentStart).toFixed(2)} ${h}Z`;
+    segmentStart = null;
+  };
+  values.forEach((v, i) => {
+    if (!isNum(v)) { closeArea(); return; }
+    area += (segmentStart === null ? "M" : "L") + X(i).toFixed(2) + " " + Y(v).toFixed(2);
+    if (segmentStart === null) segmentStart = i;
+    segmentEnd = i;
+  });
+  closeArea();
+  const id = "spk" + (++sparkSeq);
+  const band = opts.band ? `<rect x="0" y="${Y(opts.band.high).toFixed(2)}" width="${w}" height="${(Y(opts.band.low) - Y(opts.band.high)).toFixed(2)}" fill="${color}" opacity=".16"/>` : "";
+  const dot = opts.dot === false ? "" : `<i class="spk-dot" style="left:${(X(last) / w * 100).toFixed(2)}%;top:${(Y(values[last]) / h * 100).toFixed(2)}%;--c:${color}"></i>`;
+  return `<span class="spk" style="height:${h}px" aria-hidden="true"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".28"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+    ${band}${opts.area === false ? "" : `<path d="${area}" fill="url(#${id})"/>`}<path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>${dot}</span>`;
 }
 const RANGES = [["1m", "1M"], ["3m", "3M"], ["6m", "6M"], ["12m", "1Y"], ["24m", "2Y"]];
 const RANGES_DWMY = [["7", "W"], ["30", "M"], ["90", "3M"], ["365", "Y"], ["all", "All"]];
@@ -337,7 +372,7 @@ function rangeLabel(rows, key = "date") {
 
 /* ---------- scatter (points + an optional fitted line supplied by Python) ---------- */
 function scatterSvg(s, w) {
-  const L = layout(Object.assign({}, s, { series: [] }), w);
+  const L = layout(Object.assign({}, s, { series: [], leftAxis: true }), w);
   const xs = s.points.map(p => p.x), ys = s.points.map(p => p.y).concat((s.fit || []).map(p => p.y));
   const xt = niceTicks(Math.min(...xs), Math.max(...xs), 4), yt = niceTicks(Math.min(...ys), Math.max(...ys), 4);
   const x0 = Math.min(xt[0], ...xs), x1 = Math.max(xt[xt.length - 1], ...xs), y0 = Math.min(yt[0], ...ys), y1 = Math.max(yt[yt.length - 1], ...ys);
@@ -400,7 +435,7 @@ function heatGrid(days, opts = {}) {
 function consistencyCard() {
   const series = (D.training.pmc.series || []).slice(-182).map(r => ({ date: r.date, v: r.known ? r.load : null }));
   const st = D.streak;
-  return `<div class="card">${cardHead("Consistency", `<span class="small muted">${st.current} week streak · longest ${st.longest}</span>`, "Daily training load for the last 26 weeks. Hatched days had no data synced, which is different from a rest day.")}
+  return `<div class="card">${cardHead(`${st.current} week streak`, `<span class="small muted">longest ${st.longest}</span>`, "Daily training load for the last 26 weeks. Hatched days had no data synced, which is different from a rest day.")}
     ${heatGrid(series, { label: "Daily training load, last 26 weeks", fmt: v => "load " + fmt.n(v) })}</div>`;
 }
 

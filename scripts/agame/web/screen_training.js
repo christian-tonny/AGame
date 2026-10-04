@@ -49,6 +49,7 @@ function trFitness() {
       <div class="chart-legend"><span><i style="background:var(--info)"></i>Fitness</span><span><i style="background:var(--protein)"></i>Fatigue</span><span><i style="background:var(--ok)"></i>Form</span>${fc.length ? `<span><i style="background:repeating-linear-gradient(90deg,var(--text-2) 0 4px,transparent 4px 7px)"></i>Plan projection</span>` : ""}</div>
       <div class="chart-range">${esc(rangeLabel(rows))}</div></div>
     <div class="card">${cardHead("Weekly effort", we.hint ? badge({ maintain: "Maintain", increase: "Room to build", recover: "Ease off" }[we.hint], we.hint === "recover" ? "warn" : "ok") : "", we.band ? `The shaded band is the recency-weighted average of your last ${we.band.weeks} weeks, ±15%. The current week is partial.` : "")}
+      <div class="stats-grid" style="margin-bottom:12px">${stat("This week so far", isNum(we.current) ? fmt.n(we.current) : "—")}${we.band ? stat("Your usual week", `${fmt.n(we.band.low)}–${fmt.n(we.band.high)}`) : ""}</div>
       ${weeks.length ? chart({ id: "we", type: "bar", label: "Weekly training load with your typical range", x: weeks.map(w => w.week), h: 160, partialIndex: weeks.findIndex(w => w.partial),
         series: [{ name: "Weekly load", color: (i) => weeks[i].partial ? "var(--accent-2)" : "var(--accent)", values: weeks.map(w => w.load) }],
         band: we.band ? { low: we.band.low, high: we.band.high, color: "color-mix(in srgb, var(--accent) 16%, transparent)" } : null,
@@ -205,9 +206,9 @@ function trPlan() {
       <div class="hide-m" style="margin-top:16px">${weekGrid(wk)}</div><div class="hide-d" style="margin-top:16px">${weekStrip(wk)}${weekList(wk)}</div>
       <div class="spread hide-m" style="margin-top:12px;flex-wrap:wrap"><div class="legend"><span><i style="border:2px solid var(--ok)"></i>As planned</span><span><i style="border:2px solid var(--warn)"></i>Partial</span><span><i style="border:2px dashed var(--bad)"></i>Missed</span><span><i style="border:2px solid var(--text-3)"></i>Unplanned</span></div>${isNum(wk.header.compliance_pct) ? `<span class="small muted">${wk.header.compliance_pct}% compliance</span>` : ""}</div>
       ${AG.online ? `<div class="actions">${editBtn("session-new", "", "Add session")}${editBtn("event-add", undefined, "Add event")}${editBtn("plan-new", undefined, "New plan")}</div>` : ""}</div>
-    ${p.adaptations.length ? `<div class="card">${cardHead("Suggested changes", "", "Originals stay visible and nothing changes until you accept. An accepted change notes the original on the session.")}${p.adaptations.map(a => `<div class="suggest"><div class="grow"><b>${fmt.dow(a.date)}: ${esc(adaptText(a))}</b><span>${esc(a.reason)}</span></div>${adaptButtons(a)}</div>`).join("")}</div>` : ""}
-    ${p.conflicts.length ? `<div class="card">${cardHead("Calendar conflicts")}<div class="list">${p.conflicts.map(c => `<div class="li"><div class="grow"><div class="t">${fmt.dow(c.date)} ${fmt.date(c.date)}</div><div class="s">${esc(c.event || "")} · ${esc(c.reason)}</div></div></div>`).join("")}</div></div>` : ""}
-    <div class="card">${cardHead("Upcoming")}${p.upcoming.length ? `<div class="list" data-upcoming>${p.upcoming.map(s => `<button class="li" data-open="session" data-arg="${esc(s.id)}"><span class="icon-dot" style="color:${sportColor(s.sport === "strength" ? "strength" : "run")}">${sportIcon(s.sport === "strength" ? "strength" : "run")}</span><div class="grow"><div class="t">${esc(s.title || s.label)}</div><div class="s">${fmt.dow(s.date)} ${fmt.date(s.date)} · ${esc(s.label || s.type)}${s.origin === "template" ? " · template" : ""}</div></div><div class="r small">${s.duration_s ? fmt.mins(s.duration_s) : ""}</div></button>`).join("")}</div>` : empty(STR.noPlan)}</div>
+    ${p.adaptations.length ? `<div class="card">${cardHead("Suggested changes", "", "Originals stay visible and nothing changes until you accept. An accepted change notes the original on the session.")}${p.adaptations.map(a => `<div class="suggest"><div class="grow"><b>${fmt.dow(a.date)}: ${esc(adaptText(a))}</b><span>${esc(adaptReason(a))}</span></div>${adaptButtons(a)}</div>`).join("")}</div>` : ""}
+    ${p.conflicts.length ? `<div class="card">${cardHead("Calendar conflicts")}<div class="list">${p.conflicts.map(c => `<div class="li"><div class="grow"><div class="t">${fmt.dow(c.date)} ${fmt.date(c.date)}</div><div class="s wrap">${esc(c.event || "")} · ${esc(c.reason)}</div></div></div>`).join("")}</div></div>` : ""}
+    ${(() => { const later = which === "this" ? p.upcoming.filter(s => s.date > wk.days[6]) : p.upcoming; return later.length ? `<div class="card">${cardHead("Coming up")}<div class="list" data-upcoming>${later.map(s => `<button class="li" data-open="session" data-arg="${esc(s.id)}"><span class="icon-dot" style="color:${sportColor(s.sport === "strength" ? "strength" : "run")}">${sportIcon(s.sport === "strength" ? "strength" : "run")}</span><div class="grow"><div class="t">${esc(s.title || s.label)}</div><div class="s">${fmt.dow(s.date)} ${fmt.date(s.date)} · ${esc(s.label || s.type)}${s.origin === "template" ? " · template" : ""}</div></div><div class="r small">${s.duration_s ? fmt.mins(s.duration_s) : ""}</div></button>`).join("")}</div></div>` : ""; })()}
     <div class="card">${cardHead(fmt.date(D.meta.build_date, { month: "long", year: "numeric" }))}${monthGrid(cal)}</div></div>
     <div class="stack">
     <div class="card">${cardHead("Season", editBtn("race-edit", "", "Add race"), races.length ? `A races get a ${(races.find(r => r.priority === "A") || {}).taper_days || 14}-day taper. B races get a short one. C races get none.` : "")}${races.length ? `<div class="list">${races.map(r => `<div class="li" ${AG.online ? `role="button" tabindex="0" data-open="race-edit" data-arg="${esc(r.id)}"` : ""}><span class="prio ${esc(r.priority || "B")}">${esc(r.priority || "B")}</span><div class="grow"><div class="t">${esc(r.name)}</div><div class="s">${fmt.date(r.date, { day: "numeric", month: "short", year: "numeric" })}${r.distance_m ? " · " + fmt.dist(r.distance_m) : ""} · ${esc(fmt.sport(r.phase))}</div></div><div class="r">${r.days_to}<div class="cap">days</div></div></div>`).join("")}</div>
@@ -282,25 +283,58 @@ AG.sheets.efforts = function (dist) {
   openSheet(fmt.distLabel(r.distance_m) + " · top efforts", `<table class="tbl"><tr><th>#</th><th>Date</th><th class="r">Time</th><th class="r">Pace</th></tr>${r.top.map((e, i) => `<tr><td>${i + 1}</td><td><a href="#/activity/${encodeURIComponent(e.workout_id)}">${fmt.date(e.date, { day: "numeric", month: "short", year: "numeric" })}</a></td><td class="r">${fmt.dur(e.time_s)}</td><td class="r">${fmt.pace(e.pace_s_per_km)}</td></tr>`).join("")}</table><p class="cap">Ranks within your own history only.</p>`);
 };
 
-function recapCard(y, big, idx) {
-  const run = (y.totals || {}).run || {};
-  const all = Object.values(y.totals || {}).reduce((a, t) => ({ d: a.d + (t.distance_m || 0), s: a.s + (t.duration_s || 0), e: a.e + (t.elevation_gain_m || 0) }), { d: 0, s: 0, e: 0 });
-  return `<div class="card">${cardHead(esc(y.label) + (y.partial ? ` <span class="small muted" style="font-weight:500">to date</span>` : ""), isNum(idx) ? `<button class="btn sm secondary" data-share="${idx}" data-kind="png">Share</button>` : "")}
-    <div class="stats-grid ${big ? "s4" : ""}">${stat("Activities", fmt.n(y.activities))}${stat("Distance", fmt.dist(all.d, 0))}${stat("Time", fmt.mins(all.s))}${stat("Elevation", fmt.elev(all.e))}
-      ${stat("Active weeks", `${y.active_weeks}/${y.total_weeks}`)}${stat("PRs", fmt.n(y.prs))}${stat("Avg sleep", isNum(y.avg_sleep_min) ? fmt.hm(y.avg_sleep_min) : "—")}${stat("Avg recovery", isNum(y.avg_recovery) ? y.avg_recovery + "%" : "—")}</div>
-    ${big ? `${y.longest ? `<p class="small" style="margin-top:12px">Longest: <b>${fmt.dist(y.longest.distance_m)}</b> · ${esc(y.longest.name || "")} · ${fmt.date(y.longest.date)}</p>` : ""}
-      ${y.fastest.length ? `<div class="list">${y.fastest.map(f => `<div class="li"><div class="grow"><div class="t">${fmt.distLabel(f.distance_m)}</div><div class="s">${fmt.date(f.date)}</div></div><div class="r">${fmt.dur(f.time_s)} ${f.pr ? badge("PR", "accent") : ""}</div></div>`).join("")}</div>` : ""}
-      ${y.best_month ? `<p class="small">Best month: <b>${fmt.date(y.best_month.month + "-15", { month: "long" })}</b> (load ${fmt.n(y.best_month.load)})${y.quietest_month ? ` · quietest: ${fmt.date(y.quietest_month.month + "-15", { month: "long" })}` : ""}</p>` : ""}
-      ${isNum(y.weight_change_kg) ? `<p class="small">Weight change: ${fmt.signed(IMPERIAL ? y.weight_change_kg * 2.20462 : y.weight_change_kg, 1)} ${fmt.wUnit()}</p>` : ""}
-      ${y.goals ? `<div style="margin-top:8px">${y.goals.map(g => `<div class="spread small"><span>${esc(g.title)}</span>${goalStatusBadge(g.status)}</div>`).join("")}</div>` : ""}` : ""}</div>`;
+const recapAll = y => Object.values(y.totals || {}).reduce((a, t) => ({ d: a.d + (t.distance_m || 0), s: a.s + (t.duration_s || 0), e: a.e + (t.elevation_gain_m || 0) }), { d: 0, s: 0, e: 0 });
+const shareBtn = idx => `<button class="share-btn" data-share="${idx}" data-kind="png" aria-label="Share as image">${icon("share2")}</button>`;
+function recapHero(y, idx, label) {
+  const all = recapAll(y);
+  return `<div class="card yis-hero"><div class="yis-top"><div><div class="yis-y">${esc(y.label)}</div><div class="small muted">${esc(label)}${y.partial ? " · so far" : ""}</div></div>${shareBtn(idx)}</div>
+    <div class="yis-big">${fmt.distNum(all.d, 0)}<small>${fmt.distUnit()}</small></div>
+    <div class="bstats three">${bstat("Activities", fmt.n(y.activities))}${bstat("Time", fmt.mins(all.s))}${bstat("Elevation", fmt.elev(all.e))}</div></div>`;
+}
+function recapDetails(y) {
+  const goalRows = (y.goals || []).map(g => srowLite(esc(g.title), goalStatusBadge(g.status) || `<span class="faint">—</span>`)).join("");
+  return {
+    consistency: `<div class="card">${cardHead("Consistency")}<div class="bstats">${bstat("Active weeks", `${y.active_weeks}<span class="of"> of ${y.total_weeks}</span>`)}${bstat("Active days", fmt.n(y.active_days))}</div>
+      <div style="margin-top:14px">${bar(y.total_weeks ? y.active_weeks / y.total_weeks * 100 : 0, "var(--ok)")}</div></div>`,
+    highlights: `<div class="card list-card">${[
+      y.longest ? `<a class="srow-i tap" href="#/activity/${encodeURIComponent(y.longest.workout_id)}"><span class="sq" style="--c:var(--run)">${icon("run")}</span><div class="grow"><div class="t">Longest</div><div class="s">${esc(y.longest.name || "")} · ${fmt.date(y.longest.date)}</div></div><span class="rv">${fmt.dist(y.longest.distance_m)}</span><span class="chev-r">${icon("next")}</span></a>` : "",
+      y.best_month ? srowLite("Best month", `${fmt.date(y.best_month.month + "-15", { month: "long" })}<span class="muted"> · load ${fmt.n(y.best_month.load)}</span>`, "trophy", "var(--warn)") : "",
+      y.quietest_month && y.quietest_month.month !== (y.best_month || {}).month ? srowLite("Quietest month", fmt.date(y.quietest_month.month + "-15", { month: "long" }), "calendar", "var(--text-2)") : "",
+      srowLite("Personal records", fmt.n(y.prs), "records", "var(--accent)"),
+      srowLite("Avg sleep", isNum(y.avg_sleep_min) ? fmt.hm(y.avg_sleep_min) : "—", "sleep", "var(--sleep)"),
+      srowLite("Avg recovery", isNum(y.avg_recovery) ? y.avg_recovery + "%" : "—", "recovery", "var(--recovery)"),
+      isNum(y.weight_change_kg) ? srowLite("Weight change", `${fmt.signed(IMPERIAL ? y.weight_change_kg * 2.20462 : y.weight_change_kg, 1)} ${fmt.wUnit()}`, "scale", "var(--accent)") : "",
+    ].join("")}</div>`,
+    records: y.fastest && y.fastest.length ? `<div class="card list-card">${y.fastest.map(f => srowLite(`${fmt.distLabel(f.distance_m)}<div class="s">${fmt.date(f.date)}</div>`, `${f.pr ? badge("PR", "accent") + " " : ""}${fmt.dur(f.time_s)}`)).join("")}</div>` : "",
+    goals: goalRows ? `<div class="card list-card">${goalRows}</div>` : "",
+  };
+}
+function srowLite(title, right, ic, color) {
+  return `<div class="srow-i">${ic ? `<span class="sq" style="--c:${color}">${icon(ic)}</span>` : ""}<div class="grow"><div class="t">${title}</div></div><span class="rv">${right}</span></div>`;
 }
 function trRecaps() {
   const R = D.recaps;
   if (!R.years.length) return empty("Year in Sport appears after your first imported activities");
-  return `<div class="cols"><div class="stack">${sectionTitle("Year in Sport")}${R.years.map((y, i) => [y, i]).reverse().map(([y, i]) => recapCard(y, true, i)).join("")}</div>
-    <div class="stack">${sectionTitle("Month in Sport")}${R.months.map((m, i) => recapCard(m, false, R.years.length + i)).join("")}</div></div>
-`;
+  const yi = Math.min(R.years.length - 1, +chipVal("yis-year", R.years.length - 1));
+  const y = R.years[yi];
+  const det = recapDetails(y);
+  const months = (D.training.log.months || []).filter(m => m.month.slice(0, 4) === y.label);
+  const best = (y.best_month || {}).month;
+  const chartCard = months.length ? `<div class="card">${cardHead("Month by month")}${chart({ id: "yis-m", type: "bar", label: "Distance by month", x: months.map(m => m.month), h: 170,
+    series: [{ name: "Distance", color: i => months[i].month === best ? "var(--accent)" : "color-mix(in srgb, var(--text-2) 38%, var(--surface-3))", values: months.map(m => m.totals.distance_m / (IMPERIAL ? 1609.344 : 1000)) }],
+    fmtX: m => fmt.date(m + "-15", { month: "long" }), fmtXAxis: m => fmt.date(m + "-15", { month: "short" }), fmtY: v => fmt.n(v, 0) + " " + fmt.distUnit(),
+    tipExtra: i => `<div class="k">${months[i].totals.count} activities · ${fmt.mins(months[i].totals.duration_s)}</div>` })}</div>` : "";
+  const monthRows = R.months.map((m, i) => { const a = recapAll(m); return `<button class="srow-i tap" data-open="recap-month" data-arg="${i}"><div class="grow"><div class="t">${esc(m.label)}${m.partial ? ` <span class="muted small">so far</span>` : ""}</div><div class="s">${fmt.n(m.activities)} activities · ${fmt.dist(a.d, 0)} · ${fmt.mins(a.s)}</div></div>${m.prs ? `<span class="rv">${badge(m.prs === 1 ? "PR" : m.prs + " PRs", "accent")}</span>` : ""}<span class="chev-r">${icon("next")}</span></button>`; }).join("");
+  const o = (n, html) => html ? `<div class="o" style="order:${n}">${html}</div>` : "";
+  return `${R.years.length > 1 ? tabs("yis-year", R.years.map((x, i) => [String(i), x.label]), String(yi)) : ""}<div class="flow2"><div class="flow-a">${o(0, recapHero(y, yi, "Year in Sport"))}${o(2, chartCard)}${o(4, det.records ? sectionTitle("Fastest this year") + det.records : "")}</div>
+    <div class="flow-b">${o(1, det.consistency)}${o(3, sectionTitle("Highlights") + det.highlights)}${o(5, det.goals ? sectionTitle("Goals") + det.goals : "")}${o(6, sectionTitle("Month in Sport") + `<div class="card list-card">${monthRows}</div>`)}</div></div>`;
 }
+AG.sheets["recap-month"] = function (i) {
+  const m = D.recaps.months[+i];
+  if (!m) return;
+  const det = recapDetails(m);
+  openSheet(m.label, `${recapHero(m, D.recaps.years.length + +i, "Month in Sport")}<div class="stack" style="margin-top:12px">${det.consistency}${det.highlights}${det.records}</div>`);
+};
 
 function trReview() {
   const w = D.weekly_review;

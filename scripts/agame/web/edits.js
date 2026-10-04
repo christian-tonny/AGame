@@ -244,6 +244,25 @@ AG.sheets["recipe"] = id => {
 };
 AG.sheets["planned-meal"] = id => confirmSheet("Planned meal", "Remove this planned meal?", "Remove", () => save("DELETE", "entries/nutrition.planned_meals/" + encodeURIComponent(id), null, "Removed"));
 
+/* ================= Quick log (Today header) ================= */
+AG.sheets["quick-log"] = () => {
+  const items = [["meal-add", "nutrition", "Meal"], ["water-add", "droplet", "Water"], ["caffeine-add", "coffee", "Caffeine"], ["measure-add", "scale", "Weight"], ["mood-add", "mood", "Mood"], ["note-add", "note", "Note"]];
+  const recipes = D.nutrition.recipes.filter(r => r.favorite);
+  openSheet("Log", `<div class="more-grid">${items.map(([id, ic, label]) => `<button type="button" data-open="${id}">${icon(ic)}<span>${label}</span></button>`).join("")}</div>
+    ${recipes.length ? sectionTitle("Favorite meals") + `<div class="list">${recipes.map(r => `<button type="button" class="li" data-open="recipe" data-arg="${esc(r.id)}"><div class="grow"><div class="t">${esc(r.name)}</div><div class="s">${r.items.map(i => esc(i.name)).join(", ")}</div></div><span class="go" aria-hidden="true">${icon("arrow")}</span></button>`).join("")}</div>` : ""}`);
+};
+AG.sheets["meal-add"] = () => openSheet("Add meal", mealForm(), { after: bindMealForm });
+AG.sheets["mood-add"] = () => {
+  const labels = ["Awful", "Low", "Okay", "Good", "Great"];
+  openSheet("Mood", `<div class="mood-row" role="group" aria-label="Mood">${labels.map((l, i) => `<button type="button" data-mood="${i + 1}" aria-label="${l}">${icon("mood-" + (i + 1))}<span>${l}</span></button>`).join("")}</div>`);
+};
+document.addEventListener("click", e => {
+  const m = e.target.closest("[data-mood]");
+  if (m) save("POST", "entries/journal.entries", { date: nowInput().slice(0, 10), type: "mood", value: +m.dataset.mood, habit_id: null, text: null }, "Mood logged").catch(() => {});
+});
+AG.sheets["note-add"] = () => formSheet("Note", [{ name: "text", label: "Note", required: true, full: true }],
+  v => save("POST", "entries/journal.entries", { date: nowInput().slice(0, 10), type: "note", value: null, habit_id: null, text: v.text }, "Note saved"));
+
 /* ================= Body ================= */
 AG.sheets["measure-add"] = () => formSheet("Add measurement", [
   { name: "type", label: "Type", type: "select", value: "weight_kg", options: [["weight_kg", `Weight (${fmt.wUnit()})`], ["body_fat_pct", "Body fat (%)"], ["lean_mass_kg", `Lean mass (${fmt.wUnit()})`], ["waist_cm", "Waist (cm)"], ["bp", "Blood pressure (mmHg)"]] },
@@ -344,8 +363,14 @@ AG.sheets["session-edit"] = id => {
   ], v => save("PATCH", "entries/plans.sessions/" + encodeURIComponent(id), { date: v.date, type: v.type, title: v.title, duration_s: isNum(v.min) ? v.min * 60 : null, priority: v.priority, objective: v.objective }, "Session saved"),
   { danger: { label: "Delete", run: () => save("DELETE", "entries/plans.sessions/" + encodeURIComponent(id), null, "Session deleted") } });
 };
-AG.sheets["session-move"] = id => formSheet("Move session", [{ name: "date", label: "Move to", type: "select", value: addDays(todayISO(), 1), options: nextDays(21) }],
-  v => act("plan.move", { session_id: id, date: v.date }, "Session moved"), { submit: "Move", intro: "Keyboard-friendly alternative to drag and drop. Undo restores the original day." });
+AG.sheets["session-move"] = id => {
+  const session = [].concat(D.plans.today, D.plans.upcoming, D.plans.this_week.sessions, D.plans.next_week.sessions).find(x => x.id === id);
+  const options = nextDays(21).filter(([date]) => date !== (session || {}).date);
+  const tomorrow = addDays(todayISO(), 1);
+  const value = options.some(([date]) => date === tomorrow) ? tomorrow : options[0][0];
+  formSheet("Move session", [{ name: "date", label: "Move to", type: "select", value, options }],
+    v => act("plan.move", { session_id: id, date: v.date }, "Session moved"), { submit: "Move" });
+};
 AG.sheets["session-template"] = id => formSheet("Save as template", [{ name: "name", label: "Template name", required: true, full: true }],
   v => act("plan.save_template", { session_id: id, name: v.name }, "Template saved"));
 AG.sheets["template-edit"] = id => {

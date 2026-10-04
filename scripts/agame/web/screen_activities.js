@@ -4,8 +4,10 @@
 AG.screens.activities = {
   title: "Activities",
   render() {
-    const tab = chipVal("act-tab", "list");
-    return `${tabs("act-tab", [["list", "Activities"], ["social", "Social"]], tab)}${tab === "social" ? socialView() : activityList()}`;
+    const S = D.social || {};
+    const hasSocial = ["posts", "clubs", "challenges"].some(k => (S[k] || []).length);
+    const tab = hasSocial ? chipVal("act-tab", "list") : "list";
+    return `${hasSocial ? tabs("act-tab", [["list", "Yours"], ["social", "Social"]], tab) : ""}${tab === "social" ? socialView() : activityList()}`;
   },
 };
 
@@ -22,12 +24,20 @@ function activityList() {
   if (q) rows = rows.filter(a => (a.name + " " + a.sport + " " + a.date).toLowerCase().includes(q));
   if (!D.activities.list.length) return empty(STR.noData, `Workouts appear after ${AGENT} imports them from HealthKit`);
   const groups = {};
-  rows.slice(0, 200).forEach(a => { const k = a.date.slice(0, 7); (groups[k] = groups[k] || []).push(a); });
-  return `<div class="stack"><div class="toolbar"><label class="sr" for="act-q">Search activities</label><input id="act-q" type="search" placeholder="Search" value="${esc(uiGet("act-q", ""))}" data-search>
+  const limit = AG.actLimit || 60;
+  let shown = rows.slice(0, limit);
+  if (shown.length < rows.length) { const m = shown[shown.length - 1].date.slice(0, 7); shown = rows.filter((a, i) => i < limit || a.date.slice(0, 7) === m); }
+  shown.forEach(a => { const k = a.date.slice(0, 7); (groups[k] = groups[k] || []).push(a); });
+  const more = shown.length < rows.length ? `<button type="button" class="btn secondary block" data-act-more>Show older</button>` : "";
+  const months = Object.entries(groups);
+  return `<div class="stack"><div class="toolbar"><label class="search">${icon("search")}<span class="sr">Search activities</span><input id="act-q" type="search" placeholder="Search activities" value="${esc(uiGet("act-q", ""))}" data-search></label>
     ${chips("act-fam", [["all", "All"], ["run", "Run"], ["ride", "Ride"], ["strength", "Strength"], ["walk", "Walk"], ["swim", "Swim"], ["other", "Other"]], fam)}
     <select data-select="act-flt" aria-label="Filter">${[["any", "Any activity"], ["gps", "With map"], ["pr", "With PRs"], ["planned", "Planned"], ["unplanned", "Unplanned"]].map(([v, l]) => `<option value="${v}" ${v === flt ? "selected" : ""}>${l}</option>`).join("")}</select></div>
-    ${Object.keys(groups).length ? Object.entries(groups).map(([m, list]) => `<div class="card">${cardHead(fmt.date(m + "-15", { month: "long", year: "numeric" }), `<span class="small muted">${list.length}</span>`)}<div class="list">${list.map(feedCard).join("")}</div></div>`).join("") : empty("No activities match")}</div>`;
+    ${months.length ? months.map(([m, list], i) => `${sectionTitle(fmt.date(m + "-15", { month: "long", year: "numeric" }), `<span class="small muted">${list.length} ${list.length === 1 ? "activity" : "activities"}</span>`)}<div class="card"><div class="list">${list.map(feedCard).join("")}</div>${i === months.length - 1 ? more : ""}</div>`).join("") : empty("No activities match")}</div>`;
 }
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-act-more]")) { AG.actLimit = (AG.actLimit || 60) + 60; rerender(); }
+});
 document.addEventListener("change", e => {
   const sel = e.target.closest("[data-select]");
   if (sel) { uiSet("chip:" + sel.dataset.select, sel.value); rerender(); }
@@ -41,12 +51,10 @@ function feedCard(a) {
   const prs = det && det.efforts ? det.efforts.filter(e => e.pr).length : 0;
   const main = a.family === "run" || a.family === "walk" ? [fmt.dist(a.distance_m), fmt.pace(a.pace_s_per_km), fmt.dur(a.moving_s || a.duration_s)]
     : a.family === "ride" ? [fmt.dist(a.distance_m), fmt.n(a.speed_kph, 1) + " km/h", fmt.dur(a.moving_s || a.duration_s)]
-    : ["", isNum(a.avg_hr) ? fmt.n(a.avg_hr) + " bpm" : "", fmt.dur(a.duration_s)];
-  return `<a class="li" href="#/activity/${encodeURIComponent(a.id)}">
-    <span class="icon-dot" style="color:${sportColor(a.family)}">${sportIcon(a.family)}</span>
-    <div class="grow"><div class="t">${esc(a.name)}</div><div class="s">${fmt.dow(a.date)} ${fmt.date(a.date)} · ${fmt.time(a.start)}${a.private ? " · Private" : ""}</div></div>
-    <div class="feed-stats hide-m">${main.map(x => `<span>${x}</span>`).join("")}</div>
-    <div class="r feed-r">${prs ? badge(prs === 1 ? "PR" : prs + " PRs", "accent") : `<span class="hide-d">${esc(main[0] || main[2])}</span><span class="hide-m small muted" style="font-weight:500">${a.load && isNum(a.load.v) ? fmt.n(a.load.v) + " load" : ""}</span>`}</div></a>`;
+    : [fmt.dur(a.duration_s), isNum(a.avg_hr) ? fmt.n(a.avg_hr) + " bpm" : ""];
+  return `<a class="li act-row" href="#/activity/${encodeURIComponent(a.id)}"><span class="icon-dot round" style="color:${sportColor(a.family)}">${sportIcon(a.family)}</span>
+    <div class="grow"><div class="tl-time">${fmt.dow(a.date)} ${fmt.date(a.date)} · ${fmt.time(a.start)}${a.private ? " · Private" : ""}</div><div class="t">${esc(a.name)}${prs ? ` ${badge(prs === 1 ? "PR" : prs + " PRs", "accent")}` : ""}</div>
+    <div class="s">${main.filter(Boolean).join(" · ")}${a.load && isNum(a.load.v) ? ` · load ${fmt.n(a.load.v)}` : ""}</div></div><span class="go" aria-hidden="true">${icon("arrow")}</span></a>`;
 }
 
 function socialView() {
@@ -62,61 +70,107 @@ function socialView() {
 }
 
 /* ---------------- activity detail ---------------- */
+const findAct = r => D.activities.list.find(x => x.id === r.arg);
 AG.screens.activity = {
-  title: r => { const a = D.activities.list.find(x => x.id === r.arg); return a ? a.name : "Activity"; },
-  parent: "#/activities", nav: "activities",
+  title: r => { const a = findAct(r); return a ? a.name : "Activity"; },
+  parent: "#/activities", nav: "activities", ownTitle: true,
+  headRight(r) { const a = findAct(r); return a && D.activities.details[a.id] ? editBtn("act-edit", a.id, "Edit") : ""; },
   render(r) {
-    const a = D.activities.list.find(x => x.id === r.arg);
+    const a = findAct(r);
     if (!a) return empty("Activity not found", "It may be older than this snapshot");
     const det = D.activities.details[a.id];
-    if (!det) return `<div class="card">${feedCard(a)}</div>${empty("Details not embedded", `Only the latest ${D.meta.detail_max_activities} activities carry full streams in this snapshot`)}`;
+    if (!det) return `<h2 class="page-title">${esc(a.name)}</h2><div class="card">${feedCard(a)}</div>${empty("Details not embedded", `Only the latest ${D.meta.detail_max_activities} activities carry full streams in this snapshot`)}`;
     const tab = chipVal("act-detail-tab", "summary");
     const tags = [a.race ? badge("Race", "accent") : "", a.private ? badge("Private", "est") : ""].join("");
-    const head = `<div class="page-head"><div class="row" style="gap:12px;min-width:0"><span class="icon-dot" style="color:${sportColor(a.family)}">${sportIcon(a.family)}</span><div class="grow"><h2 class="page-title" style="font-size:22px">${esc(det.insights.headline)}</h2><div class="small muted">${fmt.dateLong(a.date)} · ${fmt.time(a.start)}${det.device ? " · " + esc(det.device) : ""}</div></div></div><div class="row">${tags}${editBtn("act-edit", a.id, "Edit")}</div></div>`;
+    const when = `${fmt.date(a.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" })} · ${fmt.time(a.start)}${det.end ? "–" + fmt.time(det.end) : ""}`;
+    const badgeIc = cls => `<span class="act-badge ${cls}" style="--c:${sportColor(a.family)}">${sportIcon(a.family)}</span>`;
+    const hero = det.map ? `<div class="act-hero hide-d">${mapSvg(det.map, { label: "Activity route", w: 390, h: 300, cls: "hero-map" })}${badgeIc("")}</div>` : "";
+    const head = `<div class="act-head">${det.map ? badgeIc("inline hide-m") : badgeIc("inline")}<div class="grow"><h2 class="page-title">${esc(a.name)}</h2>
+      <div class="act-meta"><span>${icon("calendar")}${when}</span>${det.device ? `<span>${icon("watch")}${esc(det.device)}</span>` : ""}</div>${tags ? `<div class="row" style="margin-top:8px">${tags}</div>` : ""}</div></div>`;
     const tb = tabs("act-detail-tab", [["summary", "Summary"], ["analysis", "Analysis"], ["chat", "Chat"], ["planned", "Planned"]], tab);
     const body = { summary: actSummary, analysis: actAnalysis, chat: actChat, planned: actPlanned }[tab](a, det);
-    return `${head}${tb}${body}`;
+    return `${hero}${head}${tb}${body}`;
   },
   after() { drawCharts(); },
 };
 
+const bstat = (k, v, u) => `<div class="bstat"><span class="k">${esc(k)}</span><span class="v">${v}${u && v !== "—" ? `<small>${esc(u)}</small>` : ""}</span></div>`;
+function actStats(a) {
+  const hr = isNum(a.avg_hr) ? fmt.n(a.avg_hr) : "—", mx = isNum(a.max_hr) ? fmt.n(a.max_hr) : "—", kc = isNum(a.kcal) ? fmt.n(a.kcal) : "—";
+  if (a.family === "strength" || !isNum(a.distance_m)) return [bstat("Duration", fmt.dur(a.duration_s)), bstat("Avg HR", hr, "bpm"), bstat("Max HR", mx, "bpm"), bstat("Active energy", kc, "kcal")].join("");
+  const speed = a.family === "ride" ? bstat("Avg speed", isNum(a.speed_kph) ? fmt.n(a.speed_kph, 1) : "—", "km/h") : bstat("Avg pace", fmt.pace(a.pace_s_per_km, false), fmt.paceUnit());
+  return [bstat("Distance", fmt.distNum(a.distance_m, 2), fmt.distUnit()), bstat("Moving time", fmt.dur(a.moving_s || a.duration_s)), speed, bstat("Elevation gain", fmt.elev(a.elevation_gain_m)),
+    bstat("Avg HR", hr, "bpm"), bstat("Max HR", mx, "bpm"), bstat("Active energy", kc, "kcal"), a.moving_s && a.moving_s < a.duration_s ? bstat("Elapsed time", fmt.dur(a.duration_s)) : ""].join("");
+}
+function hrCard(a, det) {
+  const s = det.series;
+  if (!s || !s.hr || !s.hr.some(isNum)) return "";
+  const z = det.zones || [];
+  const t0 = Date.parse(a.start);
+  const clock = v => fmt.time(new Date(t0 + v * 1000).toISOString());
+  return `<div class="card">${cardHead(`${icon("heart")}Heart rate`)}
+    ${chart({ id: "act-hr", label: "Heart rate over the activity", x: s.t, h: 190, series: [{ name: "Heart rate", values: s.hr, color: "var(--bad)", width: 2.2, area: true, areaOpacity: 0.18, vStops: z.length ? z.map((q, i) => ({ v: isNum(q.low) && isNum(q.high) ? (q.low + q.high) / 2 : q.high || q.low, color: `var(--z${i + 1})` })) : null }],
+      refLines: z.slice(1).map((q, i) => ({ y: q.low, color: `color-mix(in srgb, var(--z${i + 2}) 70%, transparent)` })), yTickValues: z.slice(1).map(q => q.low),
+      fmtX: v => clock(v), fmtXAxis: v => clock(v), fmtY: v => fmt.n(v) + " bpm", xTicks: 3 })}</div>`;
+}
+function zonesTable(zones, range, unitLabel) {
+  const tot = zones.reduce((t, q) => t + (q.s || 0), 0) || 1;
+  const rows = zones.map((q, i) => ({ q, i })).reverse().map(({ q, i }) => {
+    const pct = (q.s || 0) / tot * 100;
+    return `<div class="zrow ${q.s ? "" : "zero"}"><span class="zn">${i + 1}</span><span class="zbar"><i style="width:${Math.max(pct ? 3 : 0, pct)}%;background:var(--z${i + 1})"></i></span><span class="zp">${fmt.n(pct)}%</span><span class="zd">${fmt.dur(q.s || 0)}</span><span class="zr">${range(q)}</span></div>`;
+  }).join("");
+  return `<div class="ztable"><div class="zrow zh"><span class="zn">Zone</span><span class="zbar"></span><span class="zp">%</span><span class="zd">Time</span><span class="zr">${esc(unitLabel)}</span></div>${rows}</div>`;
+}
+function paceCell(p, fastest) {
+  return `<span class="pcell"><i style="width:${isNum(p) && isNum(fastest) ? Math.max(30, Math.min(100, fastest / p * 100)) : 0}%"></i><b>${fmt.pace(p, false)}</b></span>`;
+}
+function splitsCard(det) {
+  const sp = (IMPERIAL ? det.splits_mi : det.splits) || [];
+  if (!sp.length) return "";
+  const fastest = Math.min(...sp.filter(x => !x.partial).map(x => x.pace_s_per_km).filter(isNum));
+  const v = det.verdict;
+  return `<div class="card">${cardHead("Splits", v ? badge(`${fmt.sport(v.verdict)} split`, v.verdict === "negative" ? "ok" : v.verdict === "positive" ? "warn" : "est") : "")}
+    <div class="stable"><div class="srow sh"><span>${IMPERIAL ? "Mi" : "Km"}</span><span>${fmt.paceUnit()}</span><span class="r">bpm</span><span class="r">Elev</span></div>
+    ${sp.map(x => `<div class="srow"><span>${x.partial ? fmt.distNum(x.distance_m, 2) : x.n}</span>${paceCell(x.pace_s_per_km, fastest)}<span class="r hrv">${isNum(x.avg_hr) ? x.avg_hr : "—"}</span><span class="r muted">${isNum(x.elev_delta_m) ? fmt.signed(IMPERIAL ? x.elev_delta_m * 3.28 : x.elev_delta_m, 0) : "—"}</span></div>`).join("")}</div></div>`;
+}
+function intervalsCard(det) {
+  if (!det.intervals || !det.intervals.length) return "";
+  const fastest = Math.min(...det.intervals.map(x => x.pace_s_per_km).filter(isNum));
+  return `<div class="card">${cardHead("Intervals", "", "Detected from sustained pace above your threshold.")}<div class="stable"><div class="srow sh iv"><span>Rep</span><span>Time</span><span>${fmt.distUnit()}</span><span>${fmt.paceUnit()}</span><span class="r">bpm</span></div>
+    ${det.intervals.map(l => `<div class="srow iv"><span class="ivn">${icon("chevsup")}${l.n}</span><span>${fmt.dur(l.time_s)}</span><span class="muted">${fmt.distNum(l.distance_m, 2)}</span>${paceCell(l.pace_s_per_km, fastest)}<span class="r hrv">${l.avg_hr || "—"}</span></div>`).join("")}</div></div>`;
+}
+
 function actSummary(a, det) {
   const ins = det.insights;
-  const row = det.row;
-  const grid = a.family === "strength"
-    ? `${stat("Elapsed", fmt.dur(a.duration_s))}${stat("Avg HR", isNum(a.avg_hr) ? fmt.n(a.avg_hr) : "—", "bpm")}${stat("Load", a.load && isNum(a.load.v) ? fmt.n(a.load.v) : "—")}${stat("Strain", isNum(a.strain) ? fmt.n(a.strain) + "%" : "—")}`
-    : `${stat("Distance", fmt.dist(a.distance_m))}${stat("Moving time", fmt.dur(a.moving_s || a.duration_s))}${stat(a.family === "ride" ? "Speed" : "Pace", a.family === "ride" ? fmt.n(a.speed_kph, 1) + " km/h" : fmt.pace(a.pace_s_per_km))}${stat("Elevation", fmt.elev(a.elevation_gain_m))}
-       ${stat("Avg HR", isNum(a.avg_hr) ? fmt.n(a.avg_hr) : "—", isNum(a.avg_hr) ? "bpm" : "")}${stat("Load", a.load && isNum(a.load.v) ? fmt.n(a.load.v) : "—")}${stat("Strain", isNum(a.strain) ? fmt.n(a.strain) + "%" : "—")}${stat("Calories", isNum(a.kcal) ? fmt.n(a.kcal) : "—")}`;
-  const zones = det.zones;
-  const ztot = zones ? zones.reduce((s, z) => s + z.s, 0) || 1 : 1;
   const p = det.planned;
-  const sets = (D.strength.sessions || []).find(s => s.workout_id === a.id);
+  const sets = (D.strength.sessions || []).find(x => x.workout_id === a.id);
   const trained = sets && sets.muscles ? sets.muscles : null;
   const rc = det.race;
   const race = rc ? `<div class="card">${cardHead("Race" + (rc.race_name ? " · " + esc(rc.race_name) : ""), rc.splits_verdict ? badge(fmt.sport(rc.splits_verdict.verdict) + " split", rc.splits_verdict.verdict === "negative" ? "ok" : "est") : "", rc.prediction ? `The prediction uses your ${fmt.distLabel(rc.prediction.source.distance_m)} on ${fmt.date(rc.prediction.source.date)}, from efforts before race day only.` : "")}
     <div class="stats-grid s3">${stat("Finish", fmt.dur(rc.finish_s))}${stat("Pace", fmt.pace(rc.pace_s_per_km))}${stat("Distance", fmt.dist(rc.distance_m))}</div>
     <table class="tbl" style="margin-top:8px"><tr><th></th><th class="r">Time</th><th class="r">Pace</th><th class="r">Δ</th></tr>
     ${rc.goal_time_s ? `<tr><td>Your goal</td><td class="r">${fmt.dur(rc.goal_time_s)}</td><td class="r">${fmt.pace(rc.planned_pace_s_per_km)}</td><td class="r">${fmt.signed(rc.vs_goal_s, 0)} s</td></tr>` : ""}
-    ${rc.prediction ? `<tr><td>Prediction</td><td class="r">${fmt.dur(rc.prediction.time_s)}</td><td class="r">${fmt.pace(rc.prediction.pace_s_per_km)}</td><td class="r">${fmt.signed(rc.vs_prediction_s, 0)} s</td></tr>` : ""}</table>
-</div>` : "";
-  return `<div class="cols"><div class="stack">${race}
-    <div class="card">${cardHead("Overview", a.load ? prov(a.load, "Load") : "")}<div class="stats-grid s4">${grid}</div></div>
-    ${p ? `<div class="card">${cardHead("Plan vs actual", badge(fmt.sport(p.compliance || "planned"), p.compliance === "as_planned" ? "ok" : "warn"))}
+    ${rc.prediction ? `<tr><td>Prediction</td><td class="r">${fmt.dur(rc.prediction.time_s)}</td><td class="r">${fmt.pace(rc.prediction.pace_s_per_km)}</td><td class="r">${fmt.signed(rc.vs_prediction_s, 0)} s</td></tr>` : ""}</table></div>` : "";
+  const strain = `<div class="card act-strain">${ring("strain", { v: a.strain, status: "ok" }, { label: "Activity strain", sm: true })}<div class="grow"><div class="t">Activity strain</div><div class="s">Load ${a.load && isNum(a.load.v) ? fmt.n(a.load.v) : "—"}${a.load && a.load.kind === "estimated" ? " · estimate" : ""}</div></div>${a.load ? info("Load", "", a.load) : ""}</div>`;
+  const stats = `<div class="card"><div class="bstats">${actStats(a)}</div></div>`;
+  const plan = p ? `<div class="card">${cardHead("Plan vs actual", badge(fmt.sport(p.compliance || "planned"), p.compliance === "as_planned" ? "ok" : "warn"))}
       <table class="tbl"><tr><th></th><th class="r">Plan</th><th class="r">Actual</th></tr>
       <tr><td>Duration</td><td class="r">${fmt.dur(p.duration_s)}</td><td class="r">${fmt.dur(p.actual_duration_s)}</td></tr>
       <tr><td>Load</td><td class="r">${isNum(p.planned_load) ? fmt.n(p.planned_load) : "—"}</td><td class="r">${isNum(p.actual_load) ? fmt.n(p.actual_load) : "—"}</td></tr>
-      ${p.distance_m || p.actual_distance_m ? `<tr><td>Distance</td><td class="r">${p.distance_m ? fmt.dist(p.distance_m) : "—"}</td><td class="r">${fmt.dist(p.actual_distance_m)}</td></tr>` : ""}</table></div>` : ""}
-    ${ins.facts.length || ins.improvements.length ? `<div class="card">${cardHead("Summary", "", "Built only from this activity's measured data and your own history.")}<div class="list">${ins.facts.map(f => `<div class="li"><div class="grow small">${esc(f.text)}</div></div>`).join("")}${ins.improvements.map(i => `<div class="li"><span class="spark-dot">${icon("coach")}</span><div class="grow small" style="font-weight:600">${esc(i.text)}</div></div>`).join("")}</div></div>` : ""}
-    ${trained ? `<div class="card">${cardHead("Muscles trained")}${muscleMap({}, "freshness", trained)}</div>` : a.family === "strength" ? `<div class="card">${empty(STR.noExercise, "Log sets in the Strength Builder to see trained muscles")}</div>` : ""}
-    </div><div class="stack">
-    <div class="card">${det.map ? mapSvg(det.map, { label: "Activity route" }) : empty(STR.noRoute, a.family === "strength" ? "Indoor session" : "No GPS samples")}</div>
-    ${zones ? `<div class="card">${cardHead("Heart-rate zones")}${zones.map((z, i) => `<div class="row" style="gap:8px;margin:4px 0"><span class="small" style="width:28px">${z.name}</span><div class="bar thin" style="flex:1"><i style="width:${z.s / ztot * 100}%;background:var(--z${i + 1})"></i></div><span class="small num" style="width:52px;text-align:right">${fmt.mins(z.s)}</span></div>`).join("")}</div>` : ""}
-    ${det.efforts && det.efforts.length ? `<div class="card">${cardHead("Best efforts")}<div class="list">${det.efforts.map(e => `<div class="li"><div class="grow"><div class="t">${fmt.distLabel(e.distance_m)}</div></div><div class="r">${fmt.dur(e.time_s)} ${e.pr ? badge("PR", "accent") : e.rank ? badge("#" + e.rank, "") : ""}</div></div>`).join("")}</div></div>` : ""}
-    ${det.matched ? `<div class="card">${cardHead("Matched runs", `<span class="small muted">${det.matched.rank} of ${det.matched.count}${det.matched.match_kind === "approximate" ? " · approximate" : ""}</span>`)}
+      ${p.distance_m || p.actual_distance_m ? `<tr><td>Distance</td><td class="r">${p.distance_m ? fmt.dist(p.distance_m) : "—"}</td><td class="r">${fmt.dist(p.actual_distance_m)}</td></tr>` : ""}</table></div>` : "";
+  const notes = ins.facts.length || ins.improvements.length ? `<div class="card">${cardHead("What stood out")}<div class="list">${ins.facts.map(f => `<div class="li"><div class="grow small">${esc(f.text)}</div></div>`).join("")}${ins.improvements.map(i => `<div class="li"><span class="spark-dot">${icon("sparkles")}</span><div class="grow small" style="font-weight:600">${esc(i.text)}</div></div>`).join("")}</div></div>` : "";
+  const zones = det.zones ? `<div class="card">${cardHead(`${icon("hrec")}Heart-rate zones`)}${zonesTable(det.zones, q => !q.low ? `<${q.high}` : `${q.low}–${q.high}`, "bpm")}</div>` : "";
+  const efforts = det.efforts && det.efforts.length ? `<div class="card">${cardHead("Best efforts")}<div class="list">${det.efforts.map(e => `<div class="li"><div class="grow"><div class="t">${fmt.distLabel(e.distance_m)}</div></div><div class="r">${fmt.dur(e.time_s)} ${e.pr ? badge("PR", "accent") : e.rank ? badge("#" + e.rank, "") : ""}</div></div>`).join("")}</div></div>` : "";
+  const matched = det.matched ? `<div class="card">${cardHead("Matched runs", `<span class="small muted">${det.matched.rank} of ${det.matched.count}${det.matched.match_kind === "approximate" ? " · approximate" : ""}</span>`)}
       ${chart({ id: "matched", label: "Pace on matched runs", x: det.matched.rows.map(r => r.date), h: 140, invertY: true,
-        series: [{ name: "Pace", color: "var(--accent)", values: det.matched.rows.map(r => r.pace_s_per_km), dots: true }], fmtX: d => fmt.date(d), fmtY: v => fmt.pace(v), fmtYAxis: v => fmt.pace(v, false) })}</div>` : ""}
-    ${det.weather ? `<div class="card">${cardHead("Weather", det.weather.conditions ? `<span class="small muted">${esc(det.weather.conditions)}</span>` : "")}<div class="stats-grid s3">${stat("Temp", fmt.temp(det.weather.temp_c))}${stat("Humidity", fmt.pct(det.weather.humidity_pct))}${stat("Wind", isNum(det.weather.wind_kph) ? fmt.n(det.weather.wind_kph) + " km/h" : "—")}</div></div>` : ""}
-    <div class="card">${cardHead("How did it feel?")}${rpeForm(a, det)}</div></div></div>`;
+        series: [{ name: "Pace", color: "var(--accent)", values: det.matched.rows.map(r => r.pace_s_per_km), dots: true }], fmtX: d => fmt.date(d), fmtY: v => fmt.pace(v), fmtYAxis: v => fmt.pace(v, false) })}</div>` : "";
+  const weather = det.weather ? `<div class="card">${cardHead("Weather", det.weather.conditions ? `<span class="small muted">${esc(det.weather.conditions)}</span>` : "")}<div class="bstats three">${bstat("Temp", fmt.temp(det.weather.temp_c))}${bstat("Humidity", fmt.pct(det.weather.humidity_pct))}${bstat("Wind", isNum(det.weather.wind_kph) ? fmt.n(det.weather.wind_kph) : "—", "km/h")}</div></div>` : "";
+  const muscles = trained ? `<div class="card">${cardHead("Muscles trained")}${muscleMap({}, "freshness", trained)}</div>` : a.family === "strength" ? `<div class="card">${empty(STR.noExercise, "Log sets in the Strength Builder to see trained muscles")}</div>` : "";
+  const map = `<div class="card map-card hide-m">${det.map ? mapSvg(det.map, { label: "Activity route", w: 560, h: 340 }) : empty(STR.noRoute, a.family === "strength" ? "Indoor session" : "No GPS samples")}</div>`;
+  const rpe = `<div class="card">${cardHead("Perceived effort")}${rpeForm(a, det)}</div>`;
+  const o = (n, html) => html ? `<div class="o" style="order:${n}">${html}</div>` : "";
+  return `<div class="flow2"><div class="flow-a">${o(0, map)}${o(3, hrCard(a, det))}${o(4, zones)}${o(5, splitsCard(det))}${o(6, intervalsCard(det))}${o(10, muscles)}</div>
+    <div class="flow-b">${o(1, race)}${o(1, strain)}${o(2, stats)}${o(7, plan)}${o(8, notes)}${o(9, efforts)}${o(11, matched)}${o(12, rpe)}${o(13, weather)}</div></div>`;
 }
 
 function rpeForm(a, det) {
@@ -162,20 +216,14 @@ function actAnalysis(a, det) {
     ${chart({ id: "an-" + k, label: name + " over the activity", x: xs, h: 130, invertY: !!inv, series: [{ name, color, values: s[k], area: k === "elev_m", areaOpacity: .18 }],
       fmtX: fx, fmtXAxis: fxa, fmtY: f, fmtYAxis: inv ? v => fmt.pace(v, false) : undefined,
       band: k === "hr" && det.zones ? { low: det.zones[1].low, high: det.zones[1].high, color: "color-mix(in srgb, var(--z2) 14%, transparent)", name: "Zone 2" } : null })}</div>`).join("");
-  const sp = (IMPERIAL ? det.splits_mi : det.splits) || [];
-  const fastest = Math.min(...sp.filter(x => !x.partial).map(x => x.pace_s_per_km).filter(isNum));
-  const splits = sp.length ? `<div class="card">${cardHead("Splits", det.verdict ? badge(`${fmt.sport(det.verdict.verdict)} split · ${fmt.signed(det.verdict.diff_pct, 1)}%`, det.verdict.verdict === "negative" ? "ok" : det.verdict.verdict === "positive" ? "warn" : "est") : "")}
-    <table class="tbl"><tr><th>${IMPERIAL ? "Mi" : "Km"}</th><th>Pace</th><th></th><th class="r">Elev</th><th class="r">HR</th></tr>${sp.map(x => `<tr><td>${x.partial ? fmt.distNum(x.distance_m, 2) : x.n}</td><td>${fmt.pace(x.pace_s_per_km, false)}</td><td style="width:40%"><div class="pace-bar" style="width:${isNum(x.pace_s_per_km) ? Math.max(8, Math.min(100, fastest / x.pace_s_per_km * 100)) : 0}%"></div></td><td class="r">${isNum(x.elev_delta_m) ? fmt.signed(IMPERIAL ? x.elev_delta_m * 3.28 : x.elev_delta_m, 0) : "—"}</td><td class="r">${isNum(x.avg_hr) ? x.avg_hr : "—"}</td></tr>`).join("")}</table>
-</div>` : "";
   const laps = det.laps.length ? `<div class="card">${cardHead("Laps")}<table class="tbl"><tr><th>#</th><th class="r">Time</th><th class="r">Distance</th><th class="r">Pace</th><th class="r">HR</th></tr>${det.laps.map(l => `<tr><td>${l.n}</td><td class="r">${fmt.dur(l.time_s)}</td><td class="r">${fmt.dist(l.distance_m)}</td><td class="r">${fmt.pace(l.pace_s_per_km, false)}</td><td class="r">${l.avg_hr || "—"}</td></tr>`).join("")}</table></div>` : "";
-  const iv = det.intervals.length ? `<div class="card">${cardHead("Intervals", "", "Detected from sustained pace above your threshold.")}<table class="tbl"><tr><th>Rep</th><th class="r">Time</th><th class="r">Distance</th><th class="r">Pace</th><th class="r">HR</th></tr>${det.intervals.map(l => `<tr><td>${l.n}</td><td class="r">${fmt.dur(l.time_s)}</td><td class="r">${fmt.dist(l.distance_m)}</td><td class="r">${fmt.pace(l.pace_s_per_km, false)}</td><td class="r">${l.avg_hr || "—"}</td></tr>`).join("")}</table></div>` : "";
   const seg = det.segments && det.segments.length ? `<div class="card">${cardHead("Multisport")}<table class="tbl">${det.segments.map(sg => `<tr><td>${esc(fmt.sport(sg.sport))}</td><td class="r">${fmt.dur(sg.end_s - sg.start_s)}</td><td class="r">${fmt.dist(sg.distance_m)}</td></tr>`).join("")}</table></div>` : "";
   const curves = `${det.hr_curve ? `<div class="card">${cardHead("Heart-rate curve")}${chart({ id: "hrc", type: "curve", label: "Best average heart rate by duration", points: det.hr_curve, h: 140, name: "Best avg HR", color: "var(--bad)", fmtY: v => fmt.n(v) + " bpm" })}</div>` : ""}
     ${det.power_curve ? `<div class="card">${cardHead("Power curve")}${chart({ id: "pwc", type: "curve", label: "Best average power by duration", points: det.power_curve, h: 140, name: "Best avg power", color: "var(--accent)", fmtY: v => fmt.n(v) + " W" })}</div>` : ""}`;
   const extra = `<div class="card">${cardHead("Efficiency", "", `Efficiency factor is speed per heartbeat${det.gap ? ", grade-adjusted" : ""}. Intensity compares with your ${esc(det.intensity_basis || "threshold")}. HR drift compares the pace-to-heart-rate ratio of the first and second half.`)}<div class="stats-grid s4">${stat("Efficiency", isNum(det.efficiency_factor) ? fmt.n(det.efficiency_factor, 2) : "—")}${stat("Intensity", isNum(det.intensity_pct) ? det.intensity_pct + "%" : "—")}${stat("HR drift", isNum(det.decoupling_pct) ? fmt.n(det.decoupling_pct, 1) + "%" : "—")}${stat("HR recovery", isNum(det.hr_recovery) ? det.hr_recovery + " bpm" : "—")}</div>
 </div>`;
   const pz = det.pace_zones ? `<div class="card">${cardHead("Pace zones")}${det.pace_zones.map((z, i) => `<div class="row" style="gap:8px;margin:4px 0"><span class="small" style="width:28px">${z.name}</span><div class="bar thin" style="flex:1"><i style="width:${z.s / (det.pace_zones.reduce((t, x) => t + x.s, 0) || 1) * 100}%;background:var(--z${i + 1})"></i></div><span class="small num" style="width:52px;text-align:right">${fmt.mins(z.s)}</span></div>`).join("")}</div>` : "";
-  return `<div class="cols"><div class="stack">${charts}</div><div class="stack">${extra}${splits}${laps}${iv}${seg}${pz}${curves}${det.map ? `<div class="card">${cardHead("Replay")}${flyover(det)}</div>` : ""}</div></div>`;
+  return `<div class="cols"><div class="stack">${charts}</div><div class="stack">${extra}${laps}${seg}${pz}${curves}${det.map ? `<div class="card">${cardHead("Replay")}${flyover(det)}</div>` : ""}</div></div>`;
 }
 
 function flyover(det) {
@@ -213,7 +261,7 @@ function flyover(det) {
 function actChat(a, det) {
   return `<div class="card">${AG.llm ? "" : empty(STR.noCoachLLM, "Set AGAME_LLM_PROVIDER on your server to ask questions about this activity. Answers use only AGame's computed data.")}
     <div class="chat" style="margin-top:12px">${det.insights.facts.map(f => `<div class="msg coach">${esc(f.text)}</div>`).join("")}${det.insights.improvements.map(f => `<div class="msg coach">${esc(f.text)}</div>`).join("")}</div>
-    <form class="composer" style="margin-top:12px" data-coach-form data-activity="${esc(a.id)}"><label class="sr" for="ac-q">Ask about this activity</label><textarea id="ac-q" name="q" placeholder="Ask about this activity" ${AG.online ? "" : "disabled"}></textarea><div class="spread"><span></span><button class="btn sm" ${AG.online ? "" : "disabled"}>Ask</button></div></form></div>`;
+    <form class="composer" style="margin-top:14px" data-coach-form data-activity="${esc(a.id)}"><label class="sr" for="ac-q">Ask about this activity</label><div class="composer-row"><textarea id="ac-q" name="q" rows="1" placeholder="Ask about this activity" ${AG.online ? "" : "disabled"}></textarea><button class="send" aria-label="Ask" ${AG.online ? "" : "disabled"}>${icon("up")}</button></div></form></div>`;
 }
 
 function actPlanned(a, det) {

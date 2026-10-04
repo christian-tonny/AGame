@@ -36,18 +36,20 @@ function prov(v, label) {
   PROV[id] = { v, label };
   return `<button type="button" class="info-btn" data-prov="${id}" aria-label="Data details for ${esc(label || "value")}" title="Data details">${icon("info")}</button>`;
 }
+function provTable(v) {
+  const rows = [["Value", isNum(v.v) ? fmt.n(v.v, Math.abs(v.v) < 10 && v.v % 1 ? 1 : 0) + (v.unit ? " " + v.unit : "") : (v.v === null || v.v === undefined ? "Unknown" : esc(String(v.v)))],
+    ["Status", statusLabel(v.status)], ["Kind", kindLabel(v.kind)], ["As of", v.as_of ? fmt.dt(v.as_of) : "—"],
+    ["Source", v.source || "—"], ["Method", v.method || "—"],
+    ["Coverage", isNum(v.coverage) ? fmt.pct(v.coverage * 100) : "—"], ["Confidence", v.confidence || "—"], ["Note", v.note || "—"]];
+  return `<table class="tbl">${rows.map(([k, x]) => `<tr><th>${k}</th><td>${x}</td></tr>`).join("")}</table>`;
+}
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-prov]");
   if (!b) return;
   e.preventDefault(); e.stopPropagation();
   const { v, label } = PROV[b.dataset.prov] || {};
   if (!v) return;
-  const rows = [["Value", isNum(v.v) ? fmt.n(v.v, Math.abs(v.v) < 10 && v.v % 1 ? 1 : 0) + (v.unit ? " " + v.unit : "") : (v.v === null || v.v === undefined ? "Unknown" : esc(String(v.v)))],
-    ["Status", statusLabel(v.status)], ["Kind", kindLabel(v.kind)], ["As of", v.as_of ? fmt.dt(v.as_of) : "—"],
-    ["Source", v.source || "—"], ["Method", v.method || "—"],
-    ["Coverage", isNum(v.coverage) ? fmt.pct(v.coverage * 100) : "—"], ["Confidence", v.confidence || "—"], ["Note", v.note || "—"]];
-  openSheet(label || "Data details", `<table class="tbl">${rows.map(([k, x]) => `<tr><th>${k}</th><td>${x}</td></tr>`).join("")}</table>
-    <p class="cap" style="margin-top:12px">Computed once in Python at build time. Missing data is never shown as zero.</p>`);
+  openSheet(label || "Data details", `${provTable(v)}<p class="cap" style="margin-top:12px">Computed once in Python at build time. Missing data is never shown as zero.</p>`);
 });
 function statusLabel(s) { return ({ ok: "Fresh", partial: "Partial", stale: "Stale", missing: "Missing", calibrating: "Calibrating" })[s] || s || "—"; }
 function kindLabel(k) { return ({ observed: "Observed (HealthKit)", configured: "Configured", computed: "Computed", estimated: "Estimate", user_entered: "Entered by you" })[k] || k || "—"; }
@@ -91,6 +93,10 @@ document.addEventListener("click", e => {
   const c = e.target.closest("[data-chip]");
   if (!c) return;
   uiSet("chip:" + c.dataset.chip, c.dataset.val);
+  const tabRoute = { "body-tab": "body", "training-tab": "training" }[c.dataset.chip];
+  if (tabRoute) {
+    history.replaceState(null, "", "#/" + tabRoute + "?tab=" + encodeURIComponent(c.dataset.val));
+  }
   if (c.dataset.chip === "theme" && typeof applyTheme === "function") applyTheme();
   if (c.closest("#sheet")) { const fn = AG._sheetRefresh; if (fn) fn(); return; }
   rerender();
@@ -100,22 +106,24 @@ function tabs(name, options, current) {
   return `<div class="tabs" role="group" aria-label="${esc(name)}">${options.map(([id, label]) => `<button data-chip="${esc(name)}" data-val="${esc(id)}" aria-pressed="${id === current}">${esc(label)}</button>`).join("")}</div>`;
 }
 /* Card header: one title, one optional control on the right. Explanations live behind the info button. */
-function cardHead(title, right = "", about = "") {
-  return `<div class="card-h"><h3>${title}</h3>${right || about ? `<div class="r">${right}${about ? info(title.replace(/<[^>]+>/g, "").trim(), about) : ""}</div>` : ""}</div>`;
+function cardHead(title, right = "", about = "", v = null) {
+  const plain = title.replace(/<[^>]+>/g, "").trim();
+  const ib = about || v ? info(plain, about, v) : "";
+  return `<div class="card-h"><h3>${title}</h3>${right || ib ? `<div class="r">${right}${ib}</div>` : ""}</div>`;
 }
 const INFO = {};
 let infoSeq = 0;
-function info(title, text) {
+function info(title, text, v = null) {
   const id = "i" + (++infoSeq);
-  INFO[id] = { title, text };
+  INFO[id] = { title, text, v };
   return `<button type="button" class="info-btn" data-info="${id}" aria-label="About ${esc(title)}">${icon("info")}</button>`;
 }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-info]");
   if (!b || !INFO[b.dataset.info]) return;
   e.preventDefault(); e.stopPropagation();
-  const { title, text } = INFO[b.dataset.info];
-  openSheet(title, `<p class="small" style="margin:0;line-height:1.55">${text}</p>`);
+  const { title, text, v } = INFO[b.dataset.info];
+  openSheet(title, `${text ? `<p class="small" style="margin:0 0 12px;line-height:1.55">${text}</p>` : ""}${v && typeof v === "object" ? provTable(v) : ""}`);
 });
 function sectionTitle(t, link) { return `<div class="section-title"><h2>${esc(t)}</h2>${link || ""}</div>`; }
 function bar(pct, color, marker) {
@@ -124,23 +132,23 @@ function bar(pct, color, marker) {
 }
 
 /* ---------- score ring (Bevel) ---------- */
+/* [start colour at 12 o'clock, end colour] so the arc deepens as it fills, like Bevel's rings. */
 function ringColor(kind) {
-  return { strain: ["var(--strain)", "var(--strain-2)"], recovery: ["var(--recovery)", "var(--recovery-2)"], sleep: ["var(--sleep)", "var(--sleep-2)"], energy: ["var(--recovery)", "var(--recovery-2)"] }[kind] || ["var(--accent)", "var(--accent-2)"];
+  return { strain: ["var(--strain-2)", "var(--strain)"], recovery: ["var(--recovery-2)", "var(--recovery)"], sleep: ["var(--sleep-2)", "var(--sleep)"], energy: ["var(--recovery-2)", "var(--recovery)"] }[kind] || ["var(--accent-2)", "var(--accent)"];
 }
 let ringSeq = 0;
 function ring(kind, v, opts = {}) {
   const value = v && isNum(v.v) ? v.v : null;
-  const r = 42, C = 2 * Math.PI * r;
-  const pct = value === null ? 0 : Math.max(0, Math.min(100, value)) / 100;
+  const pct = value === null ? 0 : Math.max(0, Math.min(100, value));
   const [c1, c2] = ringColor(kind);
   const id = "rg" + (++ringSeq);
   const stale = v && (v.status === "stale");
-  return `<div class="ring ${opts.lg ? "lg" : ""} ${stale ? "is-stale" : ""}" role="img" aria-label="${esc(opts.label || kind)} ${value === null ? "unknown" : fmt.n(value) + " percent"}${stale ? ", stale" : ""}">
-    <svg viewBox="0 0 100 100"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>
-      <circle cx="50" cy="50" r="${r}" fill="none" stroke="var(--surface-3)" stroke-width="8"/>
-      ${value === null ? "" : `<circle class="ring-arc" cx="50" cy="50" r="${r}" fill="none" stroke="url(#${id})" stroke-width="8" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct)}"/>`}
+  return `<div class="ring ${opts.lg ? "lg" : ""} ${opts.sm ? "sm" : ""} ${stale ? "is-stale" : ""} ${value === null ? "is-empty" : ""}" role="img" aria-label="${esc(opts.label || kind)} ${value === null ? "unknown" : fmt.n(value) + " percent"}${stale ? ", stale" : ""}">
+    <svg viewBox="0 0 100 100"><defs><linearGradient id="${id}" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>
+      <circle class="ring-well" cx="50" cy="50" r="42" fill="none" stroke-width="15"/><circle class="ring-disc" cx="50" cy="50" r="33.5"/>
+      ${value === null || pct === 0 ? "" : `<path class="ring-arc" d="M50 8 A42 42 0 1 1 49.99 8" pathLength="100" fill="none" stroke="url(#${id})" stroke-width="10" stroke-linecap="round" stroke-dasharray="${pct} 100"/>`}
     </svg>
-    <div class="val"><b>${value === null ? "—" : fmt.n(value)}${value === null ? "" : "<small>%</small>"}</b><span>${esc(opts.sub || "")}</span></div></div>`;
+    <div class="val"><b>${value === null ? "—" : fmt.n(value)}<small>%</small></b>${opts.sub ? `<span>${esc(opts.sub)}</span>` : ""}</div></div>`;
 }
 
 /* ---------- freshness chip ---------- */
@@ -178,11 +186,19 @@ function factorRow(f) {
   else if (typeof f.value === "number") r = fmt.n(f.value, Math.abs(f.value) < 10 && f.value % 1 ? 1 : 0) + (f.unit && f.unit !== "%" ? " " + f.unit : f.unit || "");
   else r = esc(fmt.sport(String(f.value)));
   const dirTxt = f.direction === "helping" ? "Helping" : f.direction === "hurting" ? "Hurting" : "Neutral";
-  return `<div class="factor ${f.direction}"><span class="ic" aria-hidden="true">${sym}</span><div class="grow"><div class="t">${esc(f.label)}</div>
+  return `<div class="factor ${f.direction}"><span class="ic" aria-hidden="true">${sym}</span><div class="grow"><div class="t">${esc(f.id === "tsb" ? "Form" : f.label)}</div>
     <div class="s">${dirTxt}${detail ? " · " + esc(detail) : ""}${f.stale ? " · stale" : ""}</div></div><span class="r">${r}</span></div>`;
 }
 function insightCard(text, sub, cls = "") {
   return `<div class="insight ${cls}"><span class="spark" aria-hidden="true">${icon(cls.includes("action") ? "alert" : "sparkles")}</span><div><b>${esc(text)}</b>${sub ? `<span>${esc(sub)}</span>` : ""}</div></div>`;
+}
+
+/* ---------- trend row (Bevel trends / biomarkers): label, big value, status, sparkline on the right ---------- */
+function trendRow(o) {
+  const tag = o.href ? `a href="${o.href}"` : "div";
+  return `<${tag} class="card trend">${o.href ? `<span class="go">${icon("arrow")}</span>` : ""}<div class="trend-l"><div class="tile-h">${o.icon ? icon(o.icon) : ""}<span>${esc(o.label)}</span></div>
+    <div class="tile-v">${o.value === null || o.value === undefined ? "—" : o.value}${o.unit && o.value !== null && o.value !== undefined ? `<small>${esc(o.unit)}</small>` : ""}</div>${o.status || ""}</div>
+    <div class="trend-r">${o.spark && o.spark.filter(isNum).length > 1 ? sparkline(o.spark, o.color || "var(--accent)", 56, o.sparkOpts || {}) : ""}</div></${tag.split(" ")[0]}>`;
 }
 
 /* ---------- goals ---------- */
@@ -210,8 +226,8 @@ function goalRow(g, opts = {}) {
   if (g.type === "body_weight" && g.trajectory) {
     const t = g.trajectory; sub = isNum(t.actual_kg_per_week) ? `${fmt.signed(t.actual_kg_per_week, 2)} ${fmt.wUnit()}/wk · need ${fmt.signed(t.required_kg_per_week, 2)}` : "Need more weigh-ins";
   }
-  if (g.type === "record") { pct = isNum(g.actual) && isNum(g.target) ? Math.min(100, g.target / g.actual * 100) : 0; sub = g.best_effort ? `Best ${fmt.dur(g.actual)} on ${fmt.date(g.best_effort.date)}` : "No qualifying effort yet"; }
-  if (!sub && g.end) sub = g.end === D.meta.build_date ? "Ends today" : g.end > D.meta.build_date ? `Ends ${fmt.date(g.end)}` : `Ended ${fmt.date(g.end)}`;
+  if (g.type === "record") { pct = isNum(g.actual) && isNum(g.target) ? Math.min(100, g.target / g.actual * 100) : 0; sub = g.best_effort ? `Best ${fmt.dur(g.actual)} on ${fmt.dateY(g.best_effort.date)}` : "No qualifying effort yet"; }
+  if (!sub && g.end) sub = g.end === D.meta.build_date ? "Ends today" : g.end > D.meta.build_date ? `Ends ${fmt.dateY(g.end)}` : `Ended ${fmt.dateY(g.end)}`;
   return `<div class="goal-row"><div class="spread"><b>${esc(g.title)}</b><span class="row">${goalStatusBadge(g.status_label)}${opts.edit ? editBtn("goal-edit", g.id) : ""}</span></div>
     ${pct === null || pct === undefined ? "" : bar(pct, "var(--accent)", marker)}
     <div class="spread small"><span class="muted">${esc(sub)}</span><span class="num">${right}</span></div></div>`;
@@ -221,9 +237,9 @@ function goalRow(g, opts = {}) {
 function activityRow(a) {
   const main = a.family === "run" || a.family === "walk" ? `${fmt.dist(a.distance_m)} · ${fmt.pace(a.pace_s_per_km)}` :
     a.family === "ride" ? `${fmt.dist(a.distance_m)} · ${fmt.n(a.speed_kph, 1)} km/h` : fmt.mins(a.duration_s);
-  return `<a class="li" href="#/activity/${encodeURIComponent(a.id)}"><span class="icon-dot" style="color:${sportColor(a.family)}">${sportIcon(a.family)}</span>
-    <div class="grow"><div class="t">${esc(a.name)}</div><div class="s">${fmt.dow(a.date)} ${fmt.date(a.date)} · ${fmt.time(a.start)} · ${main}</div></div>
-    <div class="r">${a.load && isNum(a.load.v) ? fmt.n(a.load.v) : "—"}<div class="cap">load</div></div></a>`;
+  return `<a class="li act-row" href="#/activity/${encodeURIComponent(a.id)}"><span class="icon-dot round" style="color:${sportColor(a.family)}">${sportIcon(a.family)}</span>
+    <div class="grow"><div class="tl-time">${fmt.dow(a.date)} ${fmt.date(a.date)} · ${fmt.time(a.start)}</div><div class="t">${esc(a.name)}</div><div class="s">${main}${a.load && isNum(a.load.v) ? ` · load ${fmt.n(a.load.v)}` : ""}</div></div>
+    <span class="go" aria-hidden="true">${icon("arrow")}</span></a>`;
 }
 
 /* ---------- maps (privacy already applied in Python) ---------- */
@@ -377,7 +393,7 @@ function formSheet(title, fields, onSubmit, opts = {}) {
     <div class="full row wrap" style="margin-top:6px"><button class="btn" type="submit" ${AG.online ? "" : "disabled"}>${esc(opts.submit || "Save")}</button>
     ${opts.danger ? `<button class="btn danger" type="button" id="fs-danger" ${AG.online ? "" : "disabled"}>${esc(opts.danger.label)}</button>` : ""}
     ${(opts.extra || []).map((x, i) => `<button class="btn secondary" type="button" data-fs-extra="${i}" ${AG.online ? "" : "disabled"}>${esc(x.label)}</button>`).join("")}</div>
-    ${offlineNote()}</form>${opts.after || ""}`;
+    </form>${opts.after || ""}`;
   return openSheet(title, body, { after: sh => {
     const form = $("#fs-form", sh);
     $("input,select,textarea", form) && $("input,select,textarea", form).setAttribute("data-autofocus", "");

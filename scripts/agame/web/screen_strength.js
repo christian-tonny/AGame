@@ -18,7 +18,7 @@ function strOverview() {
   const W = D.strength.weekly;
   const groups = Object.entries(M.groups).filter(([, g]) => g.last_trained);
   const legend = mode === "freshness"
-    ? `<span><i style="background:var(--recovery)"></i>Recovered</span><span><i style="background:var(--warn)"></i>Fatigued</span><span><i style="background:var(--bad)"></i>Depleted</span><span><i style="background:url(#hatch);border:1px solid var(--text-3)"></i>Calibrating</span>`
+    ? `<span><i style="background:color-mix(in srgb, var(--text-3) 48%, var(--surface-3))"></i>Recovered</span><span><i style="background:var(--warn)"></i>Fatigued</span><span><i style="background:var(--bad)"></i>Depleted</span><span><i style="background:url(#hatch);border:1px solid var(--text-3)"></i>Calibrating</span>`
     : `<span><i style="background:var(--recovery)"></i>Productive/maintaining</span><span><i style="background:var(--warn)"></i>Overtraining</span><span><i style="background:var(--surface-3);border:1px solid var(--line-2)"></i>Detraining/no data</span>`;
   const mmAbout = [M.unlogged_strength_workouts ? `${M.unlogged_strength_workouts} strength workouts in the last 6 weeks have no exercise log, so they don't count per muscle.` : "", M.cardio_mapping_enabled ? "Running and other cardio add an approximate leg load from a configurable activity-to-muscle mapping." : ""].filter(Boolean).join(" ");
   return `<div class="cols"><div class="stack"><div class="card">${cardHead("Muscles", seg("mm-mode", [["freshness", "Freshness"], ["load", "Load"]], mode), mmAbout)}
@@ -26,10 +26,10 @@ function strOverview() {
 </div>
     <div class="card">${cardHead("Weekly volume", "", "Volume is weight × reps on working sets. Weeks without logs show no bar rather than zero.")}${chart({ id: "str-w", type: "bar", label: "Weekly strength volume", x: W.map(w => w.week), h: 150, partialIndex: W.length - 1,
       series: [{ name: "Volume", color: "var(--strength)", values: W.map(w => w.logged_sessions ? (IMPERIAL ? w.volume_kg * 2.20462 : w.volume_kg) : null) }],
-      fmtX: d => "Week of " + fmt.date(d), fmtXAxis: d => fmt.date(d), fmtY: v => fmt.n(v) + " " + fmt.wUnit(), tipExtra: i => `<div class="k">${W[i].sessions} sessions · ${W[i].sets} sets · ${W[i].minutes} min</div>` })}
-</div></div>
-    <div class="stack"><div class="card">${cardHead("By muscle group", "", `Load needs ${M.calibration.load_min_sessions} logged sessions per muscle in ${M.calibration.load_weeks} weeks; freshness needs ${M.calibration.freshness_min_sessions}. A * marks muscles estimated from cardio only.`)}${groups.length ? `<table class="tbl"><tr><th>Muscle</th><th>Load</th><th>Freshness</th><th class="r">Sets 7d</th></tr>${groups.map(([m, g]) => `<tr><td>${esc(fmt.sport(m))}${g.approximate ? " *" : ""}</td><td>${esc(fmt.sport(g.load_status))}</td><td>${esc(fmt.sport(g.freshness))}</td><td class="r">${fmt.n(g.sets_7d, 1)}</td></tr>`).join("")}</table>` : empty(STR.noData)}</div>
-    <div class="card">${cardHead("Recent sessions")}<div class="list">${D.strength.sessions.slice(0, 5).map(strSessionRow).join("") || empty(STR.noData)}</div></div></div></div>`;
+      fmtX: d => "Week of " + fmt.date(d), fmtXAxis: d => fmt.date(d), fmtY: v => fmt.n(v) + " " + fmt.wUnit(), tipExtra: i => `<div class="k">${W[i].sessions} sessions · ${W[i].sets} sets · ${W[i].minutes} min</div>` })}</div>
+    <div class="card">${cardHead("Recent sessions")}<div class="list">${D.strength.sessions.slice(0, 5).map(strSessionRow).join("") || empty(STR.noData)}</div></div></div>
+    <div class="stack"><div class="card">${cardHead("By muscle group", "", `Load needs ${M.calibration.load_min_sessions} logged sessions per muscle in ${M.calibration.load_weeks} weeks; freshness needs ${M.calibration.freshness_min_sessions}. A * marks muscles estimated from cardio only.`)}${groups.length ? `<div class="list mgrid">${groups.map(([m, g]) => { const fc = { fatigued: "warn", depleted: "bad", recovered: "ok" }[g.freshness] || "muted"; return `<div class="li"><div class="grow"><div class="t">${esc(fmt.sport(m))}${g.approximate ? " *" : ""}</div><div class="s">${fmt.n(g.sets_7d, 1)} sets this week${["calibrating", "no_data"].includes(g.load_status) ? "" : " · " + esc(fmt.sport(g.load_status).toLowerCase())}</div></div><span class="st ${fc === "ok" ? "muted" : fc === "warn" ? "warnc" : "bad"}">${esc(fmt.sport(g.freshness))}</span></div>`; }).join("")}</div>` : empty(STR.noData)}</div>
+</div></div>`;
 }
 function strSessionRow(s) {
   return `<button class="li" data-open="str-session" data-arg="${esc(s.workout_id || s.session_id)}"><span class="icon-dot" style="color:var(--strength)">${icon("strength")}</span><div class="grow"><div class="t">${esc(s.name || "Strength")}</div>

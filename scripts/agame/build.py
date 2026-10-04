@@ -116,7 +116,7 @@ def build(data_dir, dist, build_date):
     staging = Path(tempfile.mkdtemp(prefix=".staging-", dir=str(dist)))
     try:
         (staging / "fitness_dashboard.html").write_bytes(html_b)
-        pwa = write_assets(staging, snap, out_hash[:16])
+        pwa = write_assets(staging, snap, out_hash[:16], icon_cache=dist / ".icon-cache")
         extras = {
             "morning_summary.json": morning_summary(snap),
             "weekly_review.json": snap["weekly_review"],

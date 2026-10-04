@@ -86,7 +86,7 @@ def recommendation(ctx, rec, pmc_today, ramp, sleep, status, today_sessions, ot,
                         "direction": "hurting" if debt >= rcfg["reduce_sleep_debt_min"] / 2 else "neutral", "weight": debt / 120})
     if pmc_today:
         tsb = pmc_today["tsb"]
-        factors.append({"id": "form", "label": "Form (TSB)", "value": round(tsb, 1), "unit": "",
+        factors.append({"id": "form", "label": "Form", "value": round(tsb, 1), "unit": "",
                         "direction": "hurting" if tsb < rcfg["reduce_tsb_below"] else ("helping" if tsb > 5 else "neutral"), "weight": abs(tsb) / 20})
     if ramp is not None and ramp.get("ramp_warning"):
         factors.append({"id": "ramp", "label": "Fitness ramp", "value": ramp.get("ramp"), "unit": "/wk", "direction": "hurting", "weight": 1.0})

@@ -38,7 +38,7 @@ function nutToday() {
     <div class="card">${cardHead("Net energy")}${net !== null ? `<div class="stat"><span class="v">${fmt.signed(net)}<small>kcal</small></span></div><div class="row small muted">${icon("flame")} ${fmt.n(day.energy_out.total)} out · ${fmt.n(day.kcal)} in</div>
       <div style="position:relative;height:10px;border-radius:999px;margin:12px 0 4px;background:linear-gradient(90deg,var(--strain),var(--carbs),var(--sleep))"><i style="position:absolute;top:-3px;width:4px;height:16px;border-radius:2px;background:var(--text);left:calc(${Math.max(0, Math.min(100, (net + 500) / 10))}% - 2px)"></i></div>
       <div class="spread cap"><span>−500</span><span>0</span><span>+500</span></div>${day.net_partial ? `<div class="st-line partial"><span class="dot"></span>${day.complete === true ? "Energy out incomplete" : "Day in progress"}</div>` : ""}` : `<p class="small muted" style="margin:0">Needs logged food and HealthKit energy</p>`}</div></div>
-    <div class="stack"><div class="card">${cardHead("Nutrition score", score && score.partial ? badge("In progress", "est") : "")}
+    <div class="stack"><div class="card">${cardHead("Nutrition score", score && score.partial ? badge("Partial day", "est") : "")}
       ${score ? `<div class="stat hero" style="margin-bottom:8px"><span class="v">${score.score}<small>/ 100</small></span></div><div class="list">${Object.entries(score.components).map(([k, v]) => `<div class="li"><div class="grow small">${esc(fmt.sport(k))}</div><div class="r small">${v}</div></div>`).join("")}</div>
       ${score.contributors.length ? `<div class="sub-h">Quality</div>` + score.contributors.map(c => `<div class="row" style="gap:10px;margin:6px 0"><span class="small" style="width:96px">${esc(c.label)}</span><div class="bar thin" style="flex:1"><i style="width:${Math.min(100, Math.abs(c.points) * 10)}%;background:${c.points >= 0 ? "var(--ok)" : "var(--bad)"}"></i></div><span class="small num" style="width:36px;text-align:right">${fmt.signed(c.points, 0)}</span></div>`).join("") : ""}
       ${score.missing_components.length ? `<div class="st-line partial"><span class="dot"></span>No ${esc(score.missing_components.join(", "))} target</div>` : ""}` : `<p class="small muted" style="margin:0">Needs logged food and targets</p>`}</div>
@@ -48,14 +48,13 @@ function nutToday() {
     ${N.glucose ? `<div class="card">${cardHead("Glucose")}${chart({ id: "glu", label: "Glucose samples", x: N.glucose.points.map(p => p.t), h: 130, series: [{ name: "Glucose", color: "var(--warn)", values: N.glucose.points.map(p => p.v) }], fmtX: t => fmt.time(t), fmtY: v => fmt.n(v) + " mg/dL" })}</div>` : ""}</div></div>`;
 }
 
+function mealNow() { const h = new Date().getHours(); return h < 10 ? "breakfast" : h < 15 ? "lunch" : h < 21 ? "dinner" : "snack"; }
 function mealForm() {
   return `<form class="form" id="meal-form" style="margin-top:8px">
-    <div class="grid g2"><label>Meal <select name="meal"><option>breakfast</option><option>lunch</option><option>dinner</option><option>snack</option></select></label><label>Time <input name="t" type="datetime-local" value="${nowInput()}" required></label></div>
+    <div class="grid g2"><label>Meal <select name="meal">${["breakfast", "lunch", "dinner", "snack"].map(m => `<option value="${m}" ${m === mealNow() ? "selected" : ""}>${fmt.sport(m)}</option>`).join("")}</select></label><label>Time <input name="t" type="datetime-local" value="${nowInput()}" required></label></div>
     <label>Describe it <input name="name" placeholder="e.g. Chicken, rice, beans" required></label>
     <div class="grid g4"><label>kcal <input name="kcal" inputmode="decimal"></label><label>Protein g <input name="protein_g" inputmode="decimal"></label><label>Carbs g <input name="carbs_g" inputmode="decimal"></label><label>Fat g <input name="fat_g" inputmode="decimal"></label></div>
-    <label>Barcode <input name="barcode" inputmode="numeric" placeholder="Stored as text; lookup needs a food database"></label>
-    <p class="small muted" style="margin:0">Photo recognition not connected</p>
-    <div class="actions" style="margin-top:0"><button class="btn" ${AG.online ? "" : "disabled"}>Save meal</button></div>${offlineNote()}</form>`;
+    <div class="actions" style="margin-top:0"><button class="btn" ${AG.online ? "" : "disabled"}>Save meal</button></div></form>`;
 }
 function bindMealForm() {
   const f = $("#meal-form");
@@ -63,7 +62,7 @@ function bindMealForm() {
   f.onsubmit = async e => {
     e.preventDefault();
     const num = k => f[k].value === "" ? null : +f[k].value;
-    const item = { name: f.name.value, qty: 1, unit: "serving", kcal: num("kcal"), protein_g: num("protein_g"), carbs_g: num("carbs_g"), fat_g: num("fat_g"), barcode: f.barcode.value || null };
+    const item = { name: f.name.value, qty: 1, unit: "serving", kcal: num("kcal"), protein_g: num("protein_g"), carbs_g: num("carbs_g"), fat_g: num("fat_g") };
     try { await save("POST", "entries/nutrition.meals", { t: inputToIso(f.t.value), meal: f.meal.value, name: f.name.value, items: [item] }, "Meal saved"); }
     catch (err) { /* shown */ }
   };
@@ -98,14 +97,36 @@ function nutPlan() {
 /* ---------------- Body ---------------- */
 AG.screens.body = {
   title: "Body",
-  render() {
-    const tab = chipVal("body-tab", "weight");
-    const body = { weight: bodyWeight, vo2: bodyVO2, charts: bodyCharts, bp: bodyBP, bioage: bodyBioAge, records: bodyRecords }[tab] || bodyWeight;
+  render(r) {
+    const tab = r.params.tab || chipVal("body-tab", "overview");
+    if (r.params.tab) uiSet("chip:body-tab", r.params.tab);
+    const body = { overview: bodyOverview, weight: bodyWeight, vo2: bodyVO2, charts: bodyCharts, bp: bodyBP, bioage: bodyBioAge, records: bodyRecords }[tab] || bodyWeight;
     const add = ["weight", "bp"].includes(tab) && AG.online ? `<div class="page-tools">${editBtn("measure-add", undefined, tab === "bp" ? "Add reading" : "Add measurement")}</div>` : "";
-    return `${tabs("body-tab", [["weight", "Weight"], ["vo2", "VO2 max"], ["charts", "Charts"], ["bp", "Blood pressure"], ["bioage", "Biological Age"], ["records", "Health records"]], tab)}${add}${body()}`;
+    return `${tabs("body-tab", [["overview", "Overview"], ["weight", "Weight"], ["vo2", "VO2 max"], ["charts", "Charts"], ["bp", "Blood pressure"], ["bioage", "Biological Age"], ["records", "Health records"]], tab)}${add}${body()}`;
   },
   after() { drawCharts(); },
 };
+
+function bodyOverview() {
+  const m = D.body.metrics, W = D.body.weight, V = D.body.vo2max, B = D.health.bioage, comp = (W.composition || {});
+  const tail = (pts, n = 60) => seriesTail(pts, "v", n);
+  const go = t => `#/body?tab=${t}`;
+  const latestLine = x => x && x.latest_date ? statusLine(`${x.latest_date === D.meta.build_date ? "" : fmt.date(x.latest_date) + " · "}7-day avg ${fmt.n(x.avg_7, x.avg_7 < 100 ? 1 : 0)} ${x.unit}`, null) : statusLine("No data", null);
+  const rows = [
+    W.status !== "missing" ? trendRow({ label: "Weight · 7-day median", value: fmt.kgNum(W.current.v), unit: fmt.wUnit(), href: go("weight"), spark: tail(W.points, 90), color: "var(--accent)",
+      status: isNum(W.trend_kg_per_week.v) ? statusLine(`${fmt.signed(IMPERIAL ? W.trend_kg_per_week.v * 2.20462 : W.trend_kg_per_week.v, 2)} ${fmt.wUnit()} a week`, null, W.trend_kg_per_week.v < 0 ? "down" : "up") : "" }) : "",
+    m.hrv_sdnn_ms ? trendRow({ label: "HRV", value: fmt.n(m.hrv_sdnn_ms.latest, 1), unit: "ms", href: "#/recovery", spark: tail(m.hrv_sdnn_ms.points), color: "var(--recovery)", status: latestLine(m.hrv_sdnn_ms) }) : "",
+    m.resting_hr_bpm ? trendRow({ label: "Resting HR", value: fmt.n(m.resting_hr_bpm.latest, 1), unit: "bpm", href: "#/recovery", spark: tail(m.resting_hr_bpm.points), color: "var(--bad)", status: latestLine(m.resting_hr_bpm) }) : "",
+    V.current && isNum(V.current.v) ? trendRow({ label: "VO₂ max", value: fmt.n(V.current.v, 1), unit: "ml/kg/min", href: go("vo2"), spark: tail(V.smoothed || V.points, 90), color: "var(--ok)", status: statusLine(`${fmt.date(V.current.as_of.slice(0, 10))} · ${fmt.signed(V.delta_90, 1)} in 90 days`, null) }) : "",
+    comp.body_fat_pct ? trendRow({ label: "Body fat", value: fmt.n(comp.body_fat_pct.current, 1), unit: "%", href: go("weight"), spark: tail(comp.body_fat_pct.points), color: "var(--warn)", status: statusLine(fmt.date(comp.body_fat_pct.as_of.slice(0, 10)), null) }) : "",
+    D.body.bp && D.body.bp.systolic ? trendRow({ label: "Blood pressure", value: `${fmt.n(D.body.bp.systolic.latest)}/${fmt.n(D.body.bp.diastolic.latest)}`, unit: "mmHg", href: go("bp"), spark: tail(D.body.bp.systolic.points), color: "var(--info)", status: statusLine(fmt.date(D.body.bp.systolic.latest_date), null) }) : "",
+    m.respiratory_rate_brpm ? trendRow({ label: "Respiratory rate", value: fmt.n(m.respiratory_rate_brpm.latest, 1), unit: "br/min", href: go("charts"), spark: tail(m.respiratory_rate_brpm.points), color: "var(--sleep-2)", status: latestLine(m.respiratory_rate_brpm) }) : "",
+    m.spo2_pct ? trendRow({ label: "Blood oxygen", value: fmt.n(m.spo2_pct.latest, 1), unit: "%", href: go("charts"), spark: tail(m.spo2_pct.points), color: "var(--st-rem)", status: latestLine(m.spo2_pct) }) : "",
+  ].filter(Boolean);
+  const bio = B.status === "ok" ? `<a class="card bio-hero" href="${go("bioage")}"><span class="go">${icon("arrow")}</span><div class="tile-h"><span>Biological age</span><span class="est-tag">Estimate</span></div>
+    <div class="bio-v">${fmt.n(B.value, 1)}<small>years</small></div>${statusLine(`${fmt.n(Math.abs(B.chronological - B.value), 1)} years ${B.chronological >= B.value ? "younger" : "older"} than your age`, B.chronological >= B.value)}</a>` : "";
+  return `${bio}<div class="body-biomarkers">${sectionTitle("Biomarkers")}<div class="biomarker-grid">${rows.join("") || empty(STR.noData)}</div></div>`;
+}
 
 function bodyWeight() {
   const W = D.body.weight;
@@ -120,7 +141,7 @@ function bodyWeight() {
   const medSeries = pts.map(p => { const ws = Object.keys(wkMap).filter(k => k <= p.date).pop(); return ws ? conv(wkMap[ws]) : null; });
   let proj = null;
   if (g && g.target_date && isNum(W.current.v)) proj = [conv(W.current.v), conv(g.target)];
-  return `<div class="cols"><div class="stack"><div class="card">${cardHead("Weight", prov(W.current, "Weight"))}<div class="spread" style="align-items:flex-end"><div class="stat hero"><span class="v">${fmt.kgNum(W.current.v)}<small>${fmt.wUnit()}</small></span><span class="cap">7-day median · latest ${fmt.kg(W.current.latest)} on ${fmt.date(W.current.latest_date)}</span></div>
+  return `<div class="cols"><div class="stack"><div class="card">${cardHead("Weight", "", "", W.current)}<div class="spread" style="align-items:flex-end"><div class="stat hero"><span class="v">${fmt.kgNum(W.current.v)}<small>${fmt.wUnit()}</small></span><span class="cap">7-day median · latest ${fmt.kg(W.current.latest)} on ${fmt.date(W.current.latest_date)}</span></div>
       <div style="text-align:right">${stat("4-week trend", isNum(W.trend_kg_per_week.v) ? fmt.signed(conv(W.trend_kg_per_week.v), 2) : "—", fmt.wUnit() + "/wk", { d: !isNum(W.trend_kg_per_week.v) ? `<span class="cap">${esc(W.trend_kg_per_week.note)}</span>` : "" })}</div></div>${stLine(W.current)}</div>
     ${g ? `<div class="card">${cardHead(`Goal · ${fmt.kg(g.target)} by ${fmt.date(g.target_date, { day: "numeric", month: "short", year: "numeric" })}`, goalStatusBadge(g.status), `${isNum(g.weeks_left) ? fmt.n(g.weeks_left) + " weeks left. " : ""}The projection uses your current 4-week trend.`)}
       <div class="stats-grid s3">${stat("Remaining", fmt.kg(Math.abs(g.remaining_kg)))}${stat("Needed", isNum(g.required_kg_per_week) ? fmt.signed(conv(g.required_kg_per_week), 2) : "—", fmt.wUnit() + "/wk")}${stat("Projected", g.projected_date ? fmt.date(g.projected_date, { month: "short", year: "numeric" }) : "—")}</div>
@@ -138,7 +159,7 @@ function bodyVO2() {
   const rng = chipVal("vo2-range", "365");
   const pts = sliceDays(V.points, rangeDays(rng)), sm = sliceDays(V.smoothed, rangeDays(rng));
   const smMap = {}; sm.forEach(s => smMap[s.date] = s.v);
-  return `<div class="cols"><div class="stack"><div class="card">${cardHead("VO2 max", prov(V.current, "VO2 max"))}<div class="stat hero"><span class="v">${fmt.n(V.current.v, 1)}<small>ml/kg/min</small></span><span class="cap">${fmt.date(V.current.as_of)}</span></div>
+  return `<div class="cols"><div class="stack"><div class="card">${cardHead("VO2 max", "", "", V.current)}<div class="stat hero"><span class="v">${fmt.n(V.current.v, 1)}<small>ml/kg/min</small></span><span class="cap">${fmt.date(V.current.as_of)}</span></div>
       <div class="stats-grid s4" style="margin-top:16px">${stat("Trend", fmt.n(V.smoothed_current, 1))}${stat("30 days", isNum(V.delta_30) ? fmt.signed(V.delta_30, 1) : "—")}${stat("90 days", isNum(V.delta_90) ? fmt.signed(V.delta_90, 1) : "—")}${stat("Confidence", esc(fmt.sport(V.confidence)), "", { d: `<span class="cap">${V.samples_90d} in 90 days</span>` })}</div>${stLine(V.current)}</div>
     ${V.gaps.length ? `<div class="card">${cardHead("Data gaps")}<div class="list">${V.gaps.map(g => `<div class="li"><div class="grow small">${fmt.date(g.from)} → ${fmt.date(g.to)}</div><div class="r small">${g.days} days</div></div>`).join("")}</div></div>` : ""}</div>
     <div class="card">${cardHead("Trend", seg("vo2-range", RANGES_DWMY.slice(1), rng), "Raw HealthKit cardio-fitness samples with a ±21-day rolling mean. AGame never estimates VO2 max from pace.")}${chart({ id: "vo2", label: "VO2 max samples and trend", x: pts.map(p => p.date), h: 210,

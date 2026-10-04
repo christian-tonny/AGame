@@ -80,18 +80,18 @@ function rtSegments() {
 }
 function rtBuilder() {
   const tiles = D.routes.tiles;
-  return `<div class="cols"><div class="card">${cardHead("Import a route")}<form class="form" onsubmit="return false"><label>Name <input id="route-name" placeholder="Uses the file name if empty"></label><label>GPX or GeoJSON file <input type="file" id="route-file" accept=".gpx,.geojson,.json" ${AG.online ? "" : "disabled"}></label>${offlineNote()}</form></div>
+  return `<div class="cols"><div class="card">${cardHead("Import a route")}<form class="form" onsubmit="return false"><label>Name <input id="route-name" placeholder="Uses the file name if empty"></label><label>GPX or GeoJSON file <input type="file" id="route-file" accept=".gpx,.geojson,.json" ${AG.online ? "" : "disabled"}></label></form></div>
     <div class="card">${cardHead("Draw a route")}${tiles ? `<p class="small" style="margin:0">Add points on the map. They snap to your own traces.</p>` : empty(STR.noMap, "Set a map tile URL in Profile to draw routes. Importing works without one.")}</div></div>`;
 }
 
 /* ---------------- Goals ---------------- */
 AG.screens.goals = {
   title: "Goals",
+  headRight() { return AG.online ? `<button class="btn sm" data-open="goal-new">New goal</button>` : ""; },
   render() {
     const G = D.goals;
-    return `${AG.online ? `<div class="page-tools"><button class="btn sm" data-open="goal-new">New goal</button></div>` : ""}
-      <div class="cols"><div class="card">${cardHead("Goals", `<span class="small muted">${G.length}</span>`)}${G.length ? G.map(g => goalRow(g, { edit: true })).join("") : empty(STR.noGoals, "Add one with New goal")}</div>
-      <div class="stack">${consistencyCard()}</div></div>`;
+    return `<div class="cols"><div class="stack">${sectionTitle("Active", `<span class="small muted">${G.length} ${G.length === 1 ? "goal" : "goals"}</span>`)}<div class="card">${G.length ? G.map(g => goalRow(g, { edit: true })).join("") : empty(STR.noGoals, "Add one with New goal")}</div></div>
+      <div class="stack">${sectionTitle("Consistency")}${consistencyCard()}</div></div>`;
   },
   after() { drawCharts(); },
 };
@@ -103,19 +103,21 @@ AG.screens.coach = {
     const C = D.coach;
     const mode = chipVal("coach-mode", (C.settings || {}).mode || "adaptive");
     const ghost = chipVal("coach-ghost", "off") === "on";
-    const win = chipVal("hh-win", "90");
+    const win = ["30", "90"].includes(chipVal("hh-win", "90")) ? chipVal("hh-win", "90") : "90";
     const r = C.recommendation;
     const threads = (C.threads || []).slice(-1)[0];
+    const first = (D.profile.display_name || "").split(" ")[0];
+    const facts = r.factors.slice(0, 4).map(factorRow).join("");
     return `<div class="cols c21"><div class="stack">
-      <div class="card"><div class="coach-hero"><div class="orb" aria-hidden="true"></div><div style="font-size:20px;font-weight:700">${D.profile.display_name ? "Morning, " + esc(D.profile.display_name.split(" ")[0]) : "Your coach"}</div><div class="small muted">${fmt.dateLong(D.meta.build_date)}</div></div><div class="chat" id="chat">
-        ${C.brief && C.brief.line1 ? `<div class="msg coach">${esc(C.brief.line1)}. ${esc(C.brief.line2)}.</div>` : ""}
-        <div class="msg coach">${esc((CALL_LABEL[r.call] || [r.call])[0])}. ${esc(r.why)}.${r.factors.length ? " Top factors: " + r.factors.slice(0, 3).map(f => esc(f.label) + " (" + esc(f.direction) + ")").join(", ") + "." : ""}</div>
+      <div class="card coach-card"><div class="coach-hero"><div class="orb" aria-hidden="true"></div><div class="coach-hi">${first ? "Morning, " + esc(first) : "Your coach"}</div><div class="small muted">${fmt.dateLong(D.meta.build_date)}</div></div><div class="chat" id="chat">
+        <div class="msg coach">${esc(coachingLine(r, D.today))}</div>
+        ${facts ? `<div class="msg coach card-msg"><div class="msg-k">What I looked at</div><div class="list">${facts}</div></div>` : ""}
         ${threads ? threads.messages.slice(-6).map(m => `<div class="msg ${m.role === "user" ? "user" : "coach"}">${esc(m.text)}</div>`).join("") : ""}</div>
-      <div class="row wrap" style="margin-top:16px;gap:6px">${C.suggestions.map(s => `<button class="chip" data-ask="${esc(s)}">${esc(s)}</button>`).join("")}</div>
-      <form class="composer" style="margin-top:12px" data-coach-form><label class="sr" for="coach-q">Ask your coach</label><textarea id="coach-q" name="q" placeholder="${AG.llm ? "Ask anything about your data" : esc(STR.noCoachLLM)}"></textarea>
-        <div class="spread" style="flex-wrap:wrap"><div class="row wrap">${seg("coach-mode", [["fast", "Fast"], ["thinking", "Thinking"], ["adaptive", "Adaptive"]], mode)}<button type="button" class="chip" data-chip="coach-ghost" data-val="${ghost ? "off" : "on"}" aria-pressed="${ghost}" title="Ghost mode: nothing is saved or logged">Ghost</button></div><button class="btn sm">Ask</button></div></form></div>
-      <div class="card">${cardHead("Helping & hurting", seg("hh-win", [["7", "7d"], ["30", "30d"], ["90", "90d"]], win), "Links between your habits and next-morning recovery. A factor shows only once there are enough days to be sure.")}${helpingList(win)}</div></div>
-      <div class="stack"><div class="card">${cardHead("Personality", AG.online ? `<button class="link" data-open="edit-coach">Save as default</button>` : "", "Changes the tone only. The facts stay the same.")}${chips("coach-pers", [["data_nerd", "Data Nerd"], ["guardian", "Guardian"], ["friend", "Friend"], ["commander", "Commander"]], chipVal("coach-pers", (C.settings || {}).personality || "data_nerd"))}</div>
+      ${AG.llm ? `<div class="ask-chips">${C.suggestions.map(s => `<button class="chip" data-ask="${esc(s)}">${icon("sparkles")}${esc(s)}</button>`).join("")}</div>
+      <form class="composer" data-coach-form><label class="sr" for="coach-q">Ask your coach</label><div class="composer-row"><textarea id="coach-q" name="q" rows="1" placeholder="${AG.llm ? "Ask anything about your data" : esc(STR.noCoachLLM)}"></textarea><button class="send" aria-label="Ask">${icon("up")}</button></div>
+        <div class="composer-opts">${seg("coach-mode", [["fast", "Fast"], ["thinking", "Thinking"], ["adaptive", "Adaptive"]], mode)}<button type="button" class="chip" data-chip="coach-ghost" data-val="${ghost ? "off" : "on"}" aria-pressed="${ghost}" title="Ghost mode: nothing is saved or logged">Ghost</button></div></form>` : ""}</div>
+      <div class="card">${cardHead("Helping & hurting", seg("hh-win", [["30", "30d"], ["90", "90d"]], win), "Links between your habits and next-morning recovery. A factor shows only once there are enough days to be sure.")}${helpingList(win)}</div></div>
+      <div class="stack">${AG.llm ? `<div class="card">${cardHead("Personality", AG.online ? `<button class="link" data-open="edit-coach">Save as default</button>` : "", "Changes the tone only. The facts stay the same.")}${chips("coach-pers", [["data_nerd", "Data Nerd"], ["guardian", "Guardian"], ["friend", "Friend"], ["commander", "Commander"]], chipVal("coach-pers", (C.settings || {}).personality || "data_nerd"))}</div>` : ""}
       <div class="card">${cardHead("Check-ins", editBtn("checkin-edit", "", "Add"), `${esc(AGENT)} delivers these on schedule.`)}${C.checkins.length ? `<div class="list">${C.checkins.map(c => `<${AG.online ? `button type="button" data-open="checkin-edit" data-arg="${esc(c.id)}"` : "div"} class="li"><div class="grow"><div class="t">${esc(fmt.sport(c.type))}${c.text ? " · " + esc(c.text) : ""}</div><div class="s">${esc(c.time)} · ${esc(daysLabel(c.days))}</div></div>${c.enabled ? "" : badge("Off", "est")}</${AG.online ? "button" : "div"}>`).join("")}</div>` : empty("No check-ins scheduled")}</div>
       <div class="card">${cardHead("Memory", editBtn("memory-edit", "", "Add"), `Preferences, goals and corrections Coach keeps. Each one can be edited or deleted, with history. Last tidied ${C.last_maintenance ? fmt.date(C.last_maintenance) : "never"}.`)}${C.memory.length ? `<div class="list">${C.memory.map(m => `<${AG.online ? `button type="button" data-open="memory-edit" data-arg="${esc(m.id)}"` : "div"} class="li"><div class="grow"><div class="t" style="white-space:normal">${esc(m.text)}</div><div class="s">${esc(fmt.sport(m.type))}</div></div></${AG.online ? "button" : "div"}>`).join("")}</div>` : empty("Nothing remembered yet")}</div></div></div>`;
   },
@@ -147,36 +149,57 @@ document.addEventListener("submit", async e => {
 });
 
 /* ---------------- Profile ---------------- */
+/* Settings row (Bevel): coloured icon tile, title and detail, value on the right, chevron when it opens something. */
+function srow(o) {
+  const tag = o.href ? `a href="${o.href}"` : o.open ? `button type="button" data-open="${esc(o.open)}"${o.arg !== undefined ? ` data-arg="${esc(o.arg)}"` : ""}` : "div";
+  return `<${tag} class="srow-i ${o.href || o.open ? "tap" : ""}">${o.icon ? `<span class="sq" style="--c:${o.color || "var(--text-2)"}">${icon(o.icon)}</span>` : ""}<div class="grow"><div class="t"${o.danger ? ` style="color:var(--bad)"` : ""}>${o.title}</div>${o.sub ? `<div class="s">${o.sub}</div>` : ""}</div>${o.right ? `<span class="rv">${o.right}</span>` : ""}${o.href || o.open ? `<span class="chev-r">${icon("next")}</span>` : ""}</${tag.split(" ")[0]}>`;
+}
+const editLink = (sheet, label = "Edit") => AG.online ? `<button class="link" data-open="${esc(sheet)}">${esc(label)}</button>` : "";
 AG.screens.profile = {
   title: "Profile",
   render() {
     const p = D.profile;
     const ph = p.physiology || {};
-    const m = (label, o, f, note) => `<div class="li"><div class="grow"><div class="t">${label}</div><div class="s">${o ? [fmt.sport(o.method || ""), o.date ? fmt.date(o.date, { day: "numeric", month: "short", year: "numeric" }) : ""].filter(Boolean).map(esc).join(" · ") : esc(note || "")}</div></div><div class="r">${o ? f(o.value) : `<span class="faint" style="font-weight:500">Not set</span>`}</div></div>`;
     const tg = p.targets || {};
     const ds = D.meta.data_status;
     const integ = p.integrations || {};
     const theme = uiGet("theme", (p.ui || {}).theme || "system");
-    return `<div class="cols"><div class="stack">
-      <div class="card"><div class="row" style="gap:14px"><span class="icon-dot" style="width:52px;height:52px;border-radius:50%">${icon("profile")}</span><div class="grow"><div style="font-size:20px;font-weight:700">${esc(p.display_name || "Athlete")}</div><div class="small muted">${esc(TZ)} · ${IMPERIAL ? "Imperial" : "Metric"} · Week starts ${esc(fmt.sport(D.meta.week_start))}</div></div>${AG.online ? `<div class="row">${editBtn("edit-athlete", undefined, "Edit")}${editBtn("edit-locale", undefined, "Units")}</div>` : ""}</div></div>
-      <div class="card">${cardHead("Physiology", editBtn("edit-physiology"), `${esc(fmt.sport(String((p.zones_config || {}).model || "5zone").replace(/^(\d)zone$/, "$1 zones")))}. No age-based HR max is ever used. Threshold auto-accept is ${p.auto_accept_thresholds ? "on" : "off"}.`)}<div class="list">
-        ${m("HR max", ph.hr_max, v => v + " bpm")}${m("Resting HR", ph.hr_rest, v => v + " bpm", "Using your 14-day HealthKit median")}
-        ${m("LTHR", ph.lthr, v => v + " bpm")}${m("Threshold pace", ph.threshold_pace_s_per_km, v => fmt.pace(v))}
-        ${m("FTP", ph.ftp_w, v => v + " W")}${m("Sleep need", ph.sleep_need_base_min, v => fmt.hm(v))}</div></div>
-      <div class="card">${cardHead("Targets", editBtn("edit-targets"), tg.caffeine_cutoff ? `Caffeine cutoff ${esc(tg.caffeine_cutoff)}. Wake time ${esc(tg.wake_time || "not set")}.` : "")}<div class="stats-grid s3">${[["protein_g", "Protein", "g"], ["kcal", "Calories", "kcal"], ["fiber_g", "Fiber", "g"], ["water_ml", "Water", "ml"], ["caffeine_mg_max", "Caffeine max", "mg"], ["steps", "Steps", ""], ["vegetables_g", "Vegetables", "g"], ["sleep_min", "Sleep", "min"]].map(([k, l, u]) => stat(l, isNum(tg[k]) ? fmt.n(tg[k]) : "—", isNum(tg[k]) ? u : "")).join("")}</div></div>
-      <div class="card">${cardHead("Weekly template", editBtn("edit-schedule"))}${(p.schedule || []).length ? `<div class="list">${p.schedule.map(s => `<div class="li"><div class="grow"><div class="t">${esc(fmt.sport(s.weekday))}</div></div><div class="r small" style="font-weight:500">${esc(fmt.sport(s.intent))}${s.duration_s ? `<span class="muted"> · ${fmt.mins(s.duration_s)}</span>` : ""}</div></div>`).join("")}</div>` : empty("No weekly template", "Add one with Edit")}</div></div>
-      <div class="stack"><div class="card">${cardHead("Appearance", seg("theme", [["system", "System"], ["dark", "Dark"], ["light", "Light"]], theme))}<div class="list"><div class="li"><div class="grow"><div class="t">App icon</div></div><div class="r small" style="font-weight:500">${esc(fmt.sport((p.ui || {}).app_icon || "default"))}</div></div><div class="li"><div class="grow"><div class="t">Phone tabs</div><div class="s">${esc(mobileTabs().map(t => fmt.sport(t)).join(", "))}</div></div>${editBtn("edit-appearance")}</div></div></div>
-      <div class="card">${cardHead("Data")}<div class="list"><button class="li chev" data-open="data-status"><div class="grow"><div class="t">Freshness</div><div class="s">Last sync ${ds.last_sync ? fmt.dt(ds.last_sync) : "never"} · ${esc(statusLabel(ds.overall))}</div></div></button>
-        ${AG.online ? `<a class="li chev" href="api/export"><div class="grow"><div class="t">Export my data</div></div></a><button class="li chev" data-open="history"><div class="grow"><div class="t">Edit history & undo</div></div></button><button class="li" data-open="delete-all"><div class="grow"><div class="t" style="color:var(--bad)">Delete my entries</div></div></button>` : ""}</div></div>
-      <div class="card">${cardHead("Integrations", "", "No Strava or Bevel data is ever imported. These statuses reflect your configuration.")}<div class="list">
-        <div class="li"><div class="grow"><div class="t">Apple HealthKit via ${esc(AGENT)}</div><div class="s">Source of truth · ${ds.last_sync ? "last import " + fmt.dt(ds.last_sync) : "no import yet"}</div></div>${badge(ds.last_sync ? "Connected" : "Waiting", ds.last_sync ? "ok" : "")}</div>
-        ${[["Map tiles", integ.map_tiles_url], ["Nutrition source", integ.nutrition_source], ["Calendar", integ.calendar_source], ["Food database", integ.food_database], ["Photo recognition", integ.vision_service], ["Coach LLM", AG.llm], ["Companion app (watch, alarm, Beacon)", integ.companion_app]].map(([l, v]) => `<div class="li"><div class="grow"><div class="t">${esc(l)}</div></div>${v ? badge("Connected", "ok") : `<span class="small faint">Not connected</span>`}</div>`).join("")}</div></div>
-      <div class="card">${cardHead("Privacy", editBtn("edit-privacy"))}<div class="list"><div class="li"><div class="grow"><div class="t">Start and end trimming</div></div><div class="r small" style="font-weight:500">${fmt.n((p.privacy || {}).hide_start_end_m)} m</div></div>${((p.privacy || {}).zones || []).map(z => `<div class="li"><div class="grow"><div class="t">${esc(z.label || z.id)}</div><div class="s">Privacy zone</div></div><div class="r small" style="font-weight:500">${z.radius_m} m</div></div>`).join("")}</div></div>
-      <div class="card">${cardHead("Companion", editBtn("edit-companion"), "These need a native companion app. The dashboard never pretends to track you live.")}<div class="list"><div class="li"><div class="grow"><div class="t">Smart alarm</div><div class="s">${(p.smart_alarm || {}).enabled ? "Configured" : "Off"}</div></div><span class="small faint">Not connected</span></div><div class="li"><div class="grow"><div class="t">Beacon live sharing</div><div class="s">${(p.beacon || {}).contacts || 0} contacts</div></div><span class="small faint">Not connected</span></div></div></div>
-      <div class="card">${cardHead("Modules", editBtn("edit-modules"))}<div class="list">${Object.entries(p.modules || {}).map(([k, v]) => `<div class="li"><div class="grow"><div class="t">${esc(fmt.sport(k))}</div></div><span class="small ${v ? "" : "faint"}" style="font-weight:600">${v ? "On" : "Off"}</span></div>`).join("")}</div></div>
-      <div class="card">${cardHead("Coach", editBtn("edit-coach"))}<div class="list"><div class="li"><div class="grow"><div class="t">${esc(fmt.sport((p.coach || {}).personality || "data_nerd"))}</div><div class="s">${esc(fmt.sport((p.coach || {}).language || "standard"))} language · health records ${(p.coach || {}).include_health_records ? "shared" : "not shared"}</div></div></div></div></div>
-      <div class="card tight"><div class="list"><a class="li chev" href="#/widgets"><span class="icon-dot">${icon("today")}</span><div class="grow"><div class="t">Widgets</div></div></a><a class="li chev" href="#/journal"><span class="icon-dot">${icon("timeline")}</span><div class="grow"><div class="t">Journal & status</div></div></a></div></div>
-      <p class="small faint" style="margin:0">AGame ${esc(D.meta.version)} · build ${esc(D.meta.build_date)} · Fitness information, not medical advice.</p></div></div>`;
+    const name = p.display_name || "Athlete";
+    const initials = name.split(/\s+/).map(w => w[0]).slice(0, 2).join("").toUpperCase();
+    const notSet = `<span class="faint">Not set</span>`;
+    const pm = (title, ic, color, o, f, note) => srow({ icon: ic, color, title, sub: o ? [fmt.sport(o.method || ""), o.date ? fmt.date(o.date, { day: "numeric", month: "short", year: "numeric" }) : ""].filter(Boolean).map(esc).join(" · ") : esc(note || ""), right: o ? f(o.value) : notSet });
+    const tv = (k, f) => isNum(tg[k]) ? f(tg[k]) : notSet;
+    const conn = v => v ? `<span class="st ok"><i class="live-dot sm"></i>Connected</span>` : `<span class="faint">Not connected</span>`;
+    const ident = `<div class="card ident"><span class="avatar">${esc(initials)}</span><div class="grow"><div class="ident-n">${esc(name)}</div><div class="small muted">${esc(TZ)} · ${IMPERIAL ? "Imperial" : "Metric"} · week starts ${esc(fmt.sport(D.meta.week_start).toLowerCase())}</div></div>${AG.online ? `<div class="row">${editBtn("edit-athlete", undefined, "Edit")}${editBtn("edit-locale", undefined, "Units")}</div>` : ""}</div>`;
+    const physio = `${sectionTitle("Physiology", `<span class="row">${editLink("edit-physiology")}${info("Physiology", `${esc(fmt.sport(String((p.zones_config || {}).model || "5zone").replace(/^(\d)zone$/, "$1 zones")))}. No age-based HR max is ever used. Threshold auto-accept is ${p.auto_accept_thresholds ? "on" : "off"}.`)}</span>`)}<div class="card list-card">
+      ${pm("HR max", "heart", "var(--bad)", ph.hr_max, v => v + " bpm")}${pm("Resting HR", "activities", "var(--protein)", ph.hr_rest, v => v + " bpm", "Using your 14-day HealthKit median")}
+      ${pm("LTHR", "bolt", "var(--warn)", ph.lthr, v => v + " bpm")}${pm("Threshold pace", "run", "var(--run)", ph.threshold_pace_s_per_km, v => fmt.pace(v))}
+      ${pm("FTP", "ride", "var(--ride)", ph.ftp_w, v => v + " W")}${pm("Sleep need", "sleep", "var(--sleep)", ph.sleep_need_base_min, v => fmt.hm(v))}</div>`;
+    const targets = `${sectionTitle("Daily targets", `<span class="row">${editLink("edit-targets")}${tg.caffeine_cutoff ? info("Daily targets", `Caffeine cutoff ${esc(tg.caffeine_cutoff)}. Wake time ${esc(tg.wake_time || "not set")}.`) : ""}</span>`)}<div class="card list-card two">
+      ${srow({ icon: "meal", color: "var(--protein)", title: "Protein", right: tv("protein_g", v => fmt.n(v) + " g") })}${srow({ icon: "flame", color: "var(--strain)", title: "Calories", right: tv("kcal", v => fmt.n(v) + " kcal") })}
+      ${srow({ icon: "nutrition", color: "var(--ok)", title: "Fiber", right: tv("fiber_g", v => fmt.n(v) + " g") })}${srow({ icon: "nutrition", color: "var(--walk)", title: "Vegetables", right: tv("vegetables_g", v => fmt.n(v) + " g") })}
+      ${srow({ icon: "droplet", color: "var(--info)", title: "Water", right: tv("water_ml", v => fmt.n(v) + " ml") })}${srow({ icon: "coffee", color: "var(--carbs)", title: "Caffeine max", right: tv("caffeine_mg_max", v => fmt.n(v) + " mg") })}
+      ${srow({ icon: "walk", color: "var(--recovery)", title: "Steps", right: tv("steps", v => fmt.n(v)) })}${srow({ icon: "sleep", color: "var(--sleep)", title: "Sleep", right: tv("sleep_min", v => fmt.hm(v)) })}</div>`;
+    const sched = `${sectionTitle("Weekly template", editLink("edit-schedule"))}<div class="card list-card">${(p.schedule || []).length ? p.schedule.map(x => srow({ title: esc(fmt.sport(x.weekday)), right: `${esc(fmt.sport(x.intent))}${x.duration_s ? `<span class="muted"> · ${fmt.mins(x.duration_s)}</span>` : ""}` })).join("") : empty("No weekly template", "Add one with Edit")}</div>`;
+    const settings = `${sectionTitle("Settings")}<div class="card list-card">
+      ${srow({ icon: "palette", color: "var(--sleep)", title: "Appearance", right: seg("theme", [["system", "System"], ["dark", "Dark"], ["light", "Light"]], theme) })}
+      ${srow({ icon: "apps", color: "var(--accent)", title: "Phone tabs", sub: esc(mobileTabs().map(t => fmt.sport(t)).join(", ")), open: AG.online ? "edit-appearance" : null, right: AG.online ? "" : "" })}
+      ${srow({ icon: "layout", color: "var(--info)", title: "Widgets", href: "#/widgets" })}
+      ${srow({ icon: "note", color: "var(--warn)", title: "Journal & status", href: "#/journal" })}
+      ${srow({ icon: "coach", color: "var(--sleep-2)", title: "Coach", sub: `${esc(fmt.sport((p.coach || {}).personality || "data_nerd"))} · health records ${(p.coach || {}).include_health_records ? "shared" : "not shared"}`, open: AG.online ? "edit-coach" : null })}
+      ${srow({ icon: "shield", color: "var(--ok)", title: "Privacy", sub: `Trim ${fmt.n((p.privacy || {}).hide_start_end_m)} m · ${((p.privacy || {}).zones || []).length} privacy zones`, open: AG.online ? "edit-privacy" : null })}
+      ${srow({ icon: "apps", color: "var(--strength)", title: "Modules", sub: `${Object.values(p.modules || {}).filter(Boolean).length} of ${Object.keys(p.modules || {}).length} on`, open: AG.online ? "edit-modules" : null })}</div>`;
+    const data = `${sectionTitle("Data")}<div class="card list-card">
+      ${srow({ icon: "cloud-check", color: "var(--ok)", title: "Freshness", sub: `Last sync ${ds.last_sync ? fmt.dt(ds.last_sync) : "never"} · ${esc(statusLabel(ds.overall))}`, open: "data-status" })}
+      ${AG.online ? srow({ icon: "download", color: "var(--info)", title: "Export my data", href: "api/export" }) + srow({ icon: "history", color: "var(--warn)", title: "Edit history & undo", open: "history" }) + srow({ icon: "trash", color: "var(--bad)", title: "Delete my entries", open: "delete-all", danger: true }) : ""}</div>`;
+    const integs = `${sectionTitle("Integrations", info("Integrations", "No Strava or Bevel data is ever imported. These statuses reflect your configuration."))}<div class="card list-card">
+      ${srow({ icon: "heart", color: "var(--bad)", title: `Apple Health via ${esc(AGENT)}`, sub: ds.last_sync ? "Last import " + fmt.dt(ds.last_sync) : "No import yet", right: ds.last_sync ? conn(true) : `<span class="faint">Waiting</span>` })}
+      ${[["Map tiles", "routes", integ.map_tiles_url], ["Nutrition source", "nutrition", integ.nutrition_source], ["Calendar", "calendar", integ.calendar_source], ["Food database", "database", integ.food_database], ["Photo recognition", "cpu", integ.vision_service], ["Coach chat", "coach", AG.llm], ["Companion app", "watch", integ.companion_app]].map(([l, ic, v]) => srow({ icon: ic, color: "var(--text-2)", title: esc(l), right: conn(v) })).join("")}
+      ${srow({ icon: "bell", color: "var(--text-2)", title: "Smart alarm", sub: (p.smart_alarm || {}).enabled ? "Configured · needs the companion app" : "Off · needs the companion app", open: AG.online ? "edit-companion" : null })}
+      ${srow({ icon: "share2", color: "var(--text-2)", title: "Beacon live sharing", sub: `${Array.isArray((p.beacon || {}).contacts) ? p.beacon.contacts.length : ((p.beacon || {}).contacts || 0)} contacts · needs the companion app`, open: AG.online ? "edit-companion" : null })}</div>`;
+    return `<div class="flow2"><div class="flow-a"><div class="o" style="order:0">${ident}</div><div class="o" style="order:1">${physio}</div><div class="o" style="order:2">${targets}</div><div class="o" style="order:5">${sched}</div></div>
+      <div class="flow-b"><div class="o" style="order:3">${settings}</div><div class="o" style="order:4">${data}</div><div class="o" style="order:6">${integs}</div>
+      <div class="o" style="order:7"><p class="small faint" style="margin:8px 4px 0">AGame ${esc(D.meta.version)} · build ${esc(D.meta.build_date)} · Fitness information, not medical advice.</p></div></div></div>`;
   },
 };
 AG.sheets.history = async function () {
@@ -197,7 +220,7 @@ AG.sheets.history = async function () {
 };
 
 const WIDGETS = {
-  scores: ["Scores", w => `<div class="rings" style="transform:scale(.62);transform-origin:left top;width:160%">${ring("strain", w.rings.strain, { label: "Strain" })}${ring("recovery", w.rings.recovery, { label: "Recovery" })}${ring("sleep", w.rings.sleep, { label: "Sleep" })}</div>`],
+  scores: ["Scores", w => `<div class="rings widget-rings">${ring("strain", w.rings.strain, { label: "Strain" })}${ring("recovery", w.rings.recovery, { label: "Recovery" })}${ring("sleep", w.rings.sleep, { label: "Sleep" })}</div>`],
   recovery: ["Recovery", w => `<b style="font-size:28px">${val(w.rings.recovery, 0, "%")}</b>${stLine(w.rings.recovery)}`],
   sleep: ["Sleep", w => `<b style="font-size:28px">${val(w.rings.sleep, 0, "%")}</b>${stLine(w.rings.sleep)}`],
   strain: ["Strain", w => `<b style="font-size:28px">${val(w.rings.strain, 0, "%")}</b><span class="cap">so far today</span>`],
@@ -205,7 +228,7 @@ const WIDGETS = {
   protein: ["Protein", w => `<b style="font-size:28px">${w.protein && isNum(w.protein.v) ? fmt.n(w.protein.v) + " g" : "—"}</b>${w.protein_target ? bar(w.protein && isNum(w.protein.v) ? w.protein.v / w.protein_target * 100 : 0, "var(--protein)") : `<span class="cap">${STR.noNutrition}</span>`}`],
   hydration: ["Hydration", w => `<b style="font-size:28px">${isNum(w.water_ml) ? fmt.n(w.water_ml) + " ml" : "—"}</b>${isNum(w.water_target) ? bar(isNum(w.water_ml) ? w.water_ml / w.water_target * 100 : 0, "var(--info)") : ""}`],
   plan: ["Today's plan", w => w.plan.length ? `<b>${esc(w.plan[0].title || w.plan[0].type)}</b><span class="cap">${w.plan[0].duration_s ? fmt.mins(w.plan[0].duration_s) : ""}</span>` : `<span class="small muted">${STR.noPlan}</span>`],
-  weight: ["Weight", w => `<b style="font-size:28px">${w.weight && isNum(w.weight.v) ? fmt.kgNum(w.weight.v) : "—"}</b><span class="cap">${w.weight_goal ? "goal " + fmt.kg(w.weight_goal.target) : fmt.wUnit()}</span>`],
+  weight: ["Weight", w => `<b style="font-size:28px">${w.weight && isNum(w.weight.v) ? fmt.kg(w.weight.v) : "—"}</b><span class="cap">${w.weight_goal ? "goal " + fmt.kg(w.weight_goal.target) : fmt.wUnit()}</span>`],
   load: ["Weekly load", w => `<b style="font-size:28px">${isNum(w.weekly_load) ? fmt.n(w.weekly_load) : "—"}</b><span class="cap">${w.weekly_band ? "range " + fmt.n(w.weekly_band.low) + "–" + fmt.n(w.weekly_band.high) : ""}</span>`],
   goal: ["Goal", w => w.goal ? `<b class="small">${esc(w.goal.title)}</b>${goalStatusBadge(w.goal.status_label)}` : `<span class="small muted">${STR.noGoals}</span>`],
 };
@@ -237,11 +260,26 @@ AG.screens.journal = {
   title: "Journal", parent: "#/profile", nav: "profile",
   render() {
     const J = D.journal;
-    return `<div class="cols"><div class="stack"><div class="card">${cardHead("Activity status", `${editBtn("status-set", undefined, "Set")}${J.status && J.status.id && !J.status.end && J.status.status !== "normal" ? editBtn("status-end", J.status.id, "End today") : ""}`, "Set only by you or by source data.")}<div class="stat"><span class="v" style="font-size:24px">${J.status ? esc(fmt.sport(J.status.status)) : "Normal"}</span>${J.status ? `<span class="cap">Since ${fmt.date(J.status.start)}${J.status.end ? " until " + fmt.date(J.status.end) : ""} · set by ${esc(J.status.source || "you")}</span>` : ""}</div>
-      <div class="list" style="margin-top:8px">${J.status_history.slice(0, 6).map(s => `<div class="li"><div class="grow small">${esc(fmt.sport(s.status))}</div><div class="r small">${fmt.date(s.start)}${s.end ? "–" + fmt.date(s.end) : ""}</div></div>`).join("")}</div></div>
-      ${AG.online ? `<div class="card">${cardHead("New entry", editBtn("habit-add", undefined, "New habit"))}<form class="form" id="journal-form"><div class="grid g2"><label>Date <input name="date" type="date" value="${D.meta.build_date}" required></label><label>Habit <select name="habit"><option value="">—</option>${J.habits.map(h => `<option value="${esc(h.id)}">${esc(h.name)}</option>`).join("")}</select></label><label>Type <select name="type">${["mood", "hydration", "sunlight", "screen_time", "caffeine", "alcohol", "symptom", "travel", "sickness", "supplement", "note", "habit"].map(t => `<option value="${t}">${esc(fmt.sport(t))}</option>`).join("")}</select></label><label>Value <input name="value" inputmode="decimal"></label></div><label>Note <input name="text"></label><div class="actions" style="margin-top:0"><button class="btn">Add</button></div></form></div>` : ""}
-      ${J.cycle.enabled ? `<div class="card">${cardHead("Cycle tracking", "", "From your logs or HealthKit only. Predictions are never shown as fact.")}${J.cycle.latest ? `<p class="small" style="margin:0">Latest log ${fmt.date(J.cycle.latest.date)}${J.cycle.latest.phase ? " · " + esc(J.cycle.latest.phase) : ""}</p>` : `<p class="small muted" style="margin:0">No logs yet</p>`}</div>` : ""}</div>
-      <div class="card">${cardHead("Recent entries")}${J.entries.length ? `<div class="list">${J.entries.slice(0, 40).map(e => `<div class="li"><div class="grow"><div class="t small">${esc(fmt.sport(e.type))}${e.habit_id ? " · " + esc((J.habits.find(h => h.id === e.habit_id) || {}).name || e.habit_id) : ""}</div><div class="s">${fmt.date(e.date)}${e.text ? " · " + esc(e.text) : ""}</div></div><div class="r small">${isNum(e.value) ? fmt.n(e.value, e.value % 1 ? 1 : 0) + " " + esc(e.unit || "") : ""}</div>${AG.online && e.kind === "user_entered" ? `<button type="button" class="icon-btn" data-open="journal-del" data-arg="${esc(e.id)}" aria-label="Delete entry">${icon("x")}</button>` : ""}</div>`).join("")}</div>` : empty("No journal entries yet")}</div></div>`;
+    const end = D.meta.build_date;
+    const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(end + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() - 6 + i); return d.toISOString().slice(0, 10); });
+    const sel = days.includes(chipVal("jr-day", end)) ? chipVal("jr-day", end) : end;
+    const byDay = d => J.entries.filter(e => e.date === d);
+    const strip = `<div class="jr-strip" role="group" aria-label="Day">${days.map(d => { const n = byDay(d).length; return `<button data-chip="jr-day" data-val="${d}" aria-pressed="${d === sel}" class="jr-day"><span class="wk-dow">${fmt.dow(d)}</span><span class="wk-num">${fmt.date(d, { day: "numeric" })}</span><span class="jr-dot ${n ? "on" : ""}">${n ? icon("check") : ""}</span></button>`; }).join("")}</div>`;
+    const JI = { mood: ["mood", "var(--warn)"], hydration: ["droplet", "var(--info)"], caffeine: ["coffee", "var(--carbs)"], alcohol: ["glass", "var(--protein)"], sunlight: ["sun", "var(--warn)"], screen_time: ["screen", "var(--text-2)"],
+      symptom: ["alert", "var(--bad)"], travel: ["plane", "var(--ride)"], sickness: ["thermometer", "var(--bad)"], supplement: ["pill", "var(--ok)"], note: ["note", "var(--text-2)"], habit: ["check", "var(--recovery)"] };
+    const valTxt = e => e.type === "mood" && isNum(e.value) ? `${fmt.n(e.value)} of 5` : e.type === "habit" ? "Done" : e.type === "alcohol" && isNum(e.value) ? `${fmt.n(e.value)} drink${e.value === 1 ? "" : "s"}` : isNum(e.value) ? `${fmt.n(e.value, e.value % 1 ? 1 : 0)}${e.unit ? " " + esc(e.unit) : ""}` : "";
+    const entries = byDay(sel);
+    const rows = entries.map(e => { const [ic, col] = JI[e.type] || ["note", "var(--text-2)"]; const habit = e.habit_id ? (J.habits.find(h => h.id === e.habit_id) || {}).name || e.habit_id : null;
+      return srow({ icon: ic, color: col, title: esc(habit || fmt.sport(e.type)), sub: e.text ? esc(e.text) : "", right: valTxt(e) + (AG.online && e.kind === "user_entered" ? ` <button type="button" class="icon-btn" data-open="journal-del" data-arg="${esc(e.id)}" aria-label="Delete entry">${icon("x")}</button>` : "") }); });
+    const missingHabits = J.habits.filter(h => !entries.some(e => e.habit_id === h.id)).map(h => srow({ icon: "check", color: "var(--text-3)", title: esc(h.name), right: `<span class="faint">Not logged</span>` }));
+    const dayCard = `${sectionTitle(sel === end ? "Today" : fmt.date(sel, { weekday: "long", day: "numeric", month: "long" }), `<span class="small muted">${entries.length} ${entries.length === 1 ? "entry" : "entries"}</span>`)}<div class="card list-card">${rows.concat(missingHabits).join("") || `<p class="small muted" style="margin:14px 0">Nothing logged this day</p>`}</div>`;
+    const st = J.status;
+    const status = `${sectionTitle("Activity status", `<span class="row">${editBtn("status-set", undefined, "Set")}${st && st.id && !st.end && st.status !== "normal" ? editBtn("status-end", st.id, "End today") : ""}${info("Activity status", "Set only by you or by source data. Sick, travel and injured days change how your plan adapts.")}</span>`)}<div class="card list-card">
+      ${srow({ icon: "today", color: st && st.status !== "normal" ? "var(--warn)" : "var(--ok)", title: st ? esc(fmt.sport(st.status)) : "Normal", sub: st ? `Since ${fmt.date(st.start)}${st.end ? " until " + fmt.date(st.end) : ""} · set by ${esc(st.source || "you")}` : "Nothing unusual right now" })}
+      ${J.status_history.slice(0, 6).map(x => srow({ title: esc(fmt.sport(x.status)), sub: x.note ? esc(x.note) : "", right: `<span class="muted">${fmt.date(x.start)}${x.end ? "–" + fmt.date(x.end) : ""}</span>` })).join("")}</div>`;
+    const form = AG.online ? `${sectionTitle("New entry", editBtn("habit-add", undefined, "New habit"))}<div class="card"><form class="form" id="journal-form"><div class="grid g2"><label>Date <input name="date" type="date" value="${sel}" required></label><label>Habit <select name="habit"><option value="">—</option>${J.habits.map(h => `<option value="${esc(h.id)}">${esc(h.name)}</option>`).join("")}</select></label><label>Type <select name="type">${["mood", "hydration", "sunlight", "screen_time", "caffeine", "alcohol", "symptom", "travel", "sickness", "supplement", "note", "habit"].map(t => `<option value="${t}">${esc(fmt.sport(t))}</option>`).join("")}</select></label><label>Value <input name="value" inputmode="decimal"></label></div><label>Note <input name="text"></label><div class="actions" style="margin-top:0"><button class="btn">Add</button></div></form></div>` : "";
+    const cycle = J.cycle.enabled ? `${sectionTitle("Cycle tracking", info("Cycle tracking", "From your logs or HealthKit only. Predictions are never shown as fact."))}<div class="card">${J.cycle.latest ? `<p class="small" style="margin:0">Latest log ${fmt.date(J.cycle.latest.date)}${J.cycle.latest.phase ? " · " + esc(J.cycle.latest.phase) : ""}</p>` : `<p class="small muted" style="margin:0">No logs yet</p>`}</div>` : "";
+    return `${strip}<div class="flow2"><div class="flow-a"><div class="o" style="order:0">${dayCard}</div></div><div class="flow-b"><div class="o" style="order:1">${status}</div>${form ? `<div class="o" style="order:2">${form}</div>` : ""}${cycle ? `<div class="o" style="order:3">${cycle}</div>` : ""}</div></div>`;
   },
   after() {
     const f = $("#journal-form");

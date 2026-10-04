@@ -6,6 +6,7 @@ data. Edit endpoints require JSON and a same-origin request; session cookies are
 SameSite=Lax and Secure on HTTPS.
 """
 
+import gzip
 import json
 import mimetypes
 import os
@@ -31,12 +32,21 @@ STATIC = {"fitness_dashboard.html", "manifest.webmanifest", "fitness_sw.js"}
 REQUIRED_ENV = ["AGAME_OIDC_ISSUER", "AGAME_OIDC_CLIENT_ID", "AGAME_OIDC_CLIENT_SECRET", "AGAME_OWNER_EMAIL", "AGAME_SESSION_SECRET", "AGAME_BASE_URL"]
 
 SIGNIN_HTML = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow"><title>AGame · Sign in</title>
-<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0b0c;color:#f4f4f6;font:16px -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}
-main{text-align:center;padding:24px}.mark{width:56px;height:56px;border-radius:16px;background:#fc5200;margin:0 auto 16px}
-a{display:inline-block;margin-top:20px;padding:12px 20px;border-radius:12px;background:#fc5200;color:#140700;text-decoration:none;font-weight:700}
-p{color:#a3a3ab;max-width:320px}</style></head><body><main><div class="mark" aria-hidden="true"></div><h1>AGame</h1>
-<p>Private dashboard. Sign in with the owner account to continue.</p>{msg}<a href="/auth/login">Sign in</a></main></body></html>"""
+<meta name="robots" content="noindex,nofollow"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#1d1e22"><title>AGame · Sign in</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#1d1e22;color:#f4f4f6;font:16px -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}
+main{text-align:center;padding:24px}.mark{display:block;margin:0 auto 16px}
+a{display:inline-block;margin-top:20px;padding:12px 20px;border-radius:12px;background:#f2561a;color:#140700;text-decoration:none;font-weight:700}
+p{color:#a3a3ab;max-width:320px}</style></head><body><main>{logo}<h1>AGame</h1>
+{msg}<a href="/auth/login">Sign in</a></main></body></html>"""
+
+
+LOGO_SVG = ('<svg class="mark" width="64" height="64" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="t" x1="0" y1="0" x2="1" y2="1">'
+            '<stop offset="0" stop-color="#ff6b1a"/><stop offset="1" stop-color="#e8430a"/></linearGradient></defs><rect width="100" height="100" rx="23" fill="url(#t)"/>'
+            '<path d="M28 78L50 22L72 78" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>'
+            '<path d="M17 62H35L41 51L49 72L55 62H83" fill="none" stroke="#fff" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/></svg>')
+SIGNIN_HTML = SIGNIN_HTML.replace("{logo}", LOGO_SVG)
+GZIP_TYPES = ("text/html", "application/javascript", "text/javascript", "application/json", "application/manifest+json")
 
 
 class Config:
@@ -71,6 +81,9 @@ class State:
         self._snap_key = None
 
     def today(self):
+        fixed = os.environ.get("AGAME_DEV_TODAY") if self.cfg.dev else None  # tests pin the clock; ignored outside --dev
+        if fixed:
+            return tu.parse_date(fixed)
         data, _, _ = load_all(self.cfg.data_dir)
         tz = tu.tzinfo(((data.get("profile") or {}).get("locale") or {}).get("timezone") or tu.DEFAULT_TZ)
         return datetime.now(tz).date()
@@ -87,6 +100,21 @@ class State:
             self._snap, _ = build_snapshot(data, self.today())
             self._snap_key = key
         return self._snap
+
+
+_GZ_CACHE = {}
+
+
+def _gzipped(path, raw):
+    """The dashboard is several MB of embedded JSON; gzip cuts it ~4x. Cached per file version."""
+    st = path.stat()
+    key = (str(path), st.st_mtime_ns, st.st_size)
+    hit = _GZ_CACHE.get(str(path))
+    if hit and hit[0] == key:
+        return hit[1]
+    data = gzip.compress(raw, compresslevel=6, mtime=0)
+    _GZ_CACHE[str(path)] = (key, data)
+    return data
 
 
 def pinned_snapshot(cfg):
@@ -303,12 +331,16 @@ def make_handler(cfg, state=None):
             ctype = mimetypes.guess_type(p.name)[0] or "application/octet-stream"
             if p.name.endswith(".webmanifest"):
                 ctype = "application/manifest+json"
-            hdrs = [("Cache-Control", "no-cache")]
+            hdrs = [("Cache-Control", "no-cache"), ("Vary", "Accept-Encoding")]
             if p.name == "fitness_sw.js":
                 hdrs.append(("Service-Worker-Allowed", "/"))
             if refresh:
                 hdrs.append(("Set-Cookie", refresh))
-            return self._send(200, p.read_bytes(), ctype, headers=hdrs, api=False)
+            body = p.read_bytes()
+            if ctype in GZIP_TYPES and "gzip" in (self.headers.get("Accept-Encoding") or ""):
+                body = _gzipped(p, body)
+                hdrs.append(("Content-Encoding", "gzip"))
+            return self._send(200, body, ctype, headers=hdrs, api=False)
 
         def _record_file(self, name):
             if not re.fullmatch(r"[A-Za-z0-9._\-]+", name):

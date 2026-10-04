@@ -2,6 +2,7 @@
    The build only swaps dist/ after a successful build, so whatever this worker caches
    is always a complete, validated snapshot. API calls and health records are never cached. */
 const CACHE = "agame-__CACHE_VERSION__";
+const NET_WAIT_MS = 4000;
 const SHELL = ["./fitness_dashboard.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 
 self.addEventListener("install", event => {
@@ -23,14 +24,19 @@ self.addEventListener("fetch", event => {
   if (url.origin !== self.location.origin || isPrivateOrApi(url)) return;
   const isPage = req.mode === "navigate" || url.pathname.endsWith("fitness_dashboard.html") || url.pathname.endsWith("/");
   if (isPage) {
-    // network first: newest successful build when online, last snapshot when offline
-    event.respondWith(fetch(req).then(res => {
+    // network first, but on a weak connection show the last snapshot after NET_WAIT_MS and keep updating the cache
+    const net = fetch(req).then(res => {
       if (res.ok && res.headers.get("content-type") && res.headers.get("content-type").includes("text/html") && !res.redirected) {
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put("./fitness_dashboard.html", copy));
       }
       return res;
-    }).catch(() => caches.match("./fitness_dashboard.html")));
+    });
+    const slow = new Promise(resolve => setTimeout(resolve, NET_WAIT_MS));
+    event.respondWith(Promise.race([net, slow])
+      .then(res => res || caches.match("./fitness_dashboard.html").then(hit => hit || net))
+      .catch(() => caches.match("./fitness_dashboard.html")));
+    event.waitUntil(net.catch(() => {}));
     return;
   }
   event.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => {

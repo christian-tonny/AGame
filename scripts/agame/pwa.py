@@ -1,5 +1,6 @@
 """PWA assets: manifest, deterministic PNG icons (stdlib only), service worker."""
 
+import hashlib
 import json
 import struct
 import zlib
@@ -88,8 +89,8 @@ def manifest(snapshot):
         "scope": "./",
         "display": "standalone",
         "orientation": "portrait",
-        "background_color": "#0b0b0c",
-        "theme_color": "#0b0b0c",
+        "background_color": "#1d1e22",
+        "theme_color": "#1d1e22",
         "icons": [
             {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
             {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
@@ -100,15 +101,31 @@ def manifest(snapshot):
     }
 
 
-def write_assets(out_dir, snapshot, cache_version):
+def _cached_icon(cache_dir, size, theme, maskable=False):
+    """Rasterising in pure Python is ~40% of a build, so reuse icons drawn from the same geometry and colours."""
+    if cache_dir is None:
+        return icon_png(size, theme, maskable)
+    spec = json.dumps([size, ICON_THEMES.get(theme, ICON_THEMES["default"]), maskable, LOGO_LEGS, LOGO_PULSE, LOGO_LEG_W, LOGO_PULSE_W, LOGO_RADIUS])
+    p = Path(cache_dir) / (hashlib.sha256(spec.encode()).hexdigest()[:20] + ".png")
+    if p.is_file():
+        return p.read_bytes()
+    data = icon_png(size, theme, maskable)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_suffix(".tmp")
+    tmp.write_bytes(data)
+    tmp.replace(p)
+    return data
+
+
+def write_assets(out_dir, snapshot, cache_version, icon_cache=None):
     out = Path(out_dir)
     (out / "icons").mkdir(parents=True, exist_ok=True)
     theme = ((snapshot.get("profile") or {}).get("ui") or {}).get("app_icon") or "default"
     files = {
-        "icons/icon-192.png": icon_png(192, theme),
-        "icons/icon-512.png": icon_png(512, theme),
-        "icons/icon-maskable-512.png": icon_png(512, theme, maskable=True),
-        "icons/apple-touch-icon.png": icon_png(180, theme, maskable=True),
+        "icons/icon-192.png": _cached_icon(icon_cache, 192, theme),
+        "icons/icon-512.png": _cached_icon(icon_cache, 512, theme),
+        "icons/icon-maskable-512.png": _cached_icon(icon_cache, 512, theme, maskable=True),
+        "icons/apple-touch-icon.png": _cached_icon(icon_cache, 180, theme, maskable=True),
     }
     for rel, data in files.items():
         (out / rel).write_bytes(data)
