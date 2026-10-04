@@ -1,0 +1,242 @@
+{
+ "$id": "agame/routes.schema.json",
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "additionalProperties": false,
+ "properties": {
+  "as_of": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "coverage": {
+   "additionalProperties": false,
+   "properties": {
+    "expected": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "ratio": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "received": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    }
+   },
+   "type": [
+    "object",
+    "null"
+   ]
+  },
+  "domain": {
+   "const": "routes"
+  },
+  "features": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "geometry": {
+      "additionalProperties": false,
+      "properties": {
+       "coordinates": {
+        "items": {
+         "items": {
+          "type": "number"
+         },
+         "maxItems": 3,
+         "minItems": 2,
+         "type": "array"
+        },
+        "type": "array"
+       },
+       "type": {
+        "const": "LineString"
+       }
+      },
+      "required": [
+       "type",
+       "coordinates"
+      ],
+      "type": "object"
+     },
+     "id": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "properties": {
+      "additionalProperties": false,
+      "properties": {
+       "created_at": {
+        "format": "date-time",
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "difficulty": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "favorite": {
+        "type": "boolean"
+       },
+       "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+       },
+       "kind": {
+        "enum": [
+         "route",
+         "trace",
+         "segment"
+        ]
+       },
+       "kind_detail": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "name": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "offline": {
+        "type": "boolean"
+       },
+       "source": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "sport": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "surface": {
+        "additionalProperties": false,
+        "properties": {
+         "paved_pct": {
+          "type": [
+           "number",
+           "null"
+          ]
+         },
+         "unknown_pct": {
+          "type": [
+           "number",
+           "null"
+          ]
+         },
+         "unpaved_pct": {
+          "type": [
+           "number",
+           "null"
+          ]
+         }
+        },
+        "type": [
+         "object",
+         "null"
+        ]
+       },
+       "workout_id": {
+        "type": [
+         "string",
+         "null"
+        ]
+       }
+      },
+      "required": [
+       "id",
+       "kind"
+      ],
+      "type": "object"
+     },
+     "type": {
+      "const": "Feature"
+     }
+    },
+    "required": [
+     "type",
+     "properties",
+     "geometry"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "fixture": {
+   "enum": [
+    false,
+    "empty",
+    "synthetic"
+   ]
+  },
+  "generated_at": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "notes": {
+   "items": {
+    "type": "string"
+   },
+   "type": "array"
+  },
+  "schema_version": {
+   "pattern": "^\\d+\\.\\d+\\.\\d+$",
+   "type": "string"
+  },
+  "source": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "status": {
+   "enum": [
+    "ok",
+    "partial",
+    "stale",
+    "missing"
+   ]
+  },
+  "type": {
+   "const": "FeatureCollection"
+  }
+ },
+ "required": [
+  "schema_version",
+  "domain",
+  "generated_at",
+  "as_of",
+  "source",
+  "status",
+  "type",
+  "features"
+ ],
+ "title": "AGame routes",
+ "type": "object"
+}

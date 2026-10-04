@@ -1,0 +1,145 @@
+{
+ "$id": "agame/body.schema.json",
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "additionalProperties": false,
+ "properties": {
+  "as_of": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "coverage": {
+   "additionalProperties": false,
+   "properties": {
+    "expected": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "ratio": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "received": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    }
+   },
+   "type": [
+    "object",
+    "null"
+   ]
+  },
+  "domain": {
+   "const": "body"
+  },
+  "fixture": {
+   "enum": [
+    false,
+    "empty",
+    "synthetic"
+   ]
+  },
+  "generated_at": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "measurements": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "kind": {
+      "enum": [
+       "observed",
+       "configured",
+       "computed",
+       "estimated",
+       "user_entered"
+      ]
+     },
+     "source": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "source_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "t": {
+      "format": "date-time",
+      "type": "string"
+     },
+     "type": {
+      "enum": [
+       "weight_kg",
+       "body_fat_pct",
+       "lean_mass_kg",
+       "waist_cm",
+       "bmi"
+      ]
+     },
+     "v": {
+      "minimum": 0,
+      "type": "number"
+     }
+    },
+    "required": [
+     "t",
+     "type",
+     "v",
+     "source_id"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "notes": {
+   "items": {
+    "type": "string"
+   },
+   "type": "array"
+  },
+  "schema_version": {
+   "pattern": "^\\d+\\.\\d+\\.\\d+$",
+   "type": "string"
+  },
+  "source": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "status": {
+   "enum": [
+    "ok",
+    "partial",
+    "stale",
+    "missing"
+   ]
+  }
+ },
+ "required": [
+  "schema_version",
+  "domain",
+  "generated_at",
+  "as_of",
+  "source",
+  "status",
+  "measurements"
+ ],
+ "title": "AGame body",
+ "type": "object"
+}

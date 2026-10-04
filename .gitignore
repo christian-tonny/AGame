@@ -1,0 +1,26 @@
+# Build output and generated snapshots (may contain private health data)
+dist/
+!dist/.gitkeep
+snapshots/
+
+# Private data and secrets
+.env
+.env.*
+!.env.example
+private/
+*.local.json
+edit_history.jsonl
+uploads/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node / Playwright
+node_modules/
+test-results/
+playwright-report/
+
+# OS
+.DS_Store

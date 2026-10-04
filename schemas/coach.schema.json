@@ -1,0 +1,273 @@
+{
+ "$id": "agame/coach.schema.json",
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "additionalProperties": false,
+ "properties": {
+  "as_of": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "checkins": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "days": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     },
+     "enabled": {
+      "type": "boolean"
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "text": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "time": {
+      "type": "string"
+     },
+     "type": {
+      "enum": [
+       "morning_report",
+       "reminder",
+       "goal_progress",
+       "weekly_summary",
+       "monthly_summary",
+       "nudge"
+      ]
+     }
+    },
+    "required": [
+     "id",
+     "type",
+     "time"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "coverage": {
+   "additionalProperties": false,
+   "properties": {
+    "expected": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "ratio": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "received": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    }
+   },
+   "type": [
+    "object",
+    "null"
+   ]
+  },
+  "domain": {
+   "const": "coach"
+  },
+  "fixture": {
+   "enum": [
+    false,
+    "empty",
+    "synthetic"
+   ]
+  },
+  "generated_at": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "last_maintenance": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "memory": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "created_at": {
+      "format": "date-time",
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "spec": {
+      "type": [
+       "object",
+       "null"
+      ]
+     },
+     "text": {
+      "type": "string"
+     },
+     "type": {
+      "enum": [
+       "preference",
+       "goal",
+       "correction",
+       "fact",
+       "artifact"
+      ]
+     },
+     "updated_at": {
+      "format": "date-time",
+      "type": [
+       "string",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "id",
+     "type",
+     "text"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "notes": {
+   "items": {
+    "type": "string"
+   },
+   "type": "array"
+  },
+  "schema_version": {
+   "pattern": "^\\d+\\.\\d+\\.\\d+$",
+   "type": "string"
+  },
+  "source": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "status": {
+   "enum": [
+    "ok",
+    "partial",
+    "stale",
+    "missing"
+   ]
+  },
+  "threads": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "activity_id": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "created_at": {
+      "format": "date-time",
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "messages": {
+      "items": {
+       "additionalProperties": false,
+       "properties": {
+        "chart": {
+         "type": [
+          "object",
+          "null"
+         ]
+        },
+        "citations": {
+         "type": "array"
+        },
+        "role": {
+         "enum": [
+          "user",
+          "coach"
+         ]
+        },
+        "t": {
+         "format": "date-time",
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "text": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "role",
+        "text"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     },
+     "title": {
+      "type": [
+       "string",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "id",
+     "messages"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  }
+ },
+ "required": [
+  "schema_version",
+  "domain",
+  "generated_at",
+  "as_of",
+  "source",
+  "status",
+  "memory"
+ ],
+ "title": "AGame coach",
+ "type": "object"
+}

@@ -1,0 +1,747 @@
+{
+ "$id": "agame/nutrition.schema.json",
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "additionalProperties": false,
+ "properties": {
+  "as_of": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "caffeine": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "kind": {
+      "enum": [
+       "observed",
+       "configured",
+       "computed",
+       "estimated",
+       "user_entered"
+      ]
+     },
+     "mg": {
+      "minimum": 0,
+      "type": "number"
+     },
+     "source_id": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "t": {
+      "format": "date-time",
+      "type": "string"
+     }
+    },
+    "required": [
+     "t",
+     "mg"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "connected": {
+   "type": "boolean"
+  },
+  "coverage": {
+   "additionalProperties": false,
+   "properties": {
+    "expected": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "ratio": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "received": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    }
+   },
+   "type": [
+    "object",
+    "null"
+   ]
+  },
+  "day_status": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "complete": {
+      "type": "boolean"
+     },
+     "date": {
+      "format": "date",
+      "type": "string"
+     }
+    },
+    "required": [
+     "date",
+     "complete"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "domain": {
+   "const": "nutrition"
+  },
+  "favorites": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "barcode": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "caffeine_mg": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "carbs_g": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "fat_g": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "fiber_g": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "food_groups": {
+      "additionalProperties": {
+       "type": "number"
+      },
+      "type": [
+       "object",
+       "null"
+      ]
+     },
+     "kcal": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "micros": {
+      "additionalProperties": {
+       "type": "number"
+      },
+      "type": [
+       "object",
+       "null"
+      ]
+     },
+     "name": {
+      "type": "string"
+     },
+     "protein_g": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "qty": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "sodium_mg": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "sugar_g": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "unit": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "water_ml": {
+      "type": [
+       "number",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "name"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "fixture": {
+   "enum": [
+    false,
+    "empty",
+    "synthetic"
+   ]
+  },
+  "generated_at": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "glucose_note": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "meals": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "items": {
+      "items": {
+       "additionalProperties": false,
+       "properties": {
+        "barcode": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "caffeine_mg": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "carbs_g": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "fat_g": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "fiber_g": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "food_groups": {
+         "additionalProperties": {
+          "type": "number"
+         },
+         "type": [
+          "object",
+          "null"
+         ]
+        },
+        "kcal": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "micros": {
+         "additionalProperties": {
+          "type": "number"
+         },
+         "type": [
+          "object",
+          "null"
+         ]
+        },
+        "name": {
+         "type": "string"
+        },
+        "protein_g": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "qty": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "sodium_mg": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "sugar_g": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "unit": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "water_ml": {
+         "type": [
+          "number",
+          "null"
+         ]
+        }
+       },
+       "required": [
+        "name"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     },
+     "kind": {
+      "enum": [
+       "observed",
+       "configured",
+       "computed",
+       "estimated",
+       "user_entered"
+      ]
+     },
+     "meal": {
+      "enum": [
+       "breakfast",
+       "lunch",
+       "dinner",
+       "snack",
+       "pre_workout",
+       "post_workout",
+       null
+      ]
+     },
+     "name": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "photo": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "recipe_id": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "source_id": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "t": {
+      "format": "date-time",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "t",
+     "items"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "notes": {
+   "items": {
+    "type": "string"
+   },
+   "type": "array"
+  },
+  "planned_meals": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "date": {
+      "format": "date",
+      "type": "string"
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "items": {
+      "items": {
+       "additionalProperties": false,
+       "properties": {
+        "barcode": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "caffeine_mg": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "carbs_g": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "fat_g": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "fiber_g": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "food_groups": {
+         "additionalProperties": {
+          "type": "number"
+         },
+         "type": [
+          "object",
+          "null"
+         ]
+        },
+        "kcal": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "micros": {
+         "additionalProperties": {
+          "type": "number"
+         },
+         "type": [
+          "object",
+          "null"
+         ]
+        },
+        "name": {
+         "type": "string"
+        },
+        "protein_g": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "qty": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "sodium_mg": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "sugar_g": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "unit": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "water_ml": {
+         "type": [
+          "number",
+          "null"
+         ]
+        }
+       },
+       "required": [
+        "name"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     },
+     "meal": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "recipe_id": {
+      "type": [
+       "string",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "id",
+     "date"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "recipes": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "favorite": {
+      "type": "boolean"
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "items": {
+      "items": {
+       "additionalProperties": false,
+       "properties": {
+        "barcode": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "caffeine_mg": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "carbs_g": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "fat_g": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "fiber_g": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "food_groups": {
+         "additionalProperties": {
+          "type": "number"
+         },
+         "type": [
+          "object",
+          "null"
+         ]
+        },
+        "kcal": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "micros": {
+         "additionalProperties": {
+          "type": "number"
+         },
+         "type": [
+          "object",
+          "null"
+         ]
+        },
+        "name": {
+         "type": "string"
+        },
+        "protein_g": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "qty": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "sodium_mg": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "sugar_g": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "unit": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "water_ml": {
+         "type": [
+          "number",
+          "null"
+         ]
+        }
+       },
+       "required": [
+        "name"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     },
+     "name": {
+      "type": "string"
+     },
+     "servings": {
+      "type": [
+       "number",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "items"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "schema_version": {
+   "pattern": "^\\d+\\.\\d+\\.\\d+$",
+   "type": "string"
+  },
+  "source": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "status": {
+   "enum": [
+    "ok",
+    "partial",
+    "stale",
+    "missing"
+   ]
+  },
+  "water": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "kind": {
+      "enum": [
+       "observed",
+       "configured",
+       "computed",
+       "estimated",
+       "user_entered"
+      ]
+     },
+     "ml": {
+      "minimum": 0,
+      "type": "number"
+     },
+     "source_id": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "t": {
+      "format": "date-time",
+      "type": "string"
+     }
+    },
+    "required": [
+     "t",
+     "ml"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  }
+ },
+ "required": [
+  "schema_version",
+  "domain",
+  "generated_at",
+  "as_of",
+  "source",
+  "status",
+  "connected",
+  "meals"
+ ],
+ "title": "AGame nutrition",
+ "type": "object"
+}

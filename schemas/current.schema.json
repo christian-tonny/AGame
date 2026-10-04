@@ -1,0 +1,176 @@
+{
+ "$id": "agame/current.schema.json",
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "additionalProperties": false,
+ "properties": {
+  "as_of": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "coverage": {
+   "additionalProperties": false,
+   "properties": {
+    "expected": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "ratio": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "received": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    }
+   },
+   "type": [
+    "object",
+    "null"
+   ]
+  },
+  "domain": {
+   "const": "current"
+  },
+  "domains": {
+   "additionalProperties": {
+    "additionalProperties": false,
+    "properties": {
+     "expected_for": {
+      "format": "date",
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "last_sample": {
+      "format": "date-time",
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "last_sync": {
+      "format": "date-time",
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "note": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "received": {
+      "type": [
+       "boolean",
+       "null"
+      ]
+     },
+     "status": {
+      "enum": [
+       "ok",
+       "partial",
+       "stale",
+       "missing"
+      ]
+     }
+    },
+    "type": "object"
+   },
+   "type": "object"
+  },
+  "fixture": {
+   "enum": [
+    false,
+    "empty",
+    "synthetic"
+   ]
+  },
+  "generated_at": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "imports": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "at": {
+      "format": "date-time",
+      "type": "string"
+     },
+     "counts": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object"
+     },
+     "date": {
+      "format": "date",
+      "type": "string"
+     },
+     "idempotency_key": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    "required": [
+     "idempotency_key",
+     "date",
+     "at"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "notes": {
+   "items": {
+    "type": "string"
+   },
+   "type": "array"
+  },
+  "schema_version": {
+   "pattern": "^\\d+\\.\\d+\\.\\d+$",
+   "type": "string"
+  },
+  "source": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "status": {
+   "enum": [
+    "ok",
+    "partial",
+    "stale",
+    "missing"
+   ]
+  }
+ },
+ "required": [
+  "schema_version",
+  "domain",
+  "generated_at",
+  "as_of",
+  "source",
+  "status",
+  "domains"
+ ],
+ "title": "AGame current",
+ "type": "object"
+}

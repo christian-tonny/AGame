@@ -1,0 +1,492 @@
+{
+ "$id": "agame/workouts.schema.json",
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "additionalProperties": false,
+ "properties": {
+  "as_of": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "coverage": {
+   "additionalProperties": false,
+   "properties": {
+    "expected": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "ratio": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "received": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    }
+   },
+   "type": [
+    "object",
+    "null"
+   ]
+  },
+  "domain": {
+   "const": "workouts"
+  },
+  "fixture": {
+   "enum": [
+    false,
+    "empty",
+    "synthetic"
+   ]
+  },
+  "generated_at": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "notes": {
+   "items": {
+    "type": "string"
+   },
+   "type": "array"
+  },
+  "schema_version": {
+   "pattern": "^\\d+\\.\\d+\\.\\d+$",
+   "type": "string"
+  },
+  "source": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "status": {
+   "enum": [
+    "ok",
+    "partial",
+    "stale",
+    "missing"
+   ]
+  },
+  "workouts": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "active_kcal": {
+      "minimum": 0,
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "avg_cadence": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "avg_hr": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "avg_power_w": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "device": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "distance_m": {
+      "minimum": 0,
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "duration_s": {
+      "minimum": 0,
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "elevation_gain_m": {
+      "minimum": 0,
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "end": {
+      "format": "date-time",
+      "type": "string"
+     },
+     "indoor": {
+      "type": [
+       "boolean",
+       "null"
+      ]
+     },
+     "laps": {
+      "items": {
+       "additionalProperties": false,
+       "properties": {
+        "distance_m": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "end_s": {
+         "type": "number"
+        },
+        "label": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "start_s": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "start_s",
+        "end_s"
+       ],
+       "type": "object"
+      },
+      "type": [
+       "array",
+       "null"
+      ]
+     },
+     "max_hr": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "moving_s": {
+      "minimum": 0,
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "name": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "route_id": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "samples": {
+      "additionalProperties": false,
+      "properties": {
+       "cadence": {
+        "items": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "type": "array"
+       },
+       "dist_m": {
+        "items": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "type": "array"
+       },
+       "elev_m": {
+        "items": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "type": "array"
+       },
+       "gct_ms": {
+        "items": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "type": "array"
+       },
+       "hr": {
+        "items": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "type": "array"
+       },
+       "lat": {
+        "items": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "type": "array"
+       },
+       "lon": {
+        "items": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "type": "array"
+       },
+       "power_w": {
+        "items": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "type": "array"
+       },
+       "speed_mps": {
+        "items": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "type": "array"
+       },
+       "stride_m": {
+        "items": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "type": "array"
+       },
+       "t": {
+        "items": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "type": "array"
+       },
+       "temp_c": {
+        "items": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "type": "array"
+       },
+       "vo_cm": {
+        "items": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "type": "array"
+       }
+      },
+      "required": [
+       "t"
+      ],
+      "type": [
+       "object",
+       "null"
+      ]
+     },
+     "segments": {
+      "items": {
+       "additionalProperties": false,
+       "properties": {
+        "distance_m": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "end_s": {
+         "type": "number"
+        },
+        "sport": {
+         "enum": [
+          "run",
+          "trail_run",
+          "treadmill_run",
+          "track_run",
+          "walk",
+          "hike",
+          "ride",
+          "virtual_ride",
+          "swim",
+          "open_water_swim",
+          "row",
+          "strength",
+          "hiit",
+          "yoga",
+          "mobility",
+          "elliptical",
+          "multisport",
+          "other",
+          "transition"
+         ]
+        },
+        "start_s": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "sport",
+        "start_s",
+        "end_s"
+       ],
+       "type": "object"
+      },
+      "type": [
+       "array",
+       "null"
+      ]
+     },
+     "source": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "source_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "sport": {
+      "enum": [
+       "run",
+       "trail_run",
+       "treadmill_run",
+       "track_run",
+       "walk",
+       "hike",
+       "ride",
+       "virtual_ride",
+       "swim",
+       "open_water_swim",
+       "row",
+       "strength",
+       "hiit",
+       "yoga",
+       "mobility",
+       "elliptical",
+       "multisport",
+       "other"
+      ]
+     },
+     "start": {
+      "format": "date-time",
+      "type": "string"
+     },
+     "tags": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     },
+     "weather": {
+      "additionalProperties": false,
+      "properties": {
+       "conditions": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "humidity_pct": {
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "source": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "temp_c": {
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "wind_kph": {
+        "type": [
+         "number",
+         "null"
+        ]
+       }
+      },
+      "type": [
+       "object",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "source_id",
+     "sport",
+     "start",
+     "end"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  }
+ },
+ "required": [
+  "schema_version",
+  "domain",
+  "generated_at",
+  "as_of",
+  "source",
+  "status",
+  "workouts"
+ ],
+ "title": "AGame workouts",
+ "type": "object"
+}

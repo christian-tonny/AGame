@@ -1,0 +1,289 @@
+{
+ "$id": "agame/journal.schema.json",
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "additionalProperties": false,
+ "properties": {
+  "as_of": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "coverage": {
+   "additionalProperties": false,
+   "properties": {
+    "expected": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "ratio": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "received": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    }
+   },
+   "type": [
+    "object",
+    "null"
+   ]
+  },
+  "cycle": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "date": {
+      "format": "date",
+      "type": "string"
+     },
+     "flow": {
+      "enum": [
+       "none",
+       "light",
+       "medium",
+       "heavy",
+       null
+      ]
+     },
+     "phase": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "source": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "symptoms": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     }
+    },
+    "required": [
+     "date"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "domain": {
+   "const": "journal"
+  },
+  "entries": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "date": {
+      "format": "date",
+      "type": "string"
+     },
+     "habit_id": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "kind": {
+      "enum": [
+       "observed",
+       "configured",
+       "computed",
+       "estimated",
+       "user_entered"
+      ]
+     },
+     "t": {
+      "format": "date-time",
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "text": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "type": {
+      "enum": [
+       "mood",
+       "hydration",
+       "sunlight",
+       "screen_time",
+       "caffeine",
+       "alcohol",
+       "symptom",
+       "travel",
+       "sickness",
+       "habit",
+       "note",
+       "supplement",
+       "stress"
+      ]
+     },
+     "unit": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "value": {
+      "type": [
+       "number",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "id",
+     "date",
+     "type"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "fixture": {
+   "enum": [
+    false,
+    "empty",
+    "synthetic"
+   ]
+  },
+  "generated_at": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "habits": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "boolean": {
+      "type": "boolean"
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "unit": {
+      "type": [
+       "string",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "id",
+     "name"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "notes": {
+   "items": {
+    "type": "string"
+   },
+   "type": "array"
+  },
+  "schema_version": {
+   "pattern": "^\\d+\\.\\d+\\.\\d+$",
+   "type": "string"
+  },
+  "source": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "status": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "end": {
+      "format": "date",
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "note": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "source": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "start": {
+      "format": "date",
+      "type": "string"
+     },
+     "status": {
+      "enum": [
+       "normal",
+       "sick",
+       "traveling",
+       "injured",
+       "recovering"
+      ]
+     }
+    },
+    "required": [
+     "id",
+     "status",
+     "start"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  }
+ },
+ "required": [
+  "schema_version",
+  "domain",
+  "generated_at",
+  "as_of",
+  "source",
+  "status",
+  "entries"
+ ],
+ "title": "AGame journal",
+ "type": "object"
+}

@@ -1,0 +1,227 @@
+{
+  "_doc": "Algorithm parameters. Not personal data. profile.json may override any key under 'overrides'. See docs/calculations.md.",
+  "version": "1.0.0",
+  "periods": {
+    "week_start": "monday"
+  },
+  "zones": {
+    "hr_5zone_pct_hrmax": [[0.50, 0.60], [0.60, 0.70], [0.70, 0.80], [0.80, 0.90], [0.90, 1.00]],
+    "hr_7zone_pct_lthr": [[0.0, 0.81], [0.81, 0.89], [0.89, 0.93], [0.93, 0.99], [0.99, 1.02], [1.02, 1.06], [1.06, 1.20]],
+    "pace_5zone_pct_threshold_speed": [[0.0, 0.78], [0.78, 0.88], [0.88, 0.95], [0.95, 1.02], [1.02, 1.30]],
+    "pace_7zone_pct_threshold_speed": [[0.0, 0.78], [0.78, 0.88], [0.88, 0.95], [0.95, 1.02], [1.02, 1.08], [1.08, 1.15], [1.15, 1.50]],
+    "threshold_candidates": {
+      "test_tags": ["test_5k", "test_30min", "race"],
+      "riegel_exponent": 1.06,
+      "threshold_from_5k_factor": 0.93,
+      "lthr_from_30min_last20_factor": 1.0
+    }
+  },
+  "load": {
+    "trimp_k": {"male": [0.64, 1.92], "female": [0.86, 1.67], "default": [0.64, 1.92]},
+    "srpe_to_trimp_default": 0.55,
+    "srpe_calibration_min_pairs": 10,
+    "ctl_days": 42,
+    "atl_days": 7,
+    "re_band_weeks": 12,
+    "re_band_pct": 0.15,
+    "status": {
+      "overreaching_tsb": -30,
+      "fatigued_tsb": -20,
+      "productive_ramp_per_week": 2.0,
+      "detraining_ramp_per_week": -2.0,
+      "ramp_warning_per_week": 7.0
+    },
+    "forecast_days": 14,
+    "overtraining": {
+      "enabled": true,
+      "hrv_z_below": -1.0,
+      "tsb_below": -20,
+      "execution_ratio_below": 0.8,
+      "execution_misses": 2,
+      "window_days": 7
+    }
+  },
+  "recovery": {
+    "weights": {"hrv": 0.5, "rhr": 0.3, "sleep_debt": 0.2, "resp_rate": 0.0, "prior_strain": 0.0},
+    "baseline_days": 60,
+    "min_baseline_days": 14,
+    "high_confidence_days": 30,
+    "z_scale": 25,
+    "max_sleep_debt_min": 240,
+    "normal_range_pct": [10, 90],
+    "normal_range_min_days": 14,
+    "bands": {"low": 33, "high": 67}
+  },
+  "sleep": {
+    "default_base_need_min": null,
+    "nap_max_min": 180,
+    "disruption_min_awake_min": 5,
+    "strain_need_max_add_min": 30,
+    "debt_days": 7,
+    "debt_decay": 0.85,
+    "debt_repay_fraction": 0.25,
+    "weights": {"duration": 0.5, "efficiency": 0.2, "consistency": 0.15, "stages": 0.15},
+    "efficiency_range": [0.70, 0.95],
+    "consistency_sd_max_min": 90,
+    "stage_targets_pct": {"deep": [13, 23], "rem": [18, 25]},
+    "sri_min_nights": 7,
+    "correlation_min_nights": 21
+  },
+  "strain": {
+    "default_k": 100.0,
+    "personal_k_min_days": 28,
+    "hr_floor_pct_reserve": 0.3,
+    "normal_range_pct": [25, 75]
+  },
+  "stress": {
+    "min_daytime_hours": 6,
+    "min_samples_per_hour": 3,
+    "reserve_fraction_for_100": 0.35,
+    "day_start_hour": 7,
+    "day_end_hour": 22
+  },
+  "energy": {
+    "start_weights": {"recovery": 0.6, "sleep": 0.4},
+    "workout_drain_per_strain_pct": 0.35,
+    "stress_drain_per_hour_above_50": 1.5,
+    "baseline_drain_per_hour": 2.0
+  },
+  "body": {
+    "trend_days": 28,
+    "trend_min_points": 6,
+    "trend_min_span_days": 14,
+    "ahead_ratio": 1.25,
+    "vo2_smoothing_days": 21,
+    "vo2_gap_days": 21,
+    "vo2_confidence": {"high": 8, "medium": 3}
+  },
+  "activity": {
+    "best_effort_distances_m": [400, 1000, 1609.344, 5000, 10000, 21097.5, 42195, 50000],
+    "hr_curve_s": [5, 30, 60, 300, 600, 1200, 1800, 3600],
+    "power_curve_s": [5, 15, 30, 60, 300, 600, 1200],
+    "split_verdict_pct": 2.0,
+    "gap_smoothing_m": 50,
+    "match": {"geohash_precision": 6, "distance_tolerance": 0.05, "shape_points": 50, "shape_max_mean_m": 150},
+    "prediction_window_days": 120,
+    "prediction_targets_m": [5000, 10000, 21097.5, 42195, 50000],
+    "prediction_min_source_m": 3000,
+    "riegel_exponent": 1.06,
+    "cadence_floor_spm": 168,
+    "decoupling_warn_pct": 5.0,
+    "easy_types": ["AER", "REC", "LR"],
+    "max_detail_points": 600,
+    "top_n_efforts": 10
+  },
+  "goals": {
+    "streak_min_activities_per_week": 1
+  },
+  "insights": {
+    "correlation_min_n": 21,
+    "correlation_min_abs_r": 0.3,
+    "recommendation": {
+      "rest_recovery_below": 33,
+      "reduce_recovery_below": 50,
+      "reduce_tsb_below": -25,
+      "reduce_sleep_debt_min": 120
+    },
+    "protein_shortfall_pct": 0.15,
+    "sleep_debt_action_min": 60,
+    "banned_phrases": ["diagnos", "disease", "disorder", "prescri", "you have a condition", "medical condition", "cure", "treatment for"]
+  },
+  "plans": {
+    "link_duration_tolerance": 0.5,
+    "compliance_as_planned": [0.8, 1.2],
+    "compliance_partial_min": 0.5,
+    "hard_types": ["TMP", "VO2", "INT", "LR", "RACE", "THR"],
+    "big_day_min_duration_s": 5400,
+    "pace_adjust_min_sessions": 3,
+    "pace_adjust_min_pct": 2.0,
+    "heat_adjust_from_c": 22,
+    "heat_adjust_pct_per_c": 0.4,
+    "type_labels": {
+      "AER": "Aerobic", "REC": "Recovery", "LR": "Long run", "TMP": "Tempo", "THR": "Threshold",
+      "VO2": "VO2 max", "INT": "Intervals", "STR": "Strength", "RACE": "Race", "REST": "Rest",
+      "XT": "Cross-train", "MOB": "Mobility", "NPU": "Unplanned"
+    },
+    "default_session_by_intent": {
+      "run": {"type": "AER", "sport": "run", "duration_s": 2700},
+      "lift": {"type": "STR", "sport": "strength", "duration_s": 3600},
+      "rest": {"type": "REST", "sport": null, "duration_s": 0},
+      "optional_run": {"type": "AER", "sport": "run", "duration_s": 3600}
+    }
+  },
+  "muscles": {
+    "groups": ["chest", "front_delts", "side_delts", "rear_delts", "biceps", "triceps", "forearms", "abs", "obliques", "lats", "traps", "lower_back", "glutes", "quads", "hamstrings", "adductors", "calves"],
+    "secondary_weight": 0.5,
+    "load_weeks": 6,
+    "load_min_sessions": 6,
+    "freshness_min_sessions": 3,
+    "freshness_tau_h": 36,
+    "freshness_thresholds": {"fatigued": 3.0, "depleted": 8.0},
+    "acwr": {"overtraining": 1.5, "productive": 1.1, "detraining": 0.8},
+    "cardio_mapping_enabled": true,
+    "cardio_mapping": {
+      "run": ["quads", "hamstrings", "calves", "glutes"],
+      "trail_run": ["quads", "hamstrings", "calves", "glutes", "adductors"],
+      "ride": ["quads", "glutes", "calves"],
+      "row": ["lats", "quads", "glutes", "lower_back"],
+      "swim": ["lats", "front_delts", "triceps"],
+      "hike": ["quads", "glutes", "calves"]
+    },
+    "cardio_sets_per_10min": 0.5
+  },
+  "nutrition": {
+    "weights": {"protein": 0.35, "energy": 0.25, "fiber": 0.2, "regularity": 0.2},
+    "regular_meals_range": [3, 5],
+    "contributors": {
+      "vegetables": {"max_points": 10},
+      "whole_grains": {"target_g": 90, "max_points": 5},
+      "red_meat": {"limit_g": 100, "max_penalty": 5},
+      "sodium": {"limit_mg": 2300, "max_penalty": 5},
+      "sugar": {"limit_g": 50, "max_penalty": 5}
+    }
+  },
+  "bioage": {
+    "window_days": 30,
+    "min_coverage_days": 20,
+    "max_category_delta_years": 3.0,
+    "references": {
+      "sleep_min": 450, "sleep_regularity_sd_min": 45,
+      "steps": 8000, "zone23_min_week": 150, "zone45_min_week": 30, "strength_min_week": 60,
+      "vo2max": null
+    },
+    "phenoage_weight": 0.5
+  },
+  "privacy": {
+    "default_hide_start_end_m": 200
+  },
+  "heatmap": {
+    "cell_deg": 0.0005
+  },
+  "segments": {
+    "match_radius_m": 30,
+    "length_tolerance": 0.1
+  },
+  "metrics_catalog": {
+    "hrv_sdnn_ms": {"label": "HRV (SDNN)", "unit": "ms", "agg": "mean", "better": "higher"},
+    "resting_hr_bpm": {"label": "Resting HR", "unit": "bpm", "agg": "mean", "better": "lower"},
+    "vo2max_ml_kg_min": {"label": "VO2 max", "unit": "ml/kg/min", "agg": "mean", "better": "higher"},
+    "respiratory_rate_brpm": {"label": "Respiratory rate", "unit": "br/min", "agg": "mean", "better": null},
+    "heart_rate_bpm": {"label": "Heart rate", "unit": "bpm", "agg": "mean", "better": null, "intraday": true},
+    "steps": {"label": "Steps", "unit": "steps", "agg": "sum", "better": "higher"},
+    "active_energy_kcal": {"label": "Active energy", "unit": "kcal", "agg": "sum", "better": null},
+    "resting_energy_kcal": {"label": "Resting energy", "unit": "kcal", "agg": "sum", "better": null},
+    "bp_systolic_mmhg": {"label": "Systolic BP", "unit": "mmHg", "agg": "mean", "better": null},
+    "bp_diastolic_mmhg": {"label": "Diastolic BP", "unit": "mmHg", "agg": "mean", "better": null},
+    "glucose_mg_dl": {"label": "Glucose", "unit": "mg/dL", "agg": "mean", "better": null, "intraday": true},
+    "spo2_pct": {"label": "Blood oxygen", "unit": "%", "agg": "mean", "better": null},
+    "hr_recovery_bpm": {"label": "HR recovery (1 min)", "unit": "bpm", "agg": "mean", "better": "higher"},
+    "walking_hr_bpm": {"label": "Walking HR", "unit": "bpm", "agg": "mean", "better": "lower"},
+    "running_power_w": {"label": "Running power", "unit": "W", "agg": "mean", "better": null},
+    "ground_contact_ms": {"label": "Ground contact time", "unit": "ms", "agg": "mean", "better": "lower"},
+    "vertical_oscillation_cm": {"label": "Vertical oscillation", "unit": "cm", "agg": "mean", "better": "lower"},
+    "stride_length_m": {"label": "Stride length", "unit": "m", "agg": "mean", "better": null},
+    "body_temp_delta_c": {"label": "Wrist temp deviation", "unit": "°C", "agg": "mean", "better": null},
+    "daylight_min": {"label": "Time in daylight", "unit": "min", "agg": "sum", "better": "higher"}
+  }
+}

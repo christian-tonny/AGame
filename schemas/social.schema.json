@@ -1,0 +1,326 @@
+{
+ "$id": "agame/social.schema.json",
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "additionalProperties": false,
+ "properties": {
+  "as_of": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "athletes": {
+   "items": {
+    "properties": {
+     "consent": {
+      "type": "boolean"
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "source": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "source"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "challenges": {
+   "items": {
+    "properties": {
+     "consent": {
+      "type": "boolean"
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "source": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "source"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "clubs": {
+   "items": {
+    "properties": {
+     "consent": {
+      "type": "boolean"
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "source": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "source"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "comments": {
+   "items": {
+    "properties": {
+     "consent": {
+      "type": "boolean"
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "source": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "source"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "connected": {
+   "type": "boolean"
+  },
+  "coverage": {
+   "additionalProperties": false,
+   "properties": {
+    "expected": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "ratio": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "received": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    }
+   },
+   "type": [
+    "object",
+    "null"
+   ]
+  },
+  "domain": {
+   "const": "social"
+  },
+  "events": {
+   "items": {
+    "properties": {
+     "consent": {
+      "type": "boolean"
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "source": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "source"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "fixture": {
+   "enum": [
+    false,
+    "empty",
+    "synthetic"
+   ]
+  },
+  "flags": {
+   "items": {
+    "properties": {
+     "consent": {
+      "type": "boolean"
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "source": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "source"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "follows": {
+   "items": {
+    "properties": {
+     "consent": {
+      "type": "boolean"
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "source": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "source"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "generated_at": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "kudos": {
+   "items": {
+    "properties": {
+     "consent": {
+      "type": "boolean"
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "source": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "source"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "notes": {
+   "items": {
+    "type": "string"
+   },
+   "type": "array"
+  },
+  "posts": {
+   "items": {
+    "properties": {
+     "consent": {
+      "type": "boolean"
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "source": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "source"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "schema_version": {
+   "pattern": "^\\d+\\.\\d+\\.\\d+$",
+   "type": "string"
+  },
+  "segment_efforts": {
+   "items": {
+    "properties": {
+     "consent": {
+      "type": "boolean"
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "source": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "source"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "source": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "status": {
+   "enum": [
+    "ok",
+    "partial",
+    "stale",
+    "missing"
+   ]
+  }
+ },
+ "required": [
+  "schema_version",
+  "domain",
+  "generated_at",
+  "as_of",
+  "source",
+  "status",
+  "connected"
+ ],
+ "title": "AGame social",
+ "type": "object"
+}

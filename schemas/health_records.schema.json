@@ -1,0 +1,203 @@
+{
+ "$id": "agame/health_records.schema.json",
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "additionalProperties": false,
+ "properties": {
+  "as_of": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "coverage": {
+   "additionalProperties": false,
+   "properties": {
+    "expected": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "ratio": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "received": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    }
+   },
+   "type": [
+    "object",
+    "null"
+   ]
+  },
+  "domain": {
+   "const": "health_records"
+  },
+  "fixture": {
+   "enum": [
+    false,
+    "empty",
+    "synthetic"
+   ]
+  },
+  "generated_at": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "notes": {
+   "items": {
+    "type": "string"
+   },
+   "type": "array"
+  },
+  "records": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "biomarkers": {
+      "items": {
+       "additionalProperties": false,
+       "properties": {
+        "code": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "name": {
+         "type": "string"
+        },
+        "ref_high": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "ref_low": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "ref_text": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "unit": {
+         "type": "string"
+        },
+        "value": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "name",
+        "value",
+        "unit"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     },
+     "date": {
+      "format": "date",
+      "type": "string"
+     },
+     "file": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "kind": {
+      "enum": [
+       "observed",
+       "configured",
+       "computed",
+       "estimated",
+       "user_entered"
+      ]
+     },
+     "provider": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "text": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "title": {
+      "type": "string"
+     },
+     "type": {
+      "enum": [
+       "lab",
+       "note",
+       "document",
+       "imaging",
+       "vaccination"
+      ]
+     }
+    },
+    "required": [
+     "id",
+     "date",
+     "type",
+     "title"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "schema_version": {
+   "pattern": "^\\d+\\.\\d+\\.\\d+$",
+   "type": "string"
+  },
+  "source": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "status": {
+   "enum": [
+    "ok",
+    "partial",
+    "stale",
+    "missing"
+   ]
+  }
+ },
+ "required": [
+  "schema_version",
+  "domain",
+  "generated_at",
+  "as_of",
+  "source",
+  "status",
+  "records"
+ ],
+ "title": "AGame health_records",
+ "type": "object"
+}

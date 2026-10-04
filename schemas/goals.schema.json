@@ -1,0 +1,243 @@
+{
+ "$id": "agame/goals.schema.json",
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "additionalProperties": false,
+ "properties": {
+  "as_of": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "coverage": {
+   "additionalProperties": false,
+   "properties": {
+    "expected": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "ratio": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "received": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    }
+   },
+   "type": [
+    "object",
+    "null"
+   ]
+  },
+  "domain": {
+   "const": "goals"
+  },
+  "fixture": {
+   "enum": [
+    false,
+    "empty",
+    "synthetic"
+   ]
+  },
+  "generated_at": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "goals": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "created_at": {
+      "format": "date-time",
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "direction": {
+      "enum": [
+       "increase",
+       "decrease",
+       null
+      ]
+     },
+     "distance_m": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "exercise_id": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "kind": {
+      "enum": [
+       "observed",
+       "configured",
+       "computed",
+       "estimated",
+       "user_entered"
+      ]
+     },
+     "metric": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "period": {
+      "additionalProperties": false,
+      "properties": {
+       "end": {
+        "format": "date",
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "start": {
+        "format": "date",
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "type": {
+        "enum": [
+         "week",
+         "month",
+         "year",
+         "custom",
+         "by_date"
+        ]
+       }
+      },
+      "required": [
+       "type"
+      ],
+      "type": "object"
+     },
+     "segment_id": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "sport": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "start_value": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "status": {
+      "enum": [
+       "active",
+       "archived",
+       "done"
+      ]
+     },
+     "target": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "title": {
+      "type": "string"
+     },
+     "type": {
+      "enum": [
+       "distance",
+       "time",
+       "elevation",
+       "calories",
+       "kilojoules",
+       "load",
+       "streak",
+       "record",
+       "segment",
+       "strength",
+       "body_weight",
+       "nutrition",
+       "habit",
+       "sessions"
+      ]
+     },
+     "unit": {
+      "type": [
+       "string",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "id",
+     "type",
+     "title"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "notes": {
+   "items": {
+    "type": "string"
+   },
+   "type": "array"
+  },
+  "schema_version": {
+   "pattern": "^\\d+\\.\\d+\\.\\d+$",
+   "type": "string"
+  },
+  "source": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "status": {
+   "enum": [
+    "ok",
+    "partial",
+    "stale",
+    "missing"
+   ]
+  }
+ },
+ "required": [
+  "schema_version",
+  "domain",
+  "generated_at",
+  "as_of",
+  "source",
+  "status",
+  "goals"
+ ],
+ "title": "AGame goals",
+ "type": "object"
+}

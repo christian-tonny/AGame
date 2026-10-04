@@ -1,0 +1,18 @@
+{
+ "as_of": null,
+ "calendar": [],
+ "domain": "plans",
+ "fixture": "empty",
+ "generated_at": null,
+ "mode": null,
+ "plans": [],
+ "prehab": [],
+ "prehab_log": [],
+ "races": [],
+ "routines": [],
+ "schema_version": "1.0.0",
+ "sessions": [],
+ "source": null,
+ "status": "missing",
+ "templates": []
+}

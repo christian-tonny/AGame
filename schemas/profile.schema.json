@@ -1,0 +1,834 @@
+{
+ "$defs": {
+  "measure": {
+   "additionalProperties": false,
+   "description": "A configured or observed number with provenance.",
+   "properties": {
+    "date": {
+     "format": "date",
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "kind": {
+     "enum": [
+      "observed",
+      "configured",
+      "computed",
+      "estimated",
+      "user_entered"
+     ]
+    },
+    "method": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "note": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "value": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "value"
+   ],
+   "type": [
+    "object",
+    "null"
+   ]
+  },
+  "point": {
+   "additionalProperties": false,
+   "anyOf": [
+    {
+     "required": [
+      "t"
+     ]
+    },
+    {
+     "required": [
+      "date"
+     ]
+    }
+   ],
+   "properties": {
+    "date": {
+     "format": "date",
+     "type": "string"
+    },
+    "kind": {
+     "enum": [
+      "observed",
+      "configured",
+      "computed",
+      "estimated",
+      "user_entered"
+     ]
+    },
+    "source": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "source_id": {
+     "maxLength": 200,
+     "minLength": 1,
+     "type": "string"
+    },
+    "t": {
+     "format": "date-time",
+     "type": "string"
+    },
+    "v": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "v",
+    "source_id"
+   ],
+   "type": "object"
+  },
+  "set": {
+   "additionalProperties": false,
+   "properties": {
+    "duration_s": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "reps": {
+     "maximum": 1000,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "rest_s": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "rir": {
+     "maximum": 10,
+     "minimum": 0,
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "rpe": {
+     "maximum": 10,
+     "minimum": 1,
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "warmup": {
+     "type": "boolean"
+    },
+    "weight_kg": {
+     "maximum": 1000,
+     "minimum": 0,
+     "type": [
+      "number",
+      "null"
+     ]
+    }
+   },
+   "required": [
+    "reps"
+   ],
+   "type": "object"
+  },
+  "step": {
+   "additionalProperties": false,
+   "properties": {
+    "distance_m": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "duration_s": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "kind": {
+     "enum": [
+      "warmup",
+      "work",
+      "recovery",
+      "cooldown",
+      "repeat",
+      "rest"
+     ]
+    },
+    "label": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "repeat": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "steps": {
+     "items": {
+      "$ref": "#/$defs/step"
+     },
+     "type": "array"
+    },
+    "target": {
+     "additionalProperties": false,
+     "properties": {
+      "high": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "low": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "metric": {
+       "enum": [
+        "hr",
+        "pace",
+        "power",
+        "zone",
+        "rpe",
+        "open"
+       ]
+      },
+      "zone": {
+       "type": [
+        "integer",
+        "null"
+       ]
+      }
+     },
+     "type": [
+      "object",
+      "null"
+     ]
+    }
+   },
+   "required": [
+    "kind"
+   ],
+   "type": "object"
+  }
+ },
+ "$id": "agame/profile.schema.json",
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "additionalProperties": false,
+ "properties": {
+  "as_of": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "athlete": {
+   "additionalProperties": false,
+   "properties": {
+    "birth_year": {
+     "maximum": 2100,
+     "minimum": 1900,
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "display_name": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "height_cm": {
+     "maximum": 260,
+     "minimum": 50,
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "sex": {
+     "enum": [
+      "male",
+      "female",
+      null
+     ]
+    }
+   },
+   "type": "object"
+  },
+  "auto_accept_thresholds": {
+   "type": "boolean"
+  },
+  "beacon": {
+   "additionalProperties": false,
+   "properties": {
+    "contacts": {
+     "items": {
+      "type": "string"
+     },
+     "type": "array"
+    },
+    "enabled": {
+     "type": "boolean"
+    }
+   },
+   "type": "object"
+  },
+  "coach": {
+   "additionalProperties": false,
+   "properties": {
+    "include_health_records": {
+     "type": "boolean"
+    },
+    "language": {
+     "enum": [
+      "simple",
+      "standard",
+      "technical"
+     ]
+    },
+    "mode": {
+     "enum": [
+      "fast",
+      "thinking",
+      "adaptive"
+     ]
+    },
+    "personality": {
+     "enum": [
+      "data_nerd",
+      "guardian",
+      "friend",
+      "commander"
+     ]
+    }
+   },
+   "type": "object"
+  },
+  "coverage": {
+   "additionalProperties": false,
+   "properties": {
+    "expected": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "ratio": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "received": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    }
+   },
+   "type": [
+    "object",
+    "null"
+   ]
+  },
+  "domain": {
+   "const": "profile"
+  },
+  "fixture": {
+   "enum": [
+    false,
+    "empty",
+    "synthetic"
+   ]
+  },
+  "generated_at": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "integrations": {
+   "additionalProperties": false,
+   "properties": {
+    "calendar_source": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "companion_app": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "food_database": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "map_attribution": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "map_tiles_url": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "nutrition_source": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "vision_service": {
+     "type": [
+      "string",
+      "null"
+     ]
+    }
+   },
+   "type": "object"
+  },
+  "locale": {
+   "additionalProperties": false,
+   "properties": {
+    "timezone": {
+     "type": "string"
+    },
+    "units": {
+     "enum": [
+      "metric",
+      "imperial"
+     ]
+    },
+    "week_start": {
+     "enum": [
+      "monday",
+      "sunday",
+      "saturday"
+     ]
+    }
+   },
+   "type": "object"
+  },
+  "modules": {
+   "additionalProperties": false,
+   "properties": {
+    "cycle_tracking": {
+     "type": "boolean"
+    },
+    "health_records": {
+     "type": "boolean"
+    },
+    "nutrition": {
+     "type": "boolean"
+    },
+    "social": {
+     "type": "boolean"
+    }
+   },
+   "type": "object"
+  },
+  "notes": {
+   "items": {
+    "type": "string"
+   },
+   "type": "array"
+  },
+  "overrides": {
+   "type": "object"
+  },
+  "physiology": {
+   "additionalProperties": false,
+   "properties": {
+    "ftp_w": {
+     "$ref": "#/$defs/measure"
+    },
+    "hr_max": {
+     "$ref": "#/$defs/measure"
+    },
+    "hr_rest": {
+     "$ref": "#/$defs/measure"
+    },
+    "lthr": {
+     "$ref": "#/$defs/measure"
+    },
+    "sleep_need_base_min": {
+     "$ref": "#/$defs/measure"
+    },
+    "threshold_pace_s_per_km": {
+     "$ref": "#/$defs/measure"
+    }
+   },
+   "type": "object"
+  },
+  "privacy": {
+   "additionalProperties": false,
+   "properties": {
+    "default_activity_private": {
+     "type": "boolean"
+    },
+    "hide_start_end_m": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "zones": {
+     "items": {
+      "additionalProperties": false,
+      "properties": {
+       "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+       },
+       "label": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "lat": {
+        "maximum": 90,
+        "minimum": -90,
+        "type": "number"
+       },
+       "lon": {
+        "maximum": 180,
+        "minimum": -180,
+        "type": "number"
+       },
+       "radius_m": {
+        "maximum": 5000,
+        "minimum": 0,
+        "type": "number"
+       }
+      },
+      "required": [
+       "id",
+       "lat",
+       "lon",
+       "radius_m"
+      ],
+      "type": "object"
+     },
+     "type": "array"
+    }
+   },
+   "type": "object"
+  },
+  "schedule": {
+   "additionalProperties": false,
+   "properties": {
+    "template": {
+     "items": {
+      "additionalProperties": false,
+      "properties": {
+       "available_from": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "available_to": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "duration_s": {
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "intent": {
+        "enum": [
+         "run",
+         "lift",
+         "rest",
+         "optional_run",
+         "cross_train",
+         "mobility"
+        ]
+       },
+       "type": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "weekday": {
+        "enum": [
+         "monday",
+         "tuesday",
+         "wednesday",
+         "thursday",
+         "friday",
+         "saturday",
+         "sunday"
+        ]
+       }
+      },
+      "required": [
+       "weekday",
+       "intent"
+      ],
+      "type": "object"
+     },
+     "type": "array"
+    }
+   },
+   "type": "object"
+  },
+  "schema_version": {
+   "pattern": "^\\d+\\.\\d+\\.\\d+$",
+   "type": "string"
+  },
+  "smart_alarm": {
+   "additionalProperties": false,
+   "properties": {
+    "enabled": {
+     "type": "boolean"
+    },
+    "target_wake": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "window_min": {
+     "type": [
+      "number",
+      "null"
+     ]
+    }
+   },
+   "type": "object"
+  },
+  "source": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "status": {
+   "enum": [
+    "ok",
+    "partial",
+    "stale",
+    "missing"
+   ]
+  },
+  "targets": {
+   "additionalProperties": false,
+   "properties": {
+    "caffeine_cutoff": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "caffeine_mg_max": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "carbs_g": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "fat_g": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "fiber_g": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "kcal": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "protein_g": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "sleep_min": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "steps": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "vegetables_g": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "wake_time": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "water_ml": {
+     "type": [
+      "number",
+      "null"
+     ]
+    }
+   },
+   "type": "object"
+  },
+  "ui": {
+   "additionalProperties": false,
+   "properties": {
+    "app_icon": {
+     "type": "string"
+    },
+    "mobile_tabs": {
+     "items": {
+      "type": "string"
+     },
+     "maxItems": 5,
+     "minItems": 1,
+     "type": "array"
+    },
+    "pinned_charts": {
+     "items": {
+      "type": "string"
+     },
+     "type": "array"
+    },
+    "theme": {
+     "enum": [
+      "system",
+      "dark",
+      "light"
+     ]
+    },
+    "today_widgets": {
+     "items": {
+      "type": "string"
+     },
+     "type": "array"
+    }
+   },
+   "type": "object"
+  },
+  "zones": {
+   "additionalProperties": false,
+   "properties": {
+    "hr_custom_bpm": {
+     "items": {
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "number"
+       }
+      ],
+      "type": "array"
+     },
+     "type": [
+      "array",
+      "null"
+     ]
+    },
+    "model": {
+     "enum": [
+      "5zone",
+      "7zone"
+     ]
+    },
+    "pace_custom_s_per_km": {
+     "items": {
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "number"
+       }
+      ],
+      "type": "array"
+     },
+     "type": [
+      "array",
+      "null"
+     ]
+    }
+   },
+   "type": "object"
+  }
+ },
+ "required": [
+  "schema_version",
+  "domain",
+  "generated_at",
+  "as_of",
+  "source",
+  "status"
+ ],
+ "title": "AGame profile",
+ "type": "object"
+}

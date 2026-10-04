@@ -1,0 +1,166 @@
+{
+ "$id": "agame/sleep.schema.json",
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "additionalProperties": false,
+ "properties": {
+  "as_of": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "coverage": {
+   "additionalProperties": false,
+   "properties": {
+    "expected": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "ratio": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "received": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    }
+   },
+   "type": [
+    "object",
+    "null"
+   ]
+  },
+  "domain": {
+   "const": "sleep"
+  },
+  "fixture": {
+   "enum": [
+    false,
+    "empty",
+    "synthetic"
+   ]
+  },
+  "generated_at": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "nights": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "date": {
+      "format": "date",
+      "type": "string"
+     },
+     "end": {
+      "format": "date-time",
+      "type": "string"
+     },
+     "is_nap": {
+      "type": "boolean"
+     },
+     "segments": {
+      "items": {
+       "additionalProperties": false,
+       "properties": {
+        "end": {
+         "format": "date-time",
+         "type": "string"
+        },
+        "stage": {
+         "enum": [
+          "in_bed",
+          "awake",
+          "core",
+          "deep",
+          "rem",
+          "asleep_unspecified"
+         ]
+        },
+        "start": {
+         "format": "date-time",
+         "type": "string"
+        }
+       },
+       "required": [
+        "stage",
+        "start",
+        "end"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     },
+     "source": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "source_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "start": {
+      "format": "date-time",
+      "type": "string"
+     }
+    },
+    "required": [
+     "source_id",
+     "start",
+     "end",
+     "segments"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "notes": {
+   "items": {
+    "type": "string"
+   },
+   "type": "array"
+  },
+  "schema_version": {
+   "pattern": "^\\d+\\.\\d+\\.\\d+$",
+   "type": "string"
+  },
+  "source": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "status": {
+   "enum": [
+    "ok",
+    "partial",
+    "stale",
+    "missing"
+   ]
+  }
+ },
+ "required": [
+  "schema_version",
+  "domain",
+  "generated_at",
+  "as_of",
+  "source",
+  "status",
+  "nights"
+ ],
+ "title": "AGame sleep",
+ "type": "object"
+}

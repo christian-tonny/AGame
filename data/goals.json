@@ -1,0 +1,10 @@
+{
+ "as_of": null,
+ "domain": "goals",
+ "fixture": "empty",
+ "generated_at": null,
+ "goals": [],
+ "schema_version": "1.0.0",
+ "source": null,
+ "status": "missing"
+}

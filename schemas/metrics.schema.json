@@ -1,0 +1,380 @@
+{
+ "$defs": {
+  "measure": {
+   "additionalProperties": false,
+   "description": "A configured or observed number with provenance.",
+   "properties": {
+    "date": {
+     "format": "date",
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "kind": {
+     "enum": [
+      "observed",
+      "configured",
+      "computed",
+      "estimated",
+      "user_entered"
+     ]
+    },
+    "method": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "note": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "value": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "value"
+   ],
+   "type": [
+    "object",
+    "null"
+   ]
+  },
+  "point": {
+   "additionalProperties": false,
+   "anyOf": [
+    {
+     "required": [
+      "t"
+     ]
+    },
+    {
+     "required": [
+      "date"
+     ]
+    }
+   ],
+   "properties": {
+    "date": {
+     "format": "date",
+     "type": "string"
+    },
+    "kind": {
+     "enum": [
+      "observed",
+      "configured",
+      "computed",
+      "estimated",
+      "user_entered"
+     ]
+    },
+    "source": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "source_id": {
+     "maxLength": 200,
+     "minLength": 1,
+     "type": "string"
+    },
+    "t": {
+     "format": "date-time",
+     "type": "string"
+    },
+    "v": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "v",
+    "source_id"
+   ],
+   "type": "object"
+  },
+  "set": {
+   "additionalProperties": false,
+   "properties": {
+    "duration_s": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "reps": {
+     "maximum": 1000,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "rest_s": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "rir": {
+     "maximum": 10,
+     "minimum": 0,
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "rpe": {
+     "maximum": 10,
+     "minimum": 1,
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "warmup": {
+     "type": "boolean"
+    },
+    "weight_kg": {
+     "maximum": 1000,
+     "minimum": 0,
+     "type": [
+      "number",
+      "null"
+     ]
+    }
+   },
+   "required": [
+    "reps"
+   ],
+   "type": "object"
+  },
+  "step": {
+   "additionalProperties": false,
+   "properties": {
+    "distance_m": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "duration_s": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "kind": {
+     "enum": [
+      "warmup",
+      "work",
+      "recovery",
+      "cooldown",
+      "repeat",
+      "rest"
+     ]
+    },
+    "label": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "repeat": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "steps": {
+     "items": {
+      "$ref": "#/$defs/step"
+     },
+     "type": "array"
+    },
+    "target": {
+     "additionalProperties": false,
+     "properties": {
+      "high": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "low": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "metric": {
+       "enum": [
+        "hr",
+        "pace",
+        "power",
+        "zone",
+        "rpe",
+        "open"
+       ]
+      },
+      "zone": {
+       "type": [
+        "integer",
+        "null"
+       ]
+      }
+     },
+     "type": [
+      "object",
+      "null"
+     ]
+    }
+   },
+   "required": [
+    "kind"
+   ],
+   "type": "object"
+  }
+ },
+ "$id": "agame/metrics.schema.json",
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "additionalProperties": false,
+ "properties": {
+  "as_of": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "coverage": {
+   "additionalProperties": false,
+   "properties": {
+    "expected": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "ratio": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "received": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    }
+   },
+   "type": [
+    "object",
+    "null"
+   ]
+  },
+  "domain": {
+   "const": "metrics"
+  },
+  "fixture": {
+   "enum": [
+    false,
+    "empty",
+    "synthetic"
+   ]
+  },
+  "generated_at": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "notes": {
+   "items": {
+    "type": "string"
+   },
+   "type": "array"
+  },
+  "schema_version": {
+   "pattern": "^\\d+\\.\\d+\\.\\d+$",
+   "type": "string"
+  },
+  "series": {
+   "additionalProperties": false,
+   "patternProperties": {
+    "^[a-z0-9_]+$": {
+     "items": {
+      "$ref": "#/$defs/point"
+     },
+     "type": "array"
+    }
+   },
+   "type": "object"
+  },
+  "series_meta": {
+   "additionalProperties": {
+    "additionalProperties": false,
+    "properties": {
+     "agg": {
+      "enum": [
+       "mean",
+       "sum",
+       "last",
+       "max",
+       "min"
+      ]
+     },
+     "better": {
+      "enum": [
+       "higher",
+       "lower",
+       null
+      ]
+     },
+     "label": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "unit": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "unit"
+    ],
+    "type": "object"
+   },
+   "type": "object"
+  },
+  "source": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "status": {
+   "enum": [
+    "ok",
+    "partial",
+    "stale",
+    "missing"
+   ]
+  }
+ },
+ "required": [
+  "schema_version",
+  "domain",
+  "generated_at",
+  "as_of",
+  "source",
+  "status",
+  "series"
+ ],
+ "title": "AGame metrics",
+ "type": "object"
+}

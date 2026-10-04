@@ -1,0 +1,99 @@
+{
+ "as_of": null,
+ "athlete": {
+  "birth_year": null,
+  "display_name": null,
+  "height_cm": null,
+  "sex": null
+ },
+ "auto_accept_thresholds": false,
+ "beacon": {
+  "contacts": [],
+  "enabled": false
+ },
+ "coach": {
+  "include_health_records": false,
+  "language": "standard",
+  "mode": "adaptive",
+  "personality": "data_nerd"
+ },
+ "domain": "profile",
+ "fixture": "empty",
+ "generated_at": null,
+ "integrations": {
+  "calendar_source": null,
+  "companion_app": null,
+  "food_database": null,
+  "map_attribution": null,
+  "map_tiles_url": null,
+  "nutrition_source": null,
+  "vision_service": null
+ },
+ "locale": {
+  "timezone": "Africa/Kigali",
+  "units": "metric",
+  "week_start": "monday"
+ },
+ "modules": {
+  "cycle_tracking": false,
+  "health_records": true,
+  "nutrition": true,
+  "social": true
+ },
+ "physiology": {
+  "ftp_w": null,
+  "hr_max": null,
+  "hr_rest": null,
+  "lthr": null,
+  "sleep_need_base_min": null,
+  "threshold_pace_s_per_km": null
+ },
+ "privacy": {
+  "default_activity_private": false,
+  "hide_start_end_m": 200,
+  "zones": []
+ },
+ "schedule": {
+  "template": []
+ },
+ "schema_version": "1.0.0",
+ "smart_alarm": {
+  "enabled": false,
+  "target_wake": null,
+  "window_min": 30
+ },
+ "source": null,
+ "status": "missing",
+ "targets": {
+  "caffeine_cutoff": null,
+  "caffeine_mg_max": null,
+  "carbs_g": null,
+  "fat_g": null,
+  "fiber_g": null,
+  "kcal": null,
+  "protein_g": null,
+  "sleep_min": null,
+  "steps": null,
+  "vegetables_g": null,
+  "wake_time": null,
+  "water_ml": null
+ },
+ "ui": {
+  "app_icon": "default",
+  "mobile_tabs": [
+   "today",
+   "training",
+   "activities",
+   "coach",
+   "more"
+  ],
+  "pinned_charts": [],
+  "theme": "system",
+  "today_widgets": []
+ },
+ "zones": {
+  "hr_custom_bpm": null,
+  "model": "5zone",
+  "pace_custom_s_per_km": null
+ }
+}

@@ -1,0 +1,706 @@
+{
+ "_doc": "Exercise library (configuration, not records). Users can add exercises in strength.json. Muscles map to config/defaults.json muscles.groups.",
+ "version": "1.0.0",
+ "exercises": [
+  {
+   "id": "back_squat",
+   "name": "Back squat",
+   "primary": [
+    "quads",
+    "glutes"
+   ],
+   "secondary": [
+    "hamstrings",
+    "lower_back",
+    "adductors"
+   ],
+   "equipment": "barbell",
+   "pattern": "squat",
+   "cue": "Brace, knees track over toes"
+  },
+  {
+   "id": "front_squat",
+   "name": "Front squat",
+   "primary": [
+    "quads"
+   ],
+   "secondary": [
+    "glutes",
+    "abs"
+   ],
+   "equipment": "barbell",
+   "pattern": "squat",
+   "cue": "Elbows high, upright torso"
+  },
+  {
+   "id": "goblet_squat",
+   "name": "Goblet squat",
+   "primary": [
+    "quads",
+    "glutes"
+   ],
+   "secondary": [
+    "abs"
+   ],
+   "equipment": "dumbbell",
+   "pattern": "squat",
+   "cue": "Sit between the hips"
+  },
+  {
+   "id": "bulgarian_split_squat",
+   "name": "Bulgarian split squat",
+   "primary": [
+    "quads",
+    "glutes"
+   ],
+   "secondary": [
+    "adductors",
+    "hamstrings"
+   ],
+   "equipment": "dumbbell",
+   "pattern": "lunge",
+   "cue": "Front shin near vertical"
+  },
+  {
+   "id": "walking_lunge",
+   "name": "Walking lunge",
+   "primary": [
+    "quads",
+    "glutes"
+   ],
+   "secondary": [
+    "hamstrings",
+    "calves"
+   ],
+   "equipment": "dumbbell",
+   "pattern": "lunge",
+   "cue": "Long stride, soft back knee"
+  },
+  {
+   "id": "leg_press",
+   "name": "Leg press",
+   "primary": [
+    "quads",
+    "glutes"
+   ],
+   "secondary": [
+    "hamstrings"
+   ],
+   "equipment": "machine",
+   "pattern": "squat",
+   "cue": "Full foot pressure"
+  },
+  {
+   "id": "leg_extension",
+   "name": "Leg extension",
+   "primary": [
+    "quads"
+   ],
+   "secondary": [],
+   "equipment": "machine",
+   "pattern": "isolation",
+   "cue": "Pause at the top"
+  },
+  {
+   "id": "deadlift",
+   "name": "Deadlift",
+   "primary": [
+    "hamstrings",
+    "glutes",
+    "lower_back"
+   ],
+   "secondary": [
+    "traps",
+    "forearms",
+    "quads"
+   ],
+   "equipment": "barbell",
+   "pattern": "hinge",
+   "cue": "Bar close, push the floor away"
+  },
+  {
+   "id": "romanian_deadlift",
+   "name": "Romanian deadlift",
+   "primary": [
+    "hamstrings",
+    "glutes"
+   ],
+   "secondary": [
+    "lower_back"
+   ],
+   "equipment": "barbell",
+   "pattern": "hinge",
+   "cue": "Hips back, soft knees"
+  },
+  {
+   "id": "trap_bar_deadlift",
+   "name": "Trap bar deadlift",
+   "primary": [
+    "quads",
+    "glutes",
+    "hamstrings"
+   ],
+   "secondary": [
+    "traps",
+    "lower_back"
+   ],
+   "equipment": "trap_bar",
+   "pattern": "hinge",
+   "cue": "Neutral spine"
+  },
+  {
+   "id": "hip_thrust",
+   "name": "Hip thrust",
+   "primary": [
+    "glutes"
+   ],
+   "secondary": [
+    "hamstrings"
+   ],
+   "equipment": "barbell",
+   "pattern": "hinge",
+   "cue": "Chin tucked, ribs down"
+  },
+  {
+   "id": "leg_curl",
+   "name": "Leg curl",
+   "primary": [
+    "hamstrings"
+   ],
+   "secondary": [
+    "calves"
+   ],
+   "equipment": "machine",
+   "pattern": "isolation",
+   "cue": "Control the eccentric"
+  },
+  {
+   "id": "nordic_curl",
+   "name": "Nordic curl",
+   "primary": [
+    "hamstrings"
+   ],
+   "secondary": [],
+   "equipment": "bodyweight",
+   "pattern": "isolation",
+   "cue": "Slow lowering"
+  },
+  {
+   "id": "calf_raise",
+   "name": "Standing calf raise",
+   "primary": [
+    "calves"
+   ],
+   "secondary": [],
+   "equipment": "machine",
+   "pattern": "isolation",
+   "cue": "Full stretch at the bottom"
+  },
+  {
+   "id": "seated_calf_raise",
+   "name": "Seated calf raise",
+   "primary": [
+    "calves"
+   ],
+   "secondary": [],
+   "equipment": "machine",
+   "pattern": "isolation",
+   "cue": "Pause at the top"
+  },
+  {
+   "id": "step_up",
+   "name": "Step-up",
+   "primary": [
+    "quads",
+    "glutes"
+   ],
+   "secondary": [
+    "calves"
+   ],
+   "equipment": "dumbbell",
+   "pattern": "lunge",
+   "cue": "Drive through the front foot"
+  },
+  {
+   "id": "copenhagen_plank",
+   "name": "Copenhagen plank",
+   "primary": [
+    "adductors"
+   ],
+   "secondary": [
+    "obliques"
+   ],
+   "equipment": "bodyweight",
+   "pattern": "core",
+   "cue": "Straight line head to heel"
+  },
+  {
+   "id": "bench_press",
+   "name": "Bench press",
+   "primary": [
+    "chest"
+   ],
+   "secondary": [
+    "triceps",
+    "front_delts"
+   ],
+   "equipment": "barbell",
+   "pattern": "horizontal_push",
+   "cue": "Shoulder blades pinned"
+  },
+  {
+   "id": "incline_db_press",
+   "name": "Incline dumbbell press",
+   "primary": [
+    "chest",
+    "front_delts"
+   ],
+   "secondary": [
+    "triceps"
+   ],
+   "equipment": "dumbbell",
+   "pattern": "horizontal_push",
+   "cue": "30\u00b0 bench"
+  },
+  {
+   "id": "db_bench_press",
+   "name": "Dumbbell bench press",
+   "primary": [
+    "chest"
+   ],
+   "secondary": [
+    "triceps",
+    "front_delts"
+   ],
+   "equipment": "dumbbell",
+   "pattern": "horizontal_push",
+   "cue": "Elbows ~45\u00b0"
+  },
+  {
+   "id": "push_up",
+   "name": "Push-up",
+   "primary": [
+    "chest"
+   ],
+   "secondary": [
+    "triceps",
+    "front_delts",
+    "abs"
+   ],
+   "equipment": "bodyweight",
+   "pattern": "horizontal_push",
+   "cue": "Rigid plank"
+  },
+  {
+   "id": "dip",
+   "name": "Dip",
+   "primary": [
+    "chest",
+    "triceps"
+   ],
+   "secondary": [
+    "front_delts"
+   ],
+   "equipment": "bodyweight",
+   "pattern": "vertical_push",
+   "cue": "Slight forward lean"
+  },
+  {
+   "id": "overhead_press",
+   "name": "Overhead press",
+   "primary": [
+    "front_delts"
+   ],
+   "secondary": [
+    "triceps",
+    "side_delts",
+    "abs"
+   ],
+   "equipment": "barbell",
+   "pattern": "vertical_push",
+   "cue": "Squeeze glutes, bar over mid-foot"
+  },
+  {
+   "id": "db_shoulder_press",
+   "name": "Dumbbell shoulder press",
+   "primary": [
+    "front_delts"
+   ],
+   "secondary": [
+    "triceps",
+    "side_delts"
+   ],
+   "equipment": "dumbbell",
+   "pattern": "vertical_push",
+   "cue": "Ribs down"
+  },
+  {
+   "id": "lateral_raise",
+   "name": "Lateral raise",
+   "primary": [
+    "side_delts"
+   ],
+   "secondary": [
+    "traps"
+   ],
+   "equipment": "dumbbell",
+   "pattern": "isolation",
+   "cue": "Lead with elbows"
+  },
+  {
+   "id": "face_pull",
+   "name": "Face pull",
+   "primary": [
+    "rear_delts"
+   ],
+   "secondary": [
+    "traps"
+   ],
+   "equipment": "cable",
+   "pattern": "horizontal_pull",
+   "cue": "Pull to the eyes"
+  },
+  {
+   "id": "rear_delt_fly",
+   "name": "Rear delt fly",
+   "primary": [
+    "rear_delts"
+   ],
+   "secondary": [
+    "traps"
+   ],
+   "equipment": "dumbbell",
+   "pattern": "isolation",
+   "cue": "Soft elbows"
+  },
+  {
+   "id": "pull_up",
+   "name": "Pull-up",
+   "primary": [
+    "lats"
+   ],
+   "secondary": [
+    "biceps",
+    "rear_delts",
+    "forearms"
+   ],
+   "equipment": "bodyweight",
+   "pattern": "vertical_pull",
+   "cue": "Full hang to chin over bar"
+  },
+  {
+   "id": "chin_up",
+   "name": "Chin-up",
+   "primary": [
+    "lats",
+    "biceps"
+   ],
+   "secondary": [
+    "forearms"
+   ],
+   "equipment": "bodyweight",
+   "pattern": "vertical_pull",
+   "cue": "Supinated grip"
+  },
+  {
+   "id": "lat_pulldown",
+   "name": "Lat pulldown",
+   "primary": [
+    "lats"
+   ],
+   "secondary": [
+    "biceps",
+    "rear_delts"
+   ],
+   "equipment": "cable",
+   "pattern": "vertical_pull",
+   "cue": "Pull elbows to ribs"
+  },
+  {
+   "id": "barbell_row",
+   "name": "Barbell row",
+   "primary": [
+    "lats",
+    "traps"
+   ],
+   "secondary": [
+    "rear_delts",
+    "biceps",
+    "lower_back"
+   ],
+   "equipment": "barbell",
+   "pattern": "horizontal_pull",
+   "cue": "Flat back, bar to belly"
+  },
+  {
+   "id": "db_row",
+   "name": "One-arm dumbbell row",
+   "primary": [
+    "lats"
+   ],
+   "secondary": [
+    "rear_delts",
+    "biceps"
+   ],
+   "equipment": "dumbbell",
+   "pattern": "horizontal_pull",
+   "cue": "Elbow to hip"
+  },
+  {
+   "id": "seated_cable_row",
+   "name": "Seated cable row",
+   "primary": [
+    "lats",
+    "traps"
+   ],
+   "secondary": [
+    "biceps",
+    "rear_delts"
+   ],
+   "equipment": "cable",
+   "pattern": "horizontal_pull",
+   "cue": "Tall chest"
+  },
+  {
+   "id": "shrug",
+   "name": "Shrug",
+   "primary": [
+    "traps"
+   ],
+   "secondary": [
+    "forearms"
+   ],
+   "equipment": "dumbbell",
+   "pattern": "isolation",
+   "cue": "Straight up, no roll"
+  },
+  {
+   "id": "biceps_curl",
+   "name": "Biceps curl",
+   "primary": [
+    "biceps"
+   ],
+   "secondary": [
+    "forearms"
+   ],
+   "equipment": "dumbbell",
+   "pattern": "isolation",
+   "cue": "Elbows still"
+  },
+  {
+   "id": "hammer_curl",
+   "name": "Hammer curl",
+   "primary": [
+    "biceps",
+    "forearms"
+   ],
+   "secondary": [],
+   "equipment": "dumbbell",
+   "pattern": "isolation",
+   "cue": "Neutral grip"
+  },
+  {
+   "id": "triceps_pushdown",
+   "name": "Triceps pushdown",
+   "primary": [
+    "triceps"
+   ],
+   "secondary": [],
+   "equipment": "cable",
+   "pattern": "isolation",
+   "cue": "Elbows pinned"
+  },
+  {
+   "id": "skull_crusher",
+   "name": "Skull crusher",
+   "primary": [
+    "triceps"
+   ],
+   "secondary": [],
+   "equipment": "ez_bar",
+   "pattern": "isolation",
+   "cue": "Lower behind the head"
+  },
+  {
+   "id": "plank",
+   "name": "Plank",
+   "primary": [
+    "abs"
+   ],
+   "secondary": [
+    "obliques",
+    "front_delts"
+   ],
+   "equipment": "bodyweight",
+   "pattern": "core",
+   "cue": "Ribs down, glutes on"
+  },
+  {
+   "id": "side_plank",
+   "name": "Side plank",
+   "primary": [
+    "obliques"
+   ],
+   "secondary": [
+    "abs"
+   ],
+   "equipment": "bodyweight",
+   "pattern": "core",
+   "cue": "Hips high"
+  },
+  {
+   "id": "hanging_leg_raise",
+   "name": "Hanging leg raise",
+   "primary": [
+    "abs"
+   ],
+   "secondary": [
+    "obliques",
+    "forearms"
+   ],
+   "equipment": "bodyweight",
+   "pattern": "core",
+   "cue": "No swing"
+  },
+  {
+   "id": "cable_crunch",
+   "name": "Cable crunch",
+   "primary": [
+    "abs"
+   ],
+   "secondary": [],
+   "equipment": "cable",
+   "pattern": "core",
+   "cue": "Curl the spine"
+  },
+  {
+   "id": "pallof_press",
+   "name": "Pallof press",
+   "primary": [
+    "obliques"
+   ],
+   "secondary": [
+    "abs"
+   ],
+   "equipment": "cable",
+   "pattern": "core",
+   "cue": "Resist rotation"
+  },
+  {
+   "id": "dead_bug",
+   "name": "Dead bug",
+   "primary": [
+    "abs"
+   ],
+   "secondary": [],
+   "equipment": "bodyweight",
+   "pattern": "core",
+   "cue": "Low back stays down"
+  },
+  {
+   "id": "back_extension",
+   "name": "Back extension",
+   "primary": [
+    "lower_back"
+   ],
+   "secondary": [
+    "glutes",
+    "hamstrings"
+   ],
+   "equipment": "bodyweight",
+   "pattern": "hinge",
+   "cue": "Neutral neck"
+  },
+  {
+   "id": "farmer_carry",
+   "name": "Farmer carry",
+   "primary": [
+    "forearms",
+    "traps"
+   ],
+   "secondary": [
+    "abs",
+    "obliques"
+   ],
+   "equipment": "dumbbell",
+   "pattern": "carry",
+   "cue": "Tall and slow"
+  },
+  {
+   "id": "kettlebell_swing",
+   "name": "Kettlebell swing",
+   "primary": [
+    "glutes",
+    "hamstrings"
+   ],
+   "secondary": [
+    "lower_back",
+    "abs"
+   ],
+   "equipment": "kettlebell",
+   "pattern": "hinge",
+   "cue": "Snap the hips"
+  },
+  {
+   "id": "box_jump",
+   "name": "Box jump",
+   "primary": [
+    "quads",
+    "glutes"
+   ],
+   "secondary": [
+    "calves"
+   ],
+   "equipment": "box",
+   "pattern": "plyometric",
+   "cue": "Land soft"
+  },
+  {
+   "id": "pogo_jump",
+   "name": "Pogo jumps",
+   "primary": [
+    "calves"
+   ],
+   "secondary": [],
+   "equipment": "bodyweight",
+   "pattern": "plyometric",
+   "cue": "Stiff ankles, quick contacts"
+  },
+  {
+   "id": "single_leg_rdl",
+   "name": "Single-leg RDL",
+   "primary": [
+    "hamstrings",
+    "glutes"
+   ],
+   "secondary": [
+    "lower_back"
+   ],
+   "equipment": "dumbbell",
+   "pattern": "hinge",
+   "cue": "Square hips"
+  },
+  {
+   "id": "clamshell",
+   "name": "Clamshell",
+   "primary": [
+    "glutes"
+   ],
+   "secondary": [],
+   "equipment": "band",
+   "pattern": "isolation",
+   "cue": "Keep feet together"
+  },
+  {
+   "id": "tibialis_raise",
+   "name": "Tibialis raise",
+   "primary": [
+    "calves"
+   ],
+   "secondary": [],
+   "equipment": "bodyweight",
+   "pattern": "isolation",
+   "cue": "Toes to shins"
+  }
+ ]
+}

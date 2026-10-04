@@ -1,0 +1,17 @@
+{
+ "as_of": null,
+ "caffeine": [],
+ "connected": false,
+ "day_status": [],
+ "domain": "nutrition",
+ "favorites": [],
+ "fixture": "empty",
+ "generated_at": null,
+ "meals": [],
+ "planned_meals": [],
+ "recipes": [],
+ "schema_version": "1.0.0",
+ "source": null,
+ "status": "missing",
+ "water": []
+}

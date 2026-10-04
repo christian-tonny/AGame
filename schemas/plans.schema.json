@@ -1,0 +1,826 @@
+{
+ "$defs": {
+  "measure": {
+   "additionalProperties": false,
+   "description": "A configured or observed number with provenance.",
+   "properties": {
+    "date": {
+     "format": "date",
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "kind": {
+     "enum": [
+      "observed",
+      "configured",
+      "computed",
+      "estimated",
+      "user_entered"
+     ]
+    },
+    "method": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "note": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "value": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "value"
+   ],
+   "type": [
+    "object",
+    "null"
+   ]
+  },
+  "point": {
+   "additionalProperties": false,
+   "anyOf": [
+    {
+     "required": [
+      "t"
+     ]
+    },
+    {
+     "required": [
+      "date"
+     ]
+    }
+   ],
+   "properties": {
+    "date": {
+     "format": "date",
+     "type": "string"
+    },
+    "kind": {
+     "enum": [
+      "observed",
+      "configured",
+      "computed",
+      "estimated",
+      "user_entered"
+     ]
+    },
+    "source": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "source_id": {
+     "maxLength": 200,
+     "minLength": 1,
+     "type": "string"
+    },
+    "t": {
+     "format": "date-time",
+     "type": "string"
+    },
+    "v": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "v",
+    "source_id"
+   ],
+   "type": "object"
+  },
+  "set": {
+   "additionalProperties": false,
+   "properties": {
+    "duration_s": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "reps": {
+     "maximum": 1000,
+     "minimum": 0,
+     "type": "integer"
+    },
+    "rest_s": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "rir": {
+     "maximum": 10,
+     "minimum": 0,
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "rpe": {
+     "maximum": 10,
+     "minimum": 1,
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "warmup": {
+     "type": "boolean"
+    },
+    "weight_kg": {
+     "maximum": 1000,
+     "minimum": 0,
+     "type": [
+      "number",
+      "null"
+     ]
+    }
+   },
+   "required": [
+    "reps"
+   ],
+   "type": "object"
+  },
+  "step": {
+   "additionalProperties": false,
+   "properties": {
+    "distance_m": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "duration_s": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "kind": {
+     "enum": [
+      "warmup",
+      "work",
+      "recovery",
+      "cooldown",
+      "repeat",
+      "rest"
+     ]
+    },
+    "label": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "repeat": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "steps": {
+     "items": {
+      "$ref": "#/$defs/step"
+     },
+     "type": "array"
+    },
+    "target": {
+     "additionalProperties": false,
+     "properties": {
+      "high": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "low": {
+       "type": [
+        "number",
+        "null"
+       ]
+      },
+      "metric": {
+       "enum": [
+        "hr",
+        "pace",
+        "power",
+        "zone",
+        "rpe",
+        "open"
+       ]
+      },
+      "zone": {
+       "type": [
+        "integer",
+        "null"
+       ]
+      }
+     },
+     "type": [
+      "object",
+      "null"
+     ]
+    }
+   },
+   "required": [
+    "kind"
+   ],
+   "type": "object"
+  }
+ },
+ "$id": "agame/plans.schema.json",
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "additionalProperties": false,
+ "properties": {
+  "as_of": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "calendar": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "busy": {
+      "type": "boolean"
+     },
+     "end": {
+      "format": "date-time",
+      "type": "string"
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "source": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "start": {
+      "format": "date-time",
+      "type": "string"
+     },
+     "title": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "title",
+     "start",
+     "end"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "coverage": {
+   "additionalProperties": false,
+   "properties": {
+    "expected": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    },
+    "ratio": {
+     "type": [
+      "number",
+      "null"
+     ]
+    },
+    "received": {
+     "type": [
+      "integer",
+      "null"
+     ]
+    }
+   },
+   "type": [
+    "object",
+    "null"
+   ]
+  },
+  "domain": {
+   "const": "plans"
+  },
+  "fixture": {
+   "enum": [
+    false,
+    "empty",
+    "synthetic"
+   ]
+  },
+  "generated_at": {
+   "format": "date-time",
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "mode": {
+   "enum": [
+    "race",
+    "maintain",
+    null
+   ]
+  },
+  "notes": {
+   "items": {
+    "type": "string"
+   },
+   "type": "array"
+  },
+  "plans": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "created_by": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "end": {
+      "format": "date",
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "goal": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "mode": {
+      "enum": [
+       "race",
+       "maintain",
+       "build",
+       null
+      ]
+     },
+     "name": {
+      "type": "string"
+     },
+     "phases": {
+      "items": {
+       "additionalProperties": false,
+       "properties": {
+        "end": {
+         "format": "date",
+         "type": "string"
+        },
+        "focus": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "name": {
+         "type": "string"
+        },
+        "start": {
+         "format": "date",
+         "type": "string"
+        }
+       },
+       "required": [
+        "name",
+        "start",
+        "end"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     },
+     "race_id": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "start": {
+      "format": "date",
+      "type": [
+       "string",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "id",
+     "name"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "prehab": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "duration_min": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "exercises": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     },
+     "focus": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "prehab_log": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "date": {
+      "format": "date",
+      "type": "string"
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "routine_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "date",
+     "routine_id"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "races": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "date": {
+      "format": "date",
+      "type": "string"
+     },
+     "distance_m": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "goal_time_s": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "location": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "name": {
+      "type": "string"
+     },
+     "priority": {
+      "enum": [
+       "A",
+       "B",
+       "C"
+      ]
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "date"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "routines": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "guiding_metric": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "notes": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "sport": {
+      "type": "string"
+     },
+     "steps": {
+      "items": {
+       "$ref": "#/$defs/step"
+      },
+      "type": "array"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "sport",
+     "steps"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "schema_version": {
+   "pattern": "^\\d+\\.\\d+\\.\\d+$",
+   "type": "string"
+  },
+  "sessions": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "date": {
+      "format": "date",
+      "type": "string"
+     },
+     "distance_m": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "duration_s": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "forecast_temp_c": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "guiding_metric": {
+      "enum": [
+       "hr",
+       "pace",
+       "power",
+       "rpe",
+       null
+      ]
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "kind": {
+      "enum": [
+       "observed",
+       "configured",
+       "computed",
+       "estimated",
+       "user_entered"
+      ]
+     },
+     "linked_workout_id": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "load_planned": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "objective": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "plan_id": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "priority": {
+      "enum": [
+       "key",
+       "normal",
+       "optional",
+       null
+      ]
+     },
+     "routine_id": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "sport": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "start_time": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "status": {
+      "enum": [
+       "planned",
+       "done",
+       "missed",
+       "skipped",
+       "moved"
+      ]
+     },
+     "steps": {
+      "items": {
+       "$ref": "#/$defs/step"
+      },
+      "type": "array"
+     },
+     "template_id": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "title": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "type": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "date",
+     "type"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
+  "source": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "status": {
+   "enum": [
+    "ok",
+    "partial",
+    "stale",
+    "missing"
+   ]
+  },
+  "templates": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "distance_m": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "duration_s": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "guiding_metric": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "sport": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "steps": {
+      "items": {
+       "$ref": "#/$defs/step"
+      },
+      "type": "array"
+     },
+     "type": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "name",
+     "type"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  }
+ },
+ "required": [
+  "schema_version",
+  "domain",
+  "generated_at",
+  "as_of",
+  "source",
+  "status",
+  "sessions"
+ ],
+ "title": "AGame plans",
+ "type": "object"
+}
