@@ -4,7 +4,7 @@ from datetime import datetime, time, timedelta
 
 from agame import timeutil as tu
 from agame.compute import metric
-from agame.compute.ctx import clamp, mean, median, pearson, stdev
+from agame.compute.ctx import linreg, clamp, mean, median, pearson, stdev
 from agame.values import mv
 
 ASLEEP = {"core", "deep", "rem", "asleep_unspecified"}
@@ -281,9 +281,13 @@ def recovery_correlation(ctx, history, recovery_by_day):
             ys.append(r)
     r, n = pearson(xs, ys)
     need = cfg["correlation_min_nights"]
+    points = [{"x": x, "y": y} for x, y in list(zip(xs, ys))[-120:]]
     if n < need or r is None:
-        return {"status": "insufficient", "n": n, "needed": need}
+        return {"status": "insufficient", "n": n, "needed": need, "points": points}
     if abs(r) < ctx.cfg["insights"]["correlation_min_abs_r"]:
-        return {"status": "no_clear_effect", "r": round(r, 2), "n": n, "needed": need}
+        return {"status": "no_clear_effect", "r": round(r, 2), "n": n, "needed": need, "points": points}
+    slope, icpt = linreg(xs, ys)
+    lo, hi = min(xs), max(xs)
     return {"status": "ok", "r": round(r, 2), "n": n, "direction": "positive" if r > 0 else "negative",
-            "strength": "strong" if abs(r) >= 0.5 else ("moderate" if abs(r) >= 0.3 else "weak")}
+            "strength": "strong" if abs(r) >= 0.5 else ("moderate" if abs(r) >= 0.3 else "weak"), "points": points,
+            "fit": [{"x": lo, "y": round(icpt + slope * lo, 1)}, {"x": hi, "y": round(icpt + slope * hi, 1)}] if slope is not None else None}

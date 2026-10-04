@@ -137,7 +137,10 @@ class Ctx:
         """Sorted list of (datetime_local or None, local_date, value, point) excluding future points."""
         if sid in self._series_cache:
             return self._series_cache[sid]
-        pts = ((self.data.get("metrics") or {}).get("series") or {}).get(sid, [])
+        pts = list(((self.data.get("metrics") or {}).get("series") or {}).get(sid, []))
+        # manual readings (e.g. blood pressure from a cuff) live in body.json as user_entered measurements
+        pts += [{"t": m["t"], "v": m["v"], "source_id": m["source_id"], "kind": "user_entered", "source": "manual"}
+                for m in (self.data.get("body") or {}).get("measurements", []) if m.get("type") == sid and m.get("kind") == "user_entered"]
         out = []
         for p in pts:
             if "t" in p:

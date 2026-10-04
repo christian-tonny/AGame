@@ -462,7 +462,8 @@ def summary(ctx, recommendation=None, overtraining=None, recovery_score=None, sl
         "tomorrow": [dict(s, pre=pre_workout(ctx, s)) for s in tomorrow],
         "upcoming": [dict(s, alternatives=wizard(ctx, s)) for s in upcoming[:10]],
         "conflicts": conflicts(ctx, this_week["sessions"] + next_week["sessions"]),
-        "adaptations": adaptations(ctx, this_week, recommendation, overtraining, status),
+        "adaptations": [a for a in adaptations(ctx, this_week, recommendation, overtraining, status)
+                        if (a["session_id"], a["rule"]) not in {(x["session_id"], x["rule"]) for x in pl.get("decisions") or []}],
         "instant": instant_workouts(ctx),
         "big_day": big_day(ctx, this_week["sessions"] + next_week["sessions"], recovery_score, sleep_need),
         "pace_proposal": pace_adjust_proposal(ctx),

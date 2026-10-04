@@ -34,7 +34,7 @@ SIGNIN_HTML = """<!doctype html><html lang="en"><head><meta charset="utf-8"><met
 <meta name="robots" content="noindex,nofollow"><title>AGame · Sign in</title>
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0b0c;color:#f4f4f6;font:16px -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}
 main{text-align:center;padding:24px}.mark{width:56px;height:56px;border-radius:16px;background:#fc5200;margin:0 auto 16px}
-a{display:inline-block;margin-top:20px;padding:12px 20px;border-radius:12px;background:#fc5200;color:#fff;text-decoration:none;font-weight:700}
+a{display:inline-block;margin-top:20px;padding:12px 20px;border-radius:12px;background:#fc5200;color:#140700;text-decoration:none;font-weight:700}
 p{color:#a3a3ab;max-width:320px}</style></head><body><main><div class="mark" aria-hidden="true"></div><h1>AGame</h1>
 <p>Private dashboard. Sign in with the owner account to continue.</p>{msg}<a href="/auth/login">Sign in</a></main></body></html>"""
 
@@ -87,6 +87,16 @@ class State:
             self._snap, _ = build_snapshot(data, self.today())
             self._snap_key = key
         return self._snap
+
+
+def pinned_snapshot(cfg):
+    """Rollback pin: AGAME_PIN_SNAPSHOT=YYYY-MM-DD or a dist/pin.txt file serves that kept snapshot instead of the latest build."""
+    pin = (os.environ.get("AGAME_PIN_SNAPSHOT") or "").strip()
+    if not pin and (cfg.dist_dir / "pin.txt").exists():
+        pin = (cfg.dist_dir / "pin.txt").read_text().strip()
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", pin or "") and (cfg.dist_dir / "snapshots" / f"{pin}.html").is_file():
+        return pin
+    return None
 
 
 def make_handler(cfg, state=None):
@@ -211,7 +221,9 @@ def make_handler(cfg, state=None):
                                       headers=[("Content-Disposition", "attachment; filename=agame-export.json")])
                 if path == "/api/build-report":
                     p = cfg.dist_dir / "build_report.json"
-                    return self._send(200, json.loads(p.read_text()) if p.exists() else {"status": "missing"})
+                    rep = json.loads(p.read_text()) if p.exists() else {"status": "missing"}
+                    rep["pinned_snapshot"] = pinned_snapshot(cfg)
+                    return self._send(200, rep)
             except EntryError as e:
                 return self._send(e.status, {"error": e.message, "details": e.details})
             return self._send(404, {"error": "not found"}) if api else self._send(404, "Not found", "text/plain")
@@ -253,6 +265,12 @@ def make_handler(cfg, state=None):
                         raise EntryError(405, "method not allowed for this path")
                     rep = state.rebuild()
                     return self._send(200, {"ok": True, "record": rec, "build": rep["status"]})
+                m = re.fullmatch(r"/api/actions/([a-z_]+\.[a-z_]+)", path)
+                if m and method == "POST":
+                    from agame import actions
+                    rec = actions.run(m.group(1), store, state.snapshot(), cfg.data_dir, body)
+                    rep = state.rebuild()
+                    return self._send(200, {"ok": True, "result": rec, "build": rep["status"]})
                 if path == "/api/profile" and method == "PATCH":
                     prof = store.patch_profile(body)
                     rep = state.rebuild()
@@ -276,6 +294,9 @@ def make_handler(cfg, state=None):
 
         # -------------------------------------------------------------- endpoints
         def _static(self, rel, refresh):
+            pin = pinned_snapshot(cfg)
+            if rel == "fitness_dashboard.html" and pin:
+                rel = f"snapshots/{pin}.html"
             p = (cfg.dist_dir / rel).resolve()
             if cfg.dist_dir.resolve() not in p.parents or not p.is_file():
                 return self._send(404, "Dashboard not built yet. Run build_dashboard.py.", "text/plain", api=True)

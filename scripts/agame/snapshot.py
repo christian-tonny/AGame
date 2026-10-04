@@ -165,6 +165,7 @@ def build_snapshot(data, build_date):
             "fixture": ctx.fixture, "data_status": status, "first_day": ctx.first_day.isoformat() if ctx.first_day else None,
             "metrics_registry": sorted(({"id": m["id"], "unit": m["unit"], "method": m["method"], "inputs": m["inputs"]} for m in METRICS.values()), key=lambda m: m["id"]),
             "detail_max_activities": DETAIL_MAX_ACTIVITIES, "sync_agent": ctx.cfg["sync"]["agent_name"],
+            "type_labels": ctx.cfg["plans"]["type_labels"], "muscle_groups": ctx.cfg["muscles"]["groups"],
         },
         "profile": _profile_view(ctx),
         "today": today,
@@ -227,7 +228,7 @@ def _profile_view(ctx):
     priv = p.get("privacy") or {}
     return {
         "display_name": (p.get("athlete") or {}).get("display_name"),
-        "sex": (p.get("athlete") or {}).get("sex"), "birth_year": (p.get("athlete") or {}).get("birth_year"),
+        "sex": (p.get("athlete") or {}).get("sex"), "birth_year": (p.get("athlete") or {}).get("birth_year"), "height_cm": (p.get("athlete") or {}).get("height_cm"),
         "locale": p.get("locale") or {}, "physiology": phys, "zones_config": p.get("zones") or {},
         "schedule": (p.get("schedule") or {}).get("template", []), "targets": p.get("targets") or {},
         "privacy": {"hide_start_end_m": priv.get("hide_start_end_m"), "zones": [{"id": z["id"], "label": z.get("label"), "radius_m": z["radius_m"]} for z in priv.get("zones") or []],

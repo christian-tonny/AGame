@@ -222,6 +222,7 @@ def session_list(ctx, limit=60):
         row = {"workout_id": w["source_id"], "date": w["_date"].isoformat(), "start": w["_start"].isoformat(), "duration_s": round(w["_dur"]),
                "avg_hr": w.get("avg_hr"), "name": (s or {}).get("name") or w.get("name"), "logged": bool(s)}
         if s:
+            row["session_id"] = s["id"]
             row["exercises"] = [{"exercise_id": ex["exercise_id"], "name": (ctx.exercise(ex["exercise_id"]) or {}).get("name", ex["exercise_id"]),
                                  "sets": [{k: st.get(k) for k in ("reps", "weight_kg", "rpe", "rir", "warmup")} for st in ex["sets"]]}
                                 for ex in s["exercises"]]

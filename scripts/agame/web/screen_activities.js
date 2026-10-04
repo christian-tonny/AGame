@@ -68,7 +68,7 @@ AG.screens.activity = {
     const det = D.activities.details[a.id];
     if (!det) return `<div class="card">${feedCard(a)}</div>${empty("Details not embedded", `Only the latest ${D.meta.detail_max_activities} activities carry full streams in this snapshot`)}`;
     const tab = chipVal("act-detail-tab", "summary");
-    const head = `<div class="card"><div class="row"><span class="icon-dot" style="color:${sportColor(a.family)}">${sportIcon(a.family)}</span><div class="grow"><div class="cap">${fmt.dateLong(a.date)} · ${fmt.time(a.start)}${det.device ? " · " + esc(det.device) : ""}</div><div style="font-size:20px;font-weight:800">${esc(det.insights.headline)}</div></div></div></div>`;
+    const head = `<div class="card"><div class="row"><span class="icon-dot" style="color:${sportColor(a.family)}">${sportIcon(a.family)}</span><div class="grow"><div class="cap">${fmt.dateLong(a.date)} · ${fmt.time(a.start)}${det.device ? " · " + esc(det.device) : ""}</div><div style="font-size:20px;font-weight:800">${esc(det.insights.headline)}</div></div>${editBtn("act-edit", a.id, "Quick edit")}</div>${a.race ? `<div class="row" style="margin-top:8px">${badge("Race", "accent")}${a.private ? badge("Private", "") : ""}</div>` : a.private ? `<div style="margin-top:8px">${badge("Private", "")}</div>` : ""}</div>`;
     const tabs = seg("act-detail-tab", [["summary", "Summary"], ["analysis", "Analysis"], ["chat", "Chat"], ["planned", "Planned"]], tab);
     const body = { summary: actSummary, analysis: actAnalysis, chat: actChat, planned: actPlanned }[tab](a, det);
     return `<div class="stack">${head}<div>${tabs}</div>${body}</div>`;
@@ -88,7 +88,14 @@ function actSummary(a, det) {
   const p = det.planned;
   const sets = (D.strength.sessions || []).find(s => s.workout_id === a.id);
   const trained = sets && sets.muscles ? sets.muscles : null;
-  return `<div class="cols"><div class="stack">
+  const rc = det.race;
+  const race = rc ? `<div class="card" style="border-color:color-mix(in srgb,var(--accent) 45%,var(--line))"><div class="spread"><h3 style="margin:0">${icon("records")} Race${rc.race_name ? " · " + esc(rc.race_name) : ""}</h3>${rc.splits_verdict ? badge(fmt.sport(rc.splits_verdict.verdict) + " split", rc.splits_verdict.verdict === "negative" ? "ok" : "") : ""}</div>
+    <div class="stats-grid s3" style="margin-top:10px">${stat("Finish", fmt.dur(rc.finish_s))}${stat("Pace", fmt.pace(rc.pace_s_per_km))}${stat("Distance", fmt.dist(rc.distance_m))}</div>
+    <table class="tbl" style="margin-top:8px"><tr><th></th><th class="r">Time</th><th class="r">Pace</th><th class="r">Δ</th></tr>
+    ${rc.goal_time_s ? `<tr><td>Your goal</td><td class="r">${fmt.dur(rc.goal_time_s)}</td><td class="r">${fmt.pace(rc.planned_pace_s_per_km)}</td><td class="r">${fmt.signed(rc.vs_goal_s, 0)} s</td></tr>` : ""}
+    ${rc.prediction ? `<tr><td>Prediction going in ${badge("Estimate", "est")}</td><td class="r">${fmt.dur(rc.prediction.time_s)}</td><td class="r">${fmt.pace(rc.prediction.pace_s_per_km)}</td><td class="r">${fmt.signed(rc.vs_prediction_s, 0)} s</td></tr>` : ""}</table>
+    <p class="cap">${rc.prediction ? `Prediction from your ${fmt.distLabel(rc.prediction.source.distance_m)} on ${fmt.date(rc.prediction.source.date)} (efforts before race day only).` : "No qualifying efforts before race day for a prediction."}${rc.goal_time_s ? "" : " Add a goal time to the race in Plan to compare."}</p></div>` : "";
+  return `<div class="cols"><div class="stack">${race}
     <div class="card"><div class="stats-grid s4">${grid}</div>${a.load ? `<div class="spread" style="margin-top:8px">${estBadge(a.load)}<span class="cap">${esc(a.load.method === "trimp_stream" ? "Load from heart-rate stream" : a.load.method === "trimp_avg_hr" ? "Load from average HR (estimate)" : a.load.method === "session_rpe" ? "Load from RPE (estimate)" : a.load.note || "")}</span>${prov(a.load, "Load")}</div>` : ""}</div>
     ${p ? `<div class="card" style="background:${p.compliance === "as_planned" ? "color-mix(in srgb,var(--ok) 10%,var(--surface))" : "var(--surface)"}"><div class="spread"><h3 style="margin:0">Compliance</h3>${badge(fmt.sport(p.compliance || "planned"), p.compliance === "as_planned" ? "ok" : "warn")}</div>
       <table class="tbl" style="margin-top:8px"><tr><th></th><th class="r">Plan</th><th class="r">Actual</th></tr>
@@ -131,7 +138,7 @@ document.addEventListener("submit", async e => {
   e.preventDefault();
   const feel = $("[data-feel][aria-pressed=true]", form);
   const body = { workout_id: form.dataset.rpeForm, rpe: +form.rpe.value, feel: feel ? +feel.dataset.feel : null, comment: form.comment.value || null, private: form.private.checked };
-  try { await api("POST", "entries/load.annotations", body); toast("Saved · rebuilding"); setTimeout(() => location.reload(), 900); } catch (err) { toast(err.message); }
+  try { await save("POST", "entries/load.annotations", body, "Saved"); } catch (err) { /* shown */ }
 });
 
 function actAnalysis(a, det) {

@@ -27,7 +27,7 @@ RANGES = {
     "glucose_mg_dl": (20, 600),
     "hr_recovery_bpm": (0, 120),
 }
-BODY_RANGES = {"weight_kg": (20, 400), "body_fat_pct": (2, 70), "lean_mass_kg": (10, 200), "waist_cm": (30, 250), "bmi": (8, 80)}
+BODY_RANGES = {"weight_kg": (20, 400), "body_fat_pct": (2, 70), "lean_mass_kg": (10, 200), "waist_cm": (30, 250), "bmi": (8, 80), "bp_systolic_mmhg": (50, 260), "bp_diastolic_mmhg": (30, 160)}
 
 
 def _schemas():

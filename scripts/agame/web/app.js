@@ -53,6 +53,7 @@ async function boot() {
     if (await detectServer()) {
       try { const p = await fetch("api/ping", { credentials: "same-origin" }).then(r => r.json()); AG.llm = !!p.llm; } catch (e) { /* ignore */ }
       rerender();
+      undoToastOnBoot();
     }
   } catch (e) { /* static file: read-only */ }
   if ("serviceWorker" in navigator && location.protocol !== "file:") {

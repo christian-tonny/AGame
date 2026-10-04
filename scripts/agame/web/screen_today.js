@@ -4,10 +4,16 @@
 const CALL_LABEL = { train: ["Train as planned", "ok"], reduce: ["Go easier today", "warn"], rest: ["Rest today", "bad"], rest_day: ["Planned rest day", "info"],
   open: ["Nothing planned", ""], unknown: ["Not enough data", ""] };
 
+function paceRange(p) {
+  if (!p) return "";
+  if (isNum(p.fast) && isNum(p.slow)) return `Pace ${fmt.pace(p.fast, false)}–${fmt.pace(p.slow)}`;
+  if (isNum(p.fast)) return `Pace slower than ${fmt.pace(p.fast)}`;
+  return isNum(p.slow) ? `Pace up to ${fmt.pace(p.slow)}` : "";
+}
 function sessionCard(s, opts = {}) {
   const pre = s.pre || {};
   const tg = pre.targets || {};
-  const tgt = tg.hr ? `HR ${tg.hr.low}–${tg.hr.high}` : tg.pace ? `Pace ${fmt.pace(tg.pace.fast, false)}–${fmt.pace(tg.pace.slow)}` : "";
+  const tgt = tg.hr ? `HR ${tg.hr.low}–${tg.hr.high}` : tg.pace ? paceRange(tg.pace) : "";
   const comp = s.compliance && s.compliance !== "planned" ? badge(fmt.sport(s.compliance), s.compliance === "as_planned" || s.compliance === "done" ? "ok" : s.compliance === "partial" ? "warn" : "bad") : "";
   return `<button class="card tight" data-open="session" data-arg="${esc(s.id)}" style="margin-bottom:8px">
     <div class="spread"><span class="tag">${esc(s.label || s.type)}${s.origin === "template" ? " · from your weekly template" : ""}</span>${comp || (s.priority === "key" ? badge("Key", "accent") : "")}</div>
@@ -27,13 +33,23 @@ AG.sheets.session = function (id) {
     <div class="stats-grid s3">${stat("Type", esc(s.label || s.type))}${stat("Duration", s.duration_s ? fmt.mins(s.duration_s) : "—")}${stat("Planned load", isNum(s.planned_load) ? fmt.n(s.planned_load) : "—")}</div>
     ${pre.objective ? `<p class="small" style="margin:12px 0 4px"><b>Objective</b> · ${esc(pre.objective)}</p>` : ""}
     ${pre.guiding_metric ? `<p class="small muted" style="margin:0">Guide by ${esc(pre.guiding_metric.toUpperCase())} · ${esc(pre.watch || "")}</p>` : ""}
-    ${tg.hr || tg.pace ? `<div class="row wrap" style="margin-top:10px">${tg.hr ? badge(`Zone ${tg.hr.zone}: ${tg.hr.low}–${tg.hr.high} bpm`, "info") : ""}${tg.pace ? badge(`Pace ${fmt.pace(tg.pace.fast, false)}–${fmt.pace(tg.pace.slow)}`, "info") : ""}</div>` : ""}
-    ${adapt.length ? sectionTitle("Suggested change") + adapt.map(a => insightCard(adaptText(a), a.reason, "action")).join("") : ""}
+    ${tg.hr || tg.pace ? `<div class="row wrap" style="margin-top:10px">${tg.hr ? badge(`Zone ${tg.hr.zone}: ${tg.hr.low}–${tg.hr.high} bpm`, "info") : ""}${tg.pace ? badge(paceRange(tg.pace), "info") : ""}</div>` : ""}
+    ${adapt.length ? sectionTitle("Suggested change") + adapt.map(a => insightCard(adaptText(a), a.reason, "action") + adaptButtons(a)).join("") : ""}
     ${s.steps && s.steps.length ? sectionTitle("Steps") + stepList(s.steps) : ""}
     ${s.workout_id ? `<a class="btn secondary" style="margin-top:12px;width:100%" href="#/activity/${encodeURIComponent(s.workout_id)}">Open completed activity</a>` : ""}
-    ${alts.length ? sectionTitle("Workout Wizard") + `<div class="list">${alts.map(a => `<div class="li"><div class="grow"><div class="t">${esc(a.title)}</div><div class="s">${esc(a.note)}</div></div><div class="r small">${a.duration_s ? fmt.mins(a.duration_s) : "—"}<div class="cap">${isNum(a.est_load) ? "load ~" + fmt.n(a.est_load) : ""}</div></div></div>`).join("")}</div>
-      <p class="cap">Alternatives keep the rest of your week unchanged. Choosing one updates plans.json through your AGame server.</p>${offlineNote()}` : ""}`);
+    ${alts.length ? sectionTitle("Workout Wizard") + `<div class="list">${alts.map(a => `<div class="li"><div class="grow"><div class="t">${esc(a.title)}</div><div class="s">${esc(a.note)}</div></div><div class="r small">${a.duration_s ? fmt.mins(a.duration_s) : "—"}<div class="cap">${isNum(a.est_load) ? "load ~" + fmt.n(a.est_load) : ""}</div></div>${AG.online && s.date >= D.meta.build_date ? `<button type="button" class="btn sm secondary" data-wizard="${esc(a.kind)}" data-sid="${esc(s.id)}">Use</button>` : ""}</div>`).join("")}</div>
+      <p class="cap">Alternatives keep the rest of your week unchanged. Choosing one updates plans.json through your AGame server.</p>${offlineNote()}` : ""}
+    ${AG.online && s.date >= D.meta.build_date && !s.workout_id ? `<div class="edit-row"><button class="btn sm secondary" data-open="session-move" data-arg="${esc(s.id)}">Move to…</button>${s.origin === "plan" ? `<button class="btn sm secondary" data-open="session-edit" data-arg="${esc(s.id)}">Edit</button>` : ""}${s.type !== "REST" ? `<button class="btn sm secondary" data-skip="${esc(s.id)}">Skip</button><button class="btn sm secondary" data-open="session-template" data-arg="${esc(s.id)}">Save as template</button>` : ""}</div>` : ""}`);
 };
+function adaptButtons(a) {
+  return AG.online ? `<div class="edit-row" style="margin:-4px 0 10px"><button class="btn sm" data-adapt="accepted" data-sid="${esc(a.session_id)}" data-rule="${esc(a.rule)}">Accept</button><button class="btn sm secondary" data-adapt="declined" data-sid="${esc(a.session_id)}" data-rule="${esc(a.rule)}">Keep original</button></div>` : "";
+}
+document.addEventListener("click", e => {
+  const w = e.target.closest("[data-wizard]"), ad = e.target.closest("[data-adapt]"), sk = e.target.closest("[data-skip]");
+  if (w) act("plan.alternative", { session_id: w.dataset.sid, kind: w.dataset.wizard }, "Session changed").catch(() => {});
+  if (ad) act("plan.adaptation", { session_id: ad.dataset.sid, rule: ad.dataset.rule, decision: ad.dataset.adapt }, ad.dataset.adapt === "accepted" ? "Change applied" : "Kept original").catch(() => {});
+  if (sk) act("plan.skip", { session_id: sk.dataset.skip }, "Session skipped").catch(() => {});
+});
 function adaptText(a) {
   const lbl = t => (D.plans.this_week.sessions.find(s => s.type === t) || {}).label || ({ AER: "Aerobic", REC: "Recovery", REST: "Rest", MOB: "Mobility" }[t] || t);
   if (a.action === "swap") return `Swap to ${lbl(a.to)}`;
@@ -68,9 +84,9 @@ AG.screens.today = {
       <b>${esc(b.title)}</b> <span class="muted small">${b.duration_s ? fmt.mins(b.duration_s) : ""}</span>
       <div class="grid g2" style="margin-top:10px"><div><div class="tag">Evening before</div><div class="small">${b.evening.bedtime ? "Bed by " + esc(b.evening.bedtime) : "Set wake time in profile"}</div>${b.evening.fuel ? `<div class="small muted">${esc(b.evening.fuel)}</div>` : ""}<div class="small muted">${esc(b.evening.kit.join(" · "))}</div></div>
       <div><div class="tag">Morning of</div><div class="small">Readiness ${b.morning.readiness === null ? "—" : fmt.n(b.morning.readiness) + "%"} · ${b.morning.call ? esc(b.morning.call === "go" ? "Go" : "Adjust") : "awaiting data"}</div>
-      ${b.morning.targets && b.morning.targets.pace ? `<div class="small muted">Pace ${fmt.pace(b.morning.targets.pace.fast, false)}–${fmt.pace(b.morning.targets.pace.slow)}</div>` : ""}${b.morning.targets && b.morning.targets.hr ? `<div class="small muted">HR ${b.morning.targets.hr.low}–${b.morning.targets.hr.high}</div>` : ""}</div></div></div>`).join("");
+      ${b.morning.targets && b.morning.targets.pace ? `<div class="small muted">${paceRange(b.morning.targets.pace)}</div>` : ""}${b.morning.targets && b.morning.targets.hr ? `<div class="small muted">HR ${b.morning.targets.hr.low}–${b.morning.targets.hr.high}</div>` : ""}</div></div></div>`).join("");
     const plan = `<div>${sectionTitle("Today's plan", `<a href="#/training?tab=plan">Week ›</a>`)}
-      ${t.adaptations.map(a => insightCard(adaptText(a), a.reason, "action")).join("")}
+      ${t.adaptations.map(a => insightCard(adaptText(a), a.reason, "action") + adaptButtons(a)).join("")}
       ${t.plan.length ? t.plan.map(s => sessionCard(s)).join("") : empty(D.plans.has_template || D.plans.has_explicit_plan ? "Rest day" : STR.noPlan, D.plans.has_template ? null : "Add a weekly template in profile or a plan in plans.json")}
       ${t.conflicts.map(c => `<div class="empty inline"><b>Calendar</b><span class="cap">${esc(c.event || "")} · ${esc(c.reason)}</span></div>`).join("")}</div>`;
     const sl = t.stress_latest;
@@ -96,9 +112,12 @@ AG.screens.today = {
     </div></div>`;
     const yday = `<div>${sectionTitle("Yesterday", `<a href="#/activities">All ›</a>`)}<div class="card tight">${t.yesterday.length ? `<div class="list">${t.yesterday.map(activityRow).join("")}</div>` : `<p class="small muted" style="margin:4px">No workouts yesterday</p>`}</div></div>`;
     const goals = `<div>${sectionTitle("Goals", `<a href="#/goals">All ›</a>`)}<div class="card">${t.goals.length ? t.goals.map(goalRow).join("") : empty(STR.noGoals, "Add goals in goals.json or the Goals screen")}</div></div>`;
-    const status = t.status && t.status.status !== "normal" ? badge("Status: " + fmt.sport(t.status.status), "warn") : "";
+    const status = t.status && t.status.status !== "normal" ? `<a href="#/journal">${badge("Status: " + fmt.sport(t.status.status), "warn")}</a>` : "";
     const head = `<div class="spread" style="margin-bottom:12px"><div><div class="page-title" style="margin:0">${esc(fmt.dateLong(t.date))}</div></div><div class="row">${status}${freshChip()}</div></div>`;
-    return `${head}<div class="cols c3">
+    const fc = (t.plan || []).find(s => isNum(s.forecast_temp_c));
+    const wx = (t.today_activities || []).map(a => (D.activities.details[a.id] || {}).weather).find(Boolean);
+    const weather = fc ? badge(`Forecast ${fmt.temp(fc.forecast_temp_c)}`, "info") : wx && isNum(wx.temp_c) ? badge(`${fmt.temp(wx.temp_c)}${wx.conditions ? " · " + wx.conditions : ""}`, "info") : "";
+    return `${head.replace('<div class="row">', '<div class="row">' + weather)}${todayWidgetRow()}<div class="cols c3">
       <div class="stack">${rings}${brief}${action}${recCard}</div>
       <div class="stack">${bigday}${plan}${stress}</div>
       <div class="stack">${load}${since}${yday}${goals}<a class="card chev row" href="#/timeline">${icon("timeline")} <b>Timeline</b></a></div>

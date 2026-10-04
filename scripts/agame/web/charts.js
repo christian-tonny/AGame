@@ -43,10 +43,10 @@ function drawCharts(root) {
     const w = Math.max(240, Math.round(el.clientWidth || 320));
     let svg;
     try {
-      svg = { line: lineSvg, bar: barSvg, hypno: hypnoSvg, curve: curveSvg, profile: profileSvg }[s.type || "line"](s, w);
+      svg = { line: lineSvg, bar: barSvg, hypno: hypnoSvg, curve: curveSvg, profile: profileSvg, scatter: scatterSvg }[s.type || "line"](s, w);
     } catch (e) { console.error(e); svg = `<p class="cap">Chart unavailable</p>`; }
     el.innerHTML = svg;
-    bindChart(el, s);
+    if (s.type === "scatter") bindScatter(el, s); else bindChart(el, s);
   });
 }
 let resizeT;
@@ -334,3 +334,97 @@ function rangeLabel(rows, key = "date") {
   if (!rows.length) return "";
   return `${fmt.date(rows[0][key], { day: "numeric", month: "short", year: "numeric" })} – ${fmt.date(rows[rows.length - 1][key], { day: "numeric", month: "short", year: "numeric" })}`;
 }
+
+/* ---------- scatter (points + an optional fitted line supplied by Python) ---------- */
+function scatterSvg(s, w) {
+  const L = layout(Object.assign({}, s, { series: [] }), w);
+  const xs = s.points.map(p => p.x), ys = s.points.map(p => p.y).concat((s.fit || []).map(p => p.y));
+  const xt = niceTicks(Math.min(...xs), Math.max(...xs), 4), yt = niceTicks(Math.min(...ys), Math.max(...ys), 4);
+  const x0 = Math.min(xt[0], ...xs), x1 = Math.max(xt[xt.length - 1], ...xs), y0 = Math.min(yt[0], ...ys), y1 = Math.max(yt[yt.length - 1], ...ys);
+  const X = v => L.padL + (v - x0) / ((x1 - x0) || 1) * L.iw, Y = v => L.padT + L.ih - (v - y0) / ((y1 - y0) || 1) * L.ih;
+  s._X = X; s._Y = Y;
+  const fx = s.fmtX || (v => fmt.n(v)), fy = s.fmtY || (v => fmt.n(v));
+  let g = `<g class="grid">${yt.map(v => `<line x1="${L.padL}" x2="${L.w - L.padR}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}"/>`).join("")}</g><g class="axis">`;
+  g += yt.map(v => `<text x="${L.padL - 5}" y="${(Y(v) + 3).toFixed(1)}" text-anchor="end">${esc(fy(v))}</text>`).join("");
+  g += xt.map((v, i) => `<text x="${X(v).toFixed(1)}" y="${L.h - 5}" text-anchor="${i === 0 ? "start" : i === xt.length - 1 ? "end" : "middle"}">${esc(fx(v))}</text>`).join("") + "</g>";
+  const pts = s.points.map((p, i) => `<circle data-i="${i}" cx="${X(p.x).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="3.4" fill="${s.color || "var(--accent)"}" opacity=".75"/>`).join("");
+  const fit = s.fit && s.fit.length === 2 ? `<line x1="${X(s.fit[0].x).toFixed(1)}" y1="${Y(s.fit[0].y).toFixed(1)}" x2="${X(s.fit[1].x).toFixed(1)}" y2="${Y(s.fit[1].y).toFixed(1)}" stroke="var(--text-2)" stroke-width="2" stroke-dasharray="5 4"/>` : "";
+  return `<svg viewBox="0 0 ${L.w} ${L.h}" width="${L.w}" height="${L.h}">${g}${fit}${pts}<circle class="sel" r="6" fill="none" stroke="var(--text)" stroke-width="2" visibility="hidden"/><rect class="hit" x="${L.padL}" y="0" width="${L.iw}" height="${L.h}"/></svg>`;
+}
+function bindScatter(el, s) {
+  const svg = el.querySelector("svg"), sel = svg.querySelector(".sel"), hit = svg.querySelector(".hit");
+  const order = s.points.map((p, i) => i).sort((a, b) => s.points[a].x - s.points[b].x);
+  let k = null;
+  const fx = s.fmtX || (v => fmt.n(v)), fy = s.fmtY || (v => fmt.n(v));
+  const show = (i, cx, cy) => {
+    const p = s.points[i];
+    sel.setAttribute("cx", s._X(p.x)); sel.setAttribute("cy", s._Y(p.y)); sel.setAttribute("visibility", "visible");
+    if (cx === undefined) { const r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal; cx = r.left + s._X(p.x) * r.width / vb.width; cy = r.top + s._Y(p.y) * r.height / vb.height; }
+    showTip(cx, cy, `<div>${esc(s.xName || "x")}: <b>${esc(fx(p.x))}</b></div><div>${esc(s.yName || "y")}: <b>${esc(fy(p.y))}</b></div>`);
+  };
+  const nearest = e => {
+    const r = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal;
+    const x = (e.clientX - r.left) * vb.width / r.width, y = (e.clientY - r.top) * vb.height / r.height;
+    let best = 0, bd = 1e9;
+    s.points.forEach((p, i) => { const d = (s._X(p.x) - x) ** 2 + (s._Y(p.y) - y) ** 2; if (d < bd) { bd = d; best = i; } });
+    return best;
+  };
+  hit.addEventListener("pointermove", e => show(nearest(e), e.clientX, e.clientY));
+  hit.addEventListener("pointerdown", e => show(nearest(e), e.clientX, e.clientY));
+  hit.addEventListener("pointerleave", () => { sel.setAttribute("visibility", "hidden"); hideTip(); });
+  el.addEventListener("keydown", e => {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    e.preventDefault();
+    k = k === null ? order.length - 1 : Math.max(0, Math.min(order.length - 1, k + (e.key === "ArrowRight" ? 1 : -1)));
+    show(order[k]);
+  });
+  el.addEventListener("blur", () => { sel.setAttribute("visibility", "hidden"); hideTip(); });
+}
+
+/* ---------- calendar heat grid: one cell per day, weeks as columns ---------- */
+function heatGrid(days, opts = {}) {
+  if (!days.length) return empty(STR.noData);
+  const max = Math.max(...days.map(d => isNum(d.v) ? d.v : 0)) || 1;
+  const first = new Date(days[0].date + "T12:00:00Z");
+  const lead = (first.getUTCDay() + 6) % 7;
+  const cells = Array(lead).fill(`<i class="hg-cell pad"></i>`);
+  days.forEach(d => {
+    const lvl = !isNum(d.v) ? "none" : d.v <= 0 ? "zero" : "l" + Math.min(4, Math.ceil(d.v / max * 4));
+    const lab = `${fmt.dateLong(d.date)}: ${isNum(d.v) ? (opts.fmt ? opts.fmt(d.v) : fmt.n(d.v)) : "no data"}`;
+    cells.push(`<i class="hg-cell ${lvl}" title="${esc(lab)}" aria-label="${esc(lab)}"></i>`);
+  });
+  const weeks = Math.ceil(cells.length / 7);
+  return `<div class="heatgrid" role="img" aria-label="${esc(opts.label || "Daily calendar")}" style="grid-template-columns:repeat(${weeks},minmax(0,1fr))">${cells.join("")}</div>
+    <div class="legend" style="margin-top:6px"><span>Less</span>${["zero", "l1", "l2", "l3", "l4"].map(l => `<i class="hg-cell ${l}" style="width:12px;height:12px;display:inline-block"></i>`).join("")}<span>More</span>${days.some(d => !isNum(d.v)) ? `<span><i class="hg-cell none" style="width:12px;height:12px;display:inline-block"></i> no data</span>` : ""}</div>`;
+}
+function consistencyCard() {
+  const series = (D.training.pmc.series || []).slice(-182).map(r => ({ date: r.date, v: r.known ? r.load : null }));
+  const st = D.streak;
+  return `<div class="card"><div class="spread"><h3 style="margin:0">Consistency</h3><span class="cap">${st.current} week streak</span></div>
+    <div style="margin-top:10px">${heatGrid(series, { label: "Daily training load, last 26 weeks", fmt: v => "load " + fmt.n(v) })}</div>
+    <p class="cap">Daily training load for the last 26 weeks. Grey = no data synced that day (not a rest day).</p></div>`;
+}
+
+/* ---------- share card (SVG/PNG, built from computed recap numbers; no maps, no health records) ---------- */
+function shareCardSvg(y) {
+  const all = Object.values(y.totals || {}).reduce((a, t) => ({ d: a.d + (t.distance_m || 0), s: a.s + (t.duration_s || 0), e: a.e + (t.elevation_gain_m || 0) }), { d: 0, s: 0, e: 0 });
+  const rows = [["Activities", fmt.n(y.activities)], ["Distance", fmt.dist(all.d, 0)], ["Time", fmt.mins(all.s)], ["Elevation", fmt.elev(all.e)], ["Active weeks", `${y.active_weeks}/${y.total_weeks}`], ["PRs", fmt.n(y.prs)]];
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350"><rect width="1080" height="1350" fill="#0b0b0c"/>
+    <rect x="80" y="90" width="64" height="64" rx="16" fill="#fc5200"/><text x="170" y="138" fill="#f4f4f6" font-family="Helvetica,Arial,sans-serif" font-size="40" font-weight="700">AGame</text>
+    <text x="80" y="290" fill="#f4f4f6" font-family="Helvetica,Arial,sans-serif" font-size="88" font-weight="800">${esc(y.label)}</text>
+    ${y.partial ? `<text x="80" y="350" fill="#a3a3ab" font-family="Helvetica,Arial,sans-serif" font-size="34">to date</text>` : ""}
+    ${rows.map(([k, v], i) => `<text x="${80 + (i % 2) * 480}" y="${520 + Math.floor(i / 2) * 230}" fill="#a3a3ab" font-family="Helvetica,Arial,sans-serif" font-size="34">${esc(k)}</text><text x="${80 + (i % 2) * 480}" y="${600 + Math.floor(i / 2) * 230}" fill="#f4f4f6" font-family="Helvetica,Arial,sans-serif" font-size="72" font-weight="800">${esc(v)}</text>`).join("")}
+    <text x="80" y="1270" fill="#6b6b74" font-family="Helvetica,Arial,sans-serif" font-size="26">From my own HealthKit data · no maps or health records</text></svg>`;
+}
+function downloadShare(i, kind) {
+  const y = (D.recaps.years.concat(D.recaps.months))[i];
+  if (!y) return;
+  const svg = shareCardSvg(y);
+  const name = "agame-" + y.label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const dl = (href, file) => { const a = document.createElement("a"); a.href = href; a.download = file; document.body.appendChild(a); a.click(); a.remove(); };
+  if (kind === "svg") { dl(URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" })), name + ".svg"); return; }
+  const img = new Image();
+  img.onload = () => { const c = document.createElement("canvas"); c.width = 1080; c.height = 1350; c.getContext("2d").drawImage(img, 0, 0); dl(c.toDataURL("image/png"), name + ".png"); };
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-share]"); if (b) downloadShare(+b.dataset.share, b.dataset.kind); });

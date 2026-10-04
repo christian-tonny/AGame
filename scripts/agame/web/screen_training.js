@@ -1,13 +1,6 @@
 /* Training: fitness/freshness, training log, progress, plan & calendar, zones, records, recaps, weekly review */
 "use strict";
 
-function toast(msg) {
-  let t = $("#toast");
-  if (!t) { t = document.createElement("div"); t.id = "toast"; t.className = "tip"; t.setAttribute("role", "status"); t.style.cssText = "left:50%;bottom:90px;top:auto;transform:translateX(-50%)"; document.body.appendChild(t); }
-  t.textContent = msg; t.classList.add("on");
-  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 2600);
-}
-
 const TRAINING_TABS = [["fitness", "Fitness"], ["log", "Log"], ["progress", "Progress"], ["plan", "Plan"], ["zones", "Zones"], ["records", "Records"], ["recaps", "Recaps"], ["review", "Weekly review"]];
 
 AG.screens.training = {
@@ -62,11 +55,15 @@ function trFitness() {
     <div class="stack"><div class="card"><h3>Cardio status</h3><div class="stat"><span class="v" style="font-size:28px">${st.v ? esc(fmt.sport(st.v)) : "—"}</span></div><p class="small muted">${esc(statusTxt[st.v] || "")}</p>
       ${st.ramp_warning ? insightCard("Fitness ramping fast", `+${fmt.n(st.ramp, 1)} per week`, "action") : ""}
       ${ot.enabled ? `<div class="li" style="border:0"><div class="grow"><div class="t">Overtraining check</div><div class="s">HRV ${ot.evidence && isNum(ot.evidence.hrv_z_7d) ? (ot.evidence.hrv_z_7d < 0 ? "below" : "above") + " baseline (z " + fmt.n(ot.evidence.hrv_z_7d, 1) + ")" : "—"} · form ${ot.evidence && isNum(ot.evidence.tsb) ? fmt.n(ot.evidence.tsb) : "—"}${ot.note ? " · " + esc(ot.note) : ""}</div></div>${badge(ot.active ? "Warning" : "Clear", ot.active ? "bad" : "ok")}</div>` : `<p class="cap">Overtraining warning disabled in config</p>`}</div>
-    ${prop ? `<div class="card"><h3>Threshold update suggested</h3><p class="small">${esc(prop.reason)}</p><div class="stats-grid">${stat("Current", fmt.pace(prop.current))}${stat("Proposed", fmt.pace(prop.proposed))}</div><p class="cap">Applied only when you confirm in profile.</p></div>` : ""}
-    ${cand.length ? `<div class="card"><h3>Calibration candidates</h3><div class="list">${cand.slice(-3).reverse().map(c => `<div class="li"><div class="grow"><div class="t">${c.metric === "lthr" ? "LTHR " + c.value + " bpm" : "Threshold " + fmt.pace(c.value)}</div><div class="s">${esc(c.method)} · ${fmt.date(c.date)}</div></div><div class="r small">${isNum(c.delta) ? (c.metric === "lthr" ? fmt.signed(c.delta) : fmt.signed(c.delta) + " s") : "new"}</div></div>`).join("")}</div><p class="cap">${D.profile.auto_accept_thresholds ? "Auto-accept is on." : "Not applied: confirm in profile (auto-accept off)."}</p></div>` : ""}
+    ${prop ? `<div class="card"><h3>Threshold update suggested</h3><p class="small">${esc(prop.reason)}</p><div class="stats-grid">${stat("Current", fmt.pace(prop.current))}${stat("Proposed", fmt.pace(prop.proposed))}</div>${AG.online ? `<button class="btn sm" data-thr-metric="${esc(prop.metric)}" data-thr-value="${prop.proposed}">Accept</button>` : `<p class="cap">Applied only when you confirm.</p>`}</div>` : ""}
+    ${cand.length ? `<div class="card"><h3>Calibration candidates</h3><div class="list">${cand.slice(-3).reverse().map(c => `<div class="li"><div class="grow"><div class="t">${c.metric === "lthr" ? "LTHR " + c.value + " bpm" : "Threshold " + fmt.pace(c.value)}</div><div class="s">${esc(c.method)} · ${fmt.date(c.date)}</div></div><div class="r small">${isNum(c.delta) ? (c.metric === "lthr" ? fmt.signed(c.delta) : fmt.signed(c.delta) + " s") : "new"}</div>${AG.online && !c.applied ? `<button class="btn sm secondary" data-thr-metric="${esc(c.metric)}" data-thr-value="${c.value}">Accept</button>` : ""}</div>`).join("")}</div><p class="cap">${D.profile.auto_accept_thresholds ? "Auto-accept is on." : "Not applied until you accept (auto-accept off)."}</p></div>` : ""}
     <a class="card chev row" href="#/training?tab=review">${icon("calendar")} <b>Weekly review</b></a><a class="card chev row" href="#/training?tab=recaps">${icon("records")} <b>Year in Sport</b></a></div></div>`;
 }
 
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-thr-metric]");
+  if (b) act("threshold.accept", { metric: b.dataset.thrMetric, value: +b.dataset.thrValue }, "Threshold updated").catch(() => {});
+});
 function dayActivitiesSheet(date) {
   const acts = D.activities.list.filter(a => a.date === date);
   openSheet(fmt.dateLong(date), acts.length ? `<div class="list">${acts.map(activityRow).join("")}</div>` : `<p class="small muted">No activities this day</p>`);
@@ -147,7 +144,7 @@ function weekGrid(wk) {
       const cls = s.type === "REST" ? "rest" : s.compliance || "planned";
       const load = isNum(s.actual_load) ? `L${fmt.n(s.actual_load)}${isNum(s.planned_load) ? ` <span class="faint">(${fmt.n(s.planned_load)})</span>` : ""}` : isNum(s.planned_load) ? `<span class="faint">L${fmt.n(s.planned_load)}</span>` : "";
       const dur = s.actual_duration_s || s.duration_s;
-      return `<button class="wtile ${cls}" ${s.origin === "plan" && d >= today ? `draggable="true" data-drag="${esc(s.id)}"` : ""} data-open="session" data-arg="${esc(s.id)}" aria-label="${esc(s.label || s.type)} ${esc(fmt.sport(cls))}">
+      return `<button class="wtile ${cls}" ${d >= today && !s.workout_id && AG.online ? `draggable="true" data-drag="${esc(s.id)}"` : ""} data-open="session" data-arg="${esc(s.id)}" aria-label="${esc(s.label || s.type)} ${esc(fmt.sport(cls))}">
         <b>${esc(s.type === "NPU" ? "NPU" : s.type)}</b>${s.type !== "REST" ? `<span>${load}</span><br><span>${dur ? fmt.mins(dur) : ""}</span>` : ""}<div class="tl">${esc(fmt.sport(cls === "planned" ? "" : cls))}</div></button>`;
     }).join("")}</div>`).join("")}</div>`;
 }
@@ -172,8 +169,7 @@ function bindWeekDnD() {
   });
 }
 async function moveSession(id, date) {
-  try { await api("PATCH", "entries/plans.sessions/" + encodeURIComponent(id), { date }); toast("Moved · rebuilding"); setTimeout(() => location.reload(), 900); }
-  catch (err) { toast(err.message); }
+  try { await act("plan.move", { session_id: id, date }, "Session moved"); } catch (err) { /* shown */ }
 }
 function trPlan() {
   const p = D.plans;
@@ -183,26 +179,28 @@ function trPlan() {
   const inst = p.instant;
   const cal = p.calendar;
   return `<div class="cols c21"><div class="stack"><div class="card">
-      <div class="spread" style="margin-bottom:10px"><h3 style="margin:0">${fmt.date(wk.days[0])} – ${fmt.date(wk.days[6])}</h3>${seg("plan-week", [["last", "Last"], ["this", "This week"], ["next", "Next"]], which)}</div>
+      <div class="spread" style="margin-bottom:10px;flex-wrap:wrap;gap:8px"><h3 style="margin:0">${fmt.date(wk.days[0])} – ${fmt.date(wk.days[6])}</h3>${seg("plan-week", [["last", "Last"], ["this", "This week"], ["next", "Next"]], which)}</div>
       ${weekHeader(wk.header)}<div style="height:10px"></div>${weekGrid(wk)}
       <div class="legend" style="margin-top:10px"><span><i style="border:2px solid var(--ok)"></i>As planned</span><span><i style="border:2px solid var(--warn)"></i>Partial</span><span><i style="border:2px dashed var(--bad)"></i>Missed</span><span><i style="border:2px solid var(--text-3)"></i>Unplanned</span></div>
-      <p class="cap">${isNum(wk.header.compliance_pct) ? `Compliance ${wk.header.compliance_pct}% so far. ` : ""}Drag a planned session to another day (desktop) or open it for alternatives. ${p.has_explicit_plan ? "" : "Sessions come from your weekly template."}</p>${offlineNote()}</div>
-    ${p.adaptations.length ? `<div class="card"><h3>Suggested changes</h3>${p.adaptations.map(a => insightCard(`${fmt.dow(a.date)}: ${adaptText(a)}`, a.reason, "action")).join("")}<p class="cap">Originals stay visible; nothing changes until you accept.</p></div>` : ""}
+      <p class="cap">${isNum(wk.header.compliance_pct) ? `Compliance ${wk.header.compliance_pct}% so far. ` : ""}Drag a planned session to another day (desktop), or open it and use Move to… (keyboard and phone). ${p.has_explicit_plan ? "" : "Sessions come from your weekly template."}</p>
+      <div class="edit-row">${editBtn("session-new", "", "Add session")}${editBtn("event-add", undefined, "Add event")}${editBtn("plan-new", undefined, "New plan")}</div>${offlineNote()}</div>
+    ${p.adaptations.length ? `<div class="card"><h3>Suggested changes</h3>${p.adaptations.map(a => insightCard(`${fmt.dow(a.date)}: ${adaptText(a)}`, a.reason, "action") + adaptButtons(a)).join("")}<p class="cap">Originals stay visible; nothing changes until you accept. Accepted changes note the original in the session.</p></div>` : ""}
     ${p.conflicts.length ? `<div class="card"><h3>Calendar conflicts</h3><div class="list">${p.conflicts.map(c => `<div class="li"><div class="grow"><div class="t">${fmt.dow(c.date)} ${fmt.date(c.date)}</div><div class="s">${esc(c.event || "")} · ${esc(c.reason)}</div></div></div>`).join("")}</div></div>` : ""}
     <div class="card"><h3>Upcoming sessions</h3>${p.upcoming.length ? `<div class="list">${p.upcoming.map(s => `<button class="li" data-open="session" data-arg="${esc(s.id)}"><span class="icon-dot" style="color:${sportColor(s.sport === "strength" ? "strength" : "run")}">${sportIcon(s.sport === "strength" ? "strength" : "run")}</span><div class="grow"><div class="t">${esc(s.title || s.label)}</div><div class="s">${fmt.dow(s.date)} ${fmt.date(s.date)} · ${esc(s.label || s.type)}${s.origin === "template" ? " · template" : ""}</div></div><div class="r small">${s.duration_s ? fmt.mins(s.duration_s) : ""}</div></button>`).join("")}</div>` : empty(STR.noPlan)}</div>
     <div class="card"><h3>Training calendar</h3>${monthGrid(cal)}</div></div>
     <div class="stack">
-    <div class="card"><h3>Season</h3>${races.length ? `<div class="list">${races.map(r => `<div class="li"><span class="badge ${r.priority === "A" ? "accent" : r.priority === "B" ? "info" : ""}">${esc(r.priority || "B")}</span><div class="grow"><div class="t">${esc(r.name)}</div><div class="s">${fmt.date(r.date, { day: "numeric", month: "short", year: "numeric" })}${r.distance_m ? " · " + fmt.dist(r.distance_m) : ""} · ${esc(fmt.sport(r.phase))}</div></div><div class="r">${r.days_to}<div class="cap">days</div></div></div>`).join("")}</div>
+    <div class="card"><div class="spread"><h3 style="margin:0">Season</h3>${editBtn("race-edit", "", "Add race")}</div>${races.length ? `<div class="list">${races.map(r => `<div class="li" ${AG.online ? `role="button" tabindex="0" data-open="race-edit" data-arg="${esc(r.id)}"` : ""}><span class="badge ${r.priority === "A" ? "accent" : r.priority === "B" ? "info" : ""}">${esc(r.priority || "B")}</span><div class="grow"><div class="t">${esc(r.name)}</div><div class="s">${fmt.date(r.date, { day: "numeric", month: "short", year: "numeric" })}${r.distance_m ? " · " + fmt.dist(r.distance_m) : ""} · ${esc(fmt.sport(r.phase))}</div></div><div class="r">${r.days_to}<div class="cap">days</div></div></div>`).join("")}</div>
       <p class="cap">A races get a ${races.find(r => r.priority === "A") ? races.find(r => r.priority === "A").taper_days : 14}-day taper; C races none.</p>` : `<p class="small muted">No target race · ${p.races.mode === "maintain" ? "train-to-maintain mode" : "add races in plans.json"}</p>`}
       ${p.plans.map(pl => `<div style="margin-top:10px"><b>${esc(pl.name)}</b><div class="cap">${esc(pl.goal || "")}</div>${(pl.phases || []).map(ph => `<div class="spread small" style="margin-top:6px"><span>${esc(ph.name)} <span class="faint">${esc(ph.focus || "")}</span></span><span class="muted">${fmt.date(ph.start)}–${fmt.date(ph.end)}</span></div>`).join("")}</div>`).join("")}</div>
-    <div class="card"><h3>Instant workouts</h3>${inst.status === "ok" ? `<div class="list">${inst.options.map(o => `<div class="li"><div class="grow"><div class="t">${esc(o.title)} <span class="tag">${esc(o.mode)}</span></div><div class="s">${esc(o.why)}${o.route ? " · " + esc(o.route.name) : ""}</div></div><div class="r small">${fmt.mins(o.duration_s)}</div></div>`).join("")}</div>` : `<p class="small muted">Needs ${inst.needed} runs in the last 4 weeks (have ${inst.have})</p>`}</div>
-    <div class="card"><h3>Routines</h3>${p.routines.length ? `<div class="list">${p.routines.map(rt => `<button class="li" data-open="routine" data-arg="${esc(rt.id)}"><div class="grow"><div class="t">${esc(rt.name)}</div><div class="s">${esc(fmt.sport(rt.sport))} · ${fmt.mins(rt.total_duration_s)}${rt.guiding_metric ? " · guide by " + esc(rt.guiding_metric) : ""}</div></div></button>`).join("")}</div>` : empty("No routines yet")}</div>
+    <div class="card"><h3>Instant workouts</h3>${inst.status === "ok" ? `<div class="list">${inst.options.map((o, i) => `<div class="li"><div class="grow"><div class="t">${esc(o.title)} <span class="tag">${esc(o.mode)}</span></div><div class="s">${esc(o.why)}${o.route ? " · " + esc(o.route.name) : ""}</div></div><div class="r small">${fmt.mins(o.duration_s)}</div>${editBtn("instant-schedule", i, "Schedule")}</div>`).join("")}</div>` : `<p class="small muted">Needs ${inst.needed} runs in the last 4 weeks (have ${inst.have})</p>`}</div>
+    <div class="card"><div class="spread"><h3 style="margin:0">Routines</h3>${editBtn("routine-new", undefined, "New")}</div>${p.routines.length ? `<div class="list">${p.routines.map(rt => `<button class="li" data-open="routine" data-arg="${esc(rt.id)}"><div class="grow"><div class="t">${esc(rt.name)}</div><div class="s">${esc(fmt.sport(rt.sport))} · ${fmt.mins(rt.total_duration_s)}${rt.guiding_metric ? " · guide by " + esc(rt.guiding_metric) : ""}</div></div></button>`).join("")}</div>` : empty("No routines yet")}</div>
+    <div class="card"><h3>Templates</h3>${(p.templates || []).length ? `<div class="list">${p.templates.map(t => `<${AG.online ? `button type="button" data-open="template-edit" data-arg="${esc(t.id)}"` : "div"} class="li"><div class="grow"><div class="t">${esc(t.name)}</div><div class="s">${esc(t.type)}${t.duration_s ? " · " + fmt.mins(t.duration_s) : ""}</div></div></${AG.online ? "button" : "div"}>`).join("")}</div>` : `<p class="small muted">Save any session as a template from its detail sheet.</p>`}</div>
     </div></div>`;
 }
 AG.sheets.routine = function (id) {
   const rt = D.plans.routines.find(r => r.id === id);
   if (!rt) return;
-  openSheet(rt.name, `${stepList(rt.steps)}${sectionTitle("Apple Watch export")}<p class="small muted">${esc(rt.watch_export.note)}</p>
+  openSheet(rt.name, `${stepList(rt.steps)}${AG.online ? `<div class="edit-row"><button class="btn sm" data-open="routine-schedule" data-arg="${esc(rt.id)}">Schedule…</button></div>` : ""}${sectionTitle("Apple Watch export")}<p class="small muted">${esc(rt.watch_export.note)}</p>
     <pre style="white-space:pre-wrap;font-size:11px;background:var(--surface-2);padding:10px;border-radius:10px;max-height:240px;overflow:auto">${esc(JSON.stringify(rt.watch_export, null, 1))}</pre>
     <p class="cap">${STR.companion}</p>`);
 };
@@ -230,6 +228,7 @@ AG.sheets.calday = function (date) {
   if (!d) return;
   openSheet(fmt.dateLong(date), `${d.acts.length ? sectionTitle("Activities") + `<div class="list">${d.acts.map(a => `<a class="li" href="#/activity/${encodeURIComponent(a.id)}"><div class="grow"><div class="t">${esc(a.name || fmt.sport(a.sport))}</div><div class="s">${fmt.mins(a.duration_s)}${a.distance_m ? " · " + fmt.dist(a.distance_m) : ""}${a.planned ? " · planned" : " · unplanned"}</div></div></a>`).join("")}</div>` : ""}
     ${d.sessions.length ? sectionTitle("Planned") + `<div class="list">${d.sessions.map(s => `<button class="li" data-open="session" data-arg="${esc(s.id)}"><div class="grow"><div class="t">${esc(s.title || s.label)}</div><div class="s">${esc(fmt.sport(s.compliance || ""))}</div></div></button>`).join("")}</div>` : ""}
+    ${AG.online && date >= D.meta.build_date ? `<div class="edit-row"><button class="btn sm secondary" data-open="session-new" data-arg="${date}">Add session this day</button></div>` : ""}
     ${d.events.length ? sectionTitle("Calendar") + `<div class="list">${d.events.map(e => `<div class="li"><div class="grow"><div class="t">${esc(e.title)}</div><div class="s">${fmt.time(e.start)}–${fmt.time(e.end)}</div></div></div>`).join("")}</div>` : ""}
     ${!d.acts.length && !d.sessions.length && !d.events.length ? `<p class="small muted">Nothing on this day</p>` : ""}`);
 };
@@ -263,10 +262,10 @@ AG.sheets.efforts = function (dist) {
   openSheet(fmt.distLabel(r.distance_m) + " · top efforts", `<table class="tbl"><tr><th>#</th><th>Date</th><th class="r">Time</th><th class="r">Pace</th></tr>${r.top.map((e, i) => `<tr><td>${i + 1}</td><td><a href="#/activity/${encodeURIComponent(e.workout_id)}">${fmt.date(e.date, { day: "numeric", month: "short", year: "numeric" })}</a></td><td class="r">${fmt.dur(e.time_s)}</td><td class="r">${fmt.pace(e.pace_s_per_km)}</td></tr>`).join("")}</table><p class="cap">Ranks within your own history only.</p>`);
 };
 
-function recapCard(y, big) {
+function recapCard(y, big, idx) {
   const run = (y.totals || {}).run || {};
   const all = Object.values(y.totals || {}).reduce((a, t) => ({ d: a.d + (t.distance_m || 0), s: a.s + (t.duration_s || 0), e: a.e + (t.elevation_gain_m || 0) }), { d: 0, s: 0, e: 0 });
-  return `<div class="card"><div class="spread"><h3 style="margin:0">${esc(y.label)}</h3>${y.partial ? badge("To date", "info") : ""}</div>
+  return `<div class="card"><div class="spread"><h3 style="margin:0">${esc(y.label)}</h3><span class="row">${y.partial ? badge("To date", "info") : ""}${isNum(idx) ? `<button class="btn sm secondary" data-share="${idx}" data-kind="png">Share card</button>` : ""}</span></div>
     <div class="stats-grid ${big ? "s4" : ""}" style="margin-top:10px">${stat("Activities", fmt.n(y.activities))}${stat("Distance", fmt.dist(all.d, 0))}${stat("Time", fmt.mins(all.s))}${stat("Elevation", fmt.elev(all.e))}
       ${stat("Active weeks", `${y.active_weeks}/${y.total_weeks}`)}${stat("PRs", fmt.n(y.prs))}${stat("Avg sleep", isNum(y.avg_sleep_min) ? fmt.hm(y.avg_sleep_min) : "—")}${stat("Avg recovery", isNum(y.avg_recovery) ? y.avg_recovery + "%" : "—")}</div>
     ${big ? `${y.longest ? `<p class="small" style="margin-top:12px">Longest: <b>${fmt.dist(y.longest.distance_m)}</b> · ${esc(y.longest.name || "")} · ${fmt.date(y.longest.date)}</p>` : ""}
@@ -278,8 +277,9 @@ function recapCard(y, big) {
 function trRecaps() {
   const R = D.recaps;
   if (!R.years.length) return empty("Year in Sport appears after your first imported activities");
-  return `<div class="cols"><div class="stack">${sectionTitle("Year in Sport")}${R.years.slice().reverse().map(y => recapCard(y, true)).join("")}</div>
-    <div class="stack">${sectionTitle("Month in Sport")}${R.months.map(m => recapCard(m, false)).join("")}</div></div>`;
+  return `<div class="cols"><div class="stack">${sectionTitle("Year in Sport")}${R.years.map((y, i) => [y, i]).reverse().map(([y, i]) => recapCard(y, true, i)).join("")}</div>
+    <div class="stack">${sectionTitle("Month in Sport")}${R.months.map((m, i) => recapCard(m, false, R.years.length + i)).join("")}</div></div>
+    <p class="cap">Share cards are images built from these totals only — no maps, no health records.</p>`;
 }
 
 function trReview() {

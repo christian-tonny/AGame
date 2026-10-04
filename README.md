@@ -74,6 +74,7 @@ Think of it like a kitchen. The data folder is the pantry. Python is the cook. T
 - **Imports are immutable.** HealthKit records keep their `source_id` and are never edited in place. Your own entries are `kind: user_entered` and can be edited, undone, exported and deleted. Every change is logged with before/after values.
 - **Nothing sensitive before sign-in.** The server shows only a sign-in page and `/healthz` until the owner signs in with Google (OpenID Connect).
 - **Map privacy.** Privacy zones and start/end trimming are applied in Python, so raw coordinates never reach the HTML.
+- **Edits are named actions, not browser logic.** Simple edits go to `/api/entries/<collection>`. Anything that needs a decision goes to `/api/actions/<name>` (`scripts/agame/actions.py`), for example turning a template session into a real one, applying a Workout Wizard pick, copying a day of meals, or accepting a threshold. One action is one undo step.
 
 | Folder | What's in it |
 |---|---|
@@ -103,7 +104,12 @@ Run these from the repo root. Each one prints `--help`.
 | `AGAME_UPLOAD_TOKEN=… python3 scripts/push_snapshot.py --url https://your-app` | Sends the data files to the deployed server, which validates them and rebuilds | 0 ok/degraded · 1 rejected |
 | `python3 scripts/fitness_pwa.py --out dist/` | Regenerates only the PWA files (the build already does this) | |
 | `python3 -m agame.synthetic --out DIR --date YYYY-MM-DD [--missing-last-sleep]` (from `scripts/`) | Makes 200 days of fake data for demos and tests | |
-| `python3 -m unittest discover scripts/tests -p 'test_*.py'` | Unit and integration tests (~50 s) | |
+| `python3 scripts/run_tests.py [--out dist/]` | Unit and integration tests, modules in parallel (~35 s). Writes `dist/test_report.json` | 0 pass · 1 fail |
+| `python3 -m unittest discover scripts/tests -p 'test_*.py'` | Same tests, one process (~90 s) | |
+| `python3 scripts/import_strength_csv.py export.csv [--map names.json] [--unit lb] [--dry-run]` | Imports a Strong, Hevy or generic sets CSV into `strength.json`. Safe to repeat. Unknown exercise names are skipped and listed (muscles are never guessed) | 0 imported · 2 imported, some exercises skipped · 1 rejected · 3 usage |
+| `python3 scripts/coach_maintenance.py [--dry-run]` | Nightly: removes duplicate Coach memories (one undo step) and trims old chat threads | 0 · 1 data unreadable |
+| `python3 scripts/due_checkins.py [--now ISO] [--window-min 15]` | Lists check-ins due now, with the computed facts to include | 0 |
+| `NODE_PATH=$(npm root -g) node scripts/e2e/edit_flows.js [--no-shots]` | Browser tests of every edit flow against the dev server | 0 pass · 1 fail |
 | `NODE_PATH=$(npm root -g) node scripts/e2e/e2e.js [--no-shots]` | Browser tests and screenshots (needs Node Playwright + Chromium) | 0 pass · 1 fail |
 | `python3 scripts/e2e/steve_dry_run.py` | Rehearses four mornings of Steve's routine | 0 pass · 1 fail |
 
@@ -146,6 +152,21 @@ git -C "$AGAME_DATA_DIR" add -A && git -C "$AGAME_DATA_DIR" commit -qm "HealthKi
 | Build | `2` degraded | The dashboard was still built. Read `degraded_reasons` (e.g. "last night's sleep not synced yet"). Re-run import + build once more data arrives. The app shows honest "stale"/"not synced" states meanwhile |
 | Build | `1` failed | The previous dashboard is kept. Read `errors` in `build_report.json`, report them, and fix the data, not the code |
 
+### Through the day
+
+```bash
+python3 scripts/due_checkins.py          # every 15 minutes: deliver what it prints (message + facts)
+```
+
+### Every night
+
+```bash
+python3 scripts/coach_maintenance.py     # de-duplicate Coach memory, trim old threads
+python3 scripts/run_tests.py             # optional: proves the code before any deploy (dist/test_report.json)
+```
+
+When the owner exports workouts from a lifting app, import them with `import_strength_csv.py` (it never guesses muscles; add a `--map` file for names it doesn't know).
+
 ### Every Monday
 
 Read `dist/weekly_review.json` (the last completed week: load, sleep, recovery, goals, highlights). Send it to the owner as the weekly review. Check-ins and nudges listed in `coach.json → checkins` are Steve's to deliver on their schedule.
@@ -153,7 +174,7 @@ Read `dist/weekly_review.json` (the last completed week: load, sleep, recovery, 
 ### Backup and rollback
 
 - The private data folder is the backup. Commit it after every morning, and keep it in a **private** repository.
-- `dist/snapshots/` keeps the last 7 built dashboards. To roll back the view, copy an older snapshot over `dist/fitness_dashboard.html`.
+- `dist/snapshots/` keeps the last 7 built dashboards. To roll back the view, pin one: `echo 2026-10-03 > dist/pin.txt` (or set `AGAME_PIN_SNAPSHOT=2026-10-03` on the server). The server then serves that snapshot until the pin is removed. `/api/build-report` shows the active pin.
 - To roll back data, run `git -C "$AGAME_DATA_DIR" revert <commit>` and rebuild.
 - Edits made in the app are in `edit_history.jsonl` (in the data folder). Undo them from the app or with `POST /api/undo`.
 
@@ -200,7 +221,13 @@ All files live in `AGAME_DATA_DIR`. Every file has the same envelope:
 | `journal.json` | Owner | `entries` (mood, symptoms, notes…), `habits`, `activity_status` (sick, travel, injured…), `cycle` |
 | `health_records.json` | Owner | Lab results, notes, documents; `biomarkers: [{name, code, value, unit, ref_low, ref_high}]` |
 | `social.json` | Contract | athletes, follows, clubs, posts, kudos, comments, challenges, segment efforts |
-| `coach.json` | Server | Threads, memory, check-ins |
+| `coach.json` | Server + owner | Threads, memory, check-ins |
+
+**Owner additions in this version:**
+- `body.json` accepts manual blood pressure as `bp_systolic_mmhg` / `bp_diastolic_mmhg` measurements (`kind: user_entered`). These join the HealthKit series.
+- `profile.ui` has `favorite_routes`, `offline_routes`, `today_widgets` and `pinned_charts`.
+- `plans.json → decisions` records which suggested plan changes you accepted or declined.
+- Imported GPX/GeoJSON routes are features with `properties.source: "import"`.
 
 The exact rules for every field are in `schemas/*.schema.json`. The validator also checks things a schema can't:
 - impossible values (e.g. HR over 250, sleep longer than 24 h, speed impossible for the sport)
@@ -331,33 +358,36 @@ Destinations: **Today** (with Strain, Timeline), **Training** (Fitness, Log, Pro
 | Splits, GAP, laps, intervals, HR curve, EF, decoupling, intensity | Strava, Bevel, Athletica | Activity | Built |
 | Power curve | Strava | Activity | Built when power samples exist, empty otherwise |
 | Matched runs, best efforts, PRs, top-10, race predictions | Strava | Activity, Training › Records | Built |
-| Flyover replay, RPE / feel / notes | Strava, Athletica | Activity | Built |
+| Flyover replay, RPE / feel / notes, Quick Edit (title, race, private, tags), race view (goal and prediction vs finish) | Strava, Athletica | Activity | Built |
 | Weather on activity | Strava | Activity | Contract |
 | Goals, streaks | Strava | Goals, Today | Built |
-| Calendar, Plan Your Week (drag to move), compliance, templates | Bevel, Athletica | Training › Plan | Built |
-| Adaptive suggestions, Workout Wizard, instant workouts | Strava/Runna, Athletica | Training, Today | Built (rule-based) |
+| Calendar, Plan Your Week (drag or "Move to…"), compliance, templates, races A/B/C, events, plans with phases | Bevel, Athletica | Training › Plan | Built |
+| Adaptive suggestions (accept / keep original), Workout Wizard, instant workouts (schedule) | Strava/Runna, Athletica | Training, Today | Built (rule-based) |
 | Big Day Brief, pre-workout guidance | Athletica | Today | Built |
 | Routines with structured steps · Apple Watch export | Bevel, Athletica | Training | Built · export is a contract |
-| Year / month in sport, weekly review | Strava, owner | Training › Recaps / Review | Built |
+| Year / month in sport with share card (PNG), weekly review | Strava, owner | Training › Recaps / Review | Built |
 | Recovery with factors and confidence | Bevel | Today, Recovery | Built |
 | Sleep score, need, debt, stages, regularity, bedtime | Bevel | Sleep, Today | Built |
 | Strain, Stress (estimate), Energy Bank | Bevel | Today › Strain, Recovery | Built |
 | Muscle load, freshness, muscle map | Bevel, Strava | Strength | Built from exercise logs |
-| Strength builder, rest timer, plate calculator, history | Bevel | Strength | Built |
+| Strength builder, rest timer, plate calculator, history, custom exercises, routines | Bevel | Strength | Built |
+| Strength-app import (Strong, Hevy, generic CSV) | Strava | `import_strength_csv.py` | Built |
 | Weight trajectory, VO2 max, HRV, RHR, blood pressure, custom charts | Bevel, owner | Body | Built |
 | Nutrition diary, macros, net energy, score, recipes | Bevel | Nutrition | Built once meals are logged or imported |
 | Barcode / photo food logging, CGM | Bevel | Nutrition | Contract |
 | Timeline, journal, activity status (sick / travel) | Bevel | Timeline, Journal | Built |
 | Health records | Bevel | Body | Built (manual) |
 | Biological age | Bevel | Body | Built when biomarkers or VO2 max data exist |
-| Route library, privacy zones, heatmap (incl. night), own segments | Strava | Routes | Built |
-| Route builder on a map, leaderboards, live segments, feed, clubs, kudos | Strava | Routes, Activities › Social | Contract |
+| Route library, privacy zones, heatmap (incl. night), own segments, GPX/GeoJSON import, favourites, offline | Strava | Routes | Built |
+| Drawing routes on a map, leaderboards, live segments, feed, clubs, kudos | Strava | Routes, Activities › Social | Contract |
 | Coach: today's call, helping / hurting, suggestions, memory, personalities, modes, Ghost mode | Bevel | Coach | Built |
 | Coach: free-form Q&A and generated charts | Bevel, Strava | Coach, Activity › Chat | Contract (needs LLM key) |
-| Widgets | Bevel | Widgets, `widgets.json` | Built + export contract |
+| Widgets, pinned to a custom row on Today (desktop) | Bevel | Widgets, `widgets.json` | Built + export contract |
 | Beacon, smart alarm | Strava, Bevel | Profile | Contract |
 | Offline use, install to home screen | — | All | Built |
-| Data freshness, provenance ("i" buttons), edit history, undo, export, delete my entries | Brief | All, Profile | Built |
+| Data freshness, provenance ("i" buttons), edit history with before/after, undo (toast and sheet), export, delete my entries | Brief | All, Profile | Built |
+| Editing everything you own: profile, physiology, zones, targets, weekly template, appearance (theme, icon, tabs), privacy zones, modules, coach, goals, meals, water, caffeine, recipes, weigh-ins, blood pressure, health records with files, journal, status, habits, memory, check-ins, prehab | Brief | Each screen | Built |
+| Component gallery (`#/dev/gallery`), WCAG AA contrast check | Plan | Dev | Built |
 
 The original research matrix with issue numbers is in `docs/build-plan.md` §9.
 
@@ -374,6 +404,8 @@ Taken from synthetic data at 390×797 (iPhone) in dark mode, plus Today in light
 | ![](docs/screenshots/dark-profile.png) | ![](docs/screenshots/dark-strain.png) | ![](docs/screenshots/dark-timeline.png) |
 | ![](docs/screenshots/dark-journal.png) | ![](docs/screenshots/dark-widgets.png) | ![](docs/screenshots/dark-more-sheet.png) |
 | ![](docs/screenshots/light-today.png) | ![](docs/screenshots/dark-offline.png) | ![](docs/screenshots/dark-provenance-sheet.png) |
+| ![](docs/screenshots/dark-profile-edit.png) | ![](docs/screenshots/dark-edit-goal-sheet.png) | ![](docs/screenshots/dark-session-sheet.png) |
+| ![](docs/screenshots/dark-gallery.png) | ![](docs/screenshots/dark-training-plan.png) | ![](docs/screenshots/dark-route-detail.png) |
 
 ![Desktop](docs/screenshots/desktop-today.png)
 
@@ -387,7 +419,7 @@ Each of these already has a schema field and a screen. Supply the input below an
 |---|---|---|
 | Power curve, power zones | A power source (running power from Apple Watch, or a cycling power meter) | `workouts[].samples.power_w` (array aligned with `samples.t`), and optionally `profile.physiology.ftp_w` `{value, date, method, kind}` |
 | Weather on activities, heat-adjusted pace | A weather source | `workouts[].weather = {temp_c, humidity_pct, wind_kph, conditions, source}`. For plans: `plans.sessions[].forecast_temp_c` |
-| Route builder and map tiles | A tile server you trust (private, no tracking) | `profile.integrations.map_tiles_url` (e.g. `https://tiles.example/{z}/{x}/{y}.png`) and `map_attribution`. Routes are drawn without a base map today; drawing tiles also needs that origin added to the CSP `img-src` (the hook is `Config.tiles_origin` in `server.py`) |
+| Drawing routes on a map, base map under traces | A tile server you trust (private, no tracking) | `profile.integrations.map_tiles_url` (e.g. `https://tiles.example/{z}/{x}/{y}.png`) and `map_attribution`. Routes are drawn without a base map today; drawing tiles also needs that origin added to the CSP `img-src` (the hook is `Config.tiles_origin` in `server.py`) |
 | Leaderboards, live segments, feed, clubs, kudos, friend challenges | Other people's consented data | `social.json`: `athletes`, `follows`, `clubs`, `posts`, `kudos`, `comments`, `challenges`, `segment_efforts`. No Strava API data may be used |
 | Coach free-form Q&A and generated charts | An Anthropic API key | Server env: `AGAME_LLM_PROVIDER=anthropic`, `ANTHROPIC_API_KEY`, image built with `INSTALL_COACH=1`. The model receives computed summaries from the snapshot only. Health records are sent only if `profile.coach.include_health_records` is true |
 | Barcode and food database | A food database service | `profile.integrations.food_database` (service id). Meals still go in through `POST /api/entries/nutrition.meals` with `items[]` macros |
@@ -398,7 +430,6 @@ Each of these already has a schema field and a screen. Supply the input below an
 | Live strength session on phone/watch | A companion app | `strength.live_state = {session_id, routine_id, started_at, exercise_index, set_index, rest_started_at, device}` |
 | Calendar conflicts for planning | A calendar source | `plans.calendar[] = {id, start, end, title, busy, source}` and `profile.integrations.calendar_source` |
 | Beacon (live location sharing), smart alarm | A companion app on the phone | `profile.beacon = {enabled, contacts[]}`, `profile.smart_alarm = {enabled, window_min, target_wake}` |
-| Strength-app import | An export from your lifting app | `strength.sessions[]` with `source` set to the app name and `exercise_id`s from `config/exercises.json` (or custom ones in `strength.exercises`) |
 | Home-screen widgets on iOS | A widget app | Reads `dist/widgets.json` |
 
 ---
@@ -406,8 +437,9 @@ Each of these already has a schema field and a screen. Supply the input below an
 ## 10. Tests
 
 ```bash
-python3 -m unittest discover scripts/tests -p 'test_*.py'     # 113 tests, ~50 s
+python3 scripts/run_tests.py                                   # 135 tests, ~35 s, writes dist/test_report.json
 NODE_PATH=$(npm root -g) node scripts/e2e/e2e.js               # 252 browser checks + screenshots
+NODE_PATH=$(npm root -g) node scripts/e2e/edit_flows.js        # 36 edit-flow checks against the dev server
 python3 scripts/e2e/steve_dry_run.py                          # 4 mornings
 ```
 
@@ -420,7 +452,10 @@ What they cover:
 - **Honesty.** Missing values are null (never 0), every number has an `as_of`, empty data invents nothing, stale sleep is marked, no medical phrases, no power curve without power, no muscles from generic strength workouts.
 - **Frontend.** No formula patterns in JS, no raw input access, no hard-coded people, dates or targets, no Strava or Bevel API.
 - **Entries.** Create, update, delete, before/after history, undo (including profile and deletes), export, delete-all with confirmation, imported records read-only (409).
+- **Actions.** Moving template and plan sessions (one undo step), Workout Wizard, accepting/declining suggestions, scheduling instant workouts, templates and routines, accepting only real threshold candidates, copying meals and days, recipes, prehab, privacy zones, route import (GPX/GeoJSON, rejects XML entity tricks), route flags, record uploads (type and size limits), manual blood pressure.
+- **Scripts and rules.** Strength CSV import (Strong, Hevy, re-runs, unknown names skipped), Coach memory maintenance, due check-ins, WCAG AA contrast for both themes, each metric defined once, snapshot pin.
 - **Server and auth.** Unauthenticated requests get 302 or 401; tampered, expired, foreign-key and wrong-email sessions are rejected; the full OIDC flow runs against a fake provider (state, nonce, audience, unverified email); JSON-only and same-origin edits; upload token; invalid uploads change nothing.
+- **Edit flows (browser).** Goal create/edit/undo toast, profile and physiology, appearance and tabs, privacy zones, water/caffeine, meal copy, blood pressure, health records, journal and status, plan suggestion/move/instant/race/routine, GPX import and favourite, quick edit, memory and check-ins, prehab, custom exercise, widget and chart pins, gallery, history; no overflow in sheets.
 - **Browser.** Every destination at 390×797 in dark and light, plus desktop: no JS errors, no horizontal overflow, no NaN/undefined. Also checks the More sheet (focus, Escape), the provenance sheet, the factors sheet, chart tooltips (keyboard and pointer), all training tabs, activity and route detail, empty-state wording, and PWA offline mode through the service worker.
 
 ---
@@ -433,6 +468,7 @@ What they cover:
 - **Coach chat needs a key.** Without an LLM key, Coach shows the deterministic call, factors and suggestions only.
 - **Sign-in trusts the TLS channel.** The ID token's signature is not checked locally. Identity is taken from Google's token endpoint over TLS and cross-checked with userinfo (allowed by OIDC Core 3.1.3.7).
 - **Large HTML file.** About 3 MB with 200 days of data, because detail is embedded for the latest 160 activities. Older activities show summary rows only.
+- **Undo is per change, newest first.** Undo always reverts the latest change (or the latest action's group). It can't pick an older change out of order.
 - **No base map.** Routes, heatmap and flyover draw your own lines on a plain background until a tile server is configured and wired in (§9).
 - **No push notifications.** Check-ins and nudges are delivered by Steve, not by the PWA.
 - **Not clinically validated.** Stress, Energy Bank, strain scale and biological age are estimates and are labelled as such.

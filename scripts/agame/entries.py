@@ -31,6 +31,9 @@ COLLECTIONS = {
     "plans.routines": ("plans", "routines", "id"),
     "plans.prehab": ("plans", "prehab", "id"),
     "plans.prehab_log": ("plans", "prehab_log", "id"),
+    "plans.decisions": ("plans", "decisions", "id"),
+    "plans.plans": ("plans", "plans", "id"),
+    "routes.features": ("routes", "features", "id"),
     "journal.entries": ("journal", "entries", "id"),
     "journal.activity_status": ("journal", "activity_status", "id"),
     "journal.habits": ("journal", "habits", "id"),
@@ -72,6 +75,11 @@ class Store:
     def __init__(self, data_dir, actor="owner"):
         self.dir = Path(data_dir)
         self.actor = actor
+        self.group = None  # set by actions so one undo reverts every change they made
+
+    def begin_group(self, label):
+        self.group = f"{label}-{secrets.token_hex(4)}"
+        return self.group
 
     # ------------------------------------------------------------------ io
     def _load(self):
@@ -99,6 +107,8 @@ class Store:
 
     def _log(self, entry):
         entry = dict(entry, id=secrets.token_hex(8), ts=_now(), actor=self.actor)
+        if self.group and entry.get("op") != "undo":
+            entry["group"] = self.group
         with open(self.dir / HISTORY_FILE, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(entry, sort_keys=True) + "\n")
         return entry
@@ -121,6 +131,8 @@ class Store:
     def _editable(collection, rec):
         if collection == "body.measurements":
             return rec.get("kind") == "user_entered"
+        if collection == "routes.features":
+            return (rec.get("properties") or {}).get("source") == "import"
         if collection in KIND_COLLECTIONS and rec.get("kind") not in (None, "user_entered"):
             return False
         if rec.get("source_id") and collection in ("nutrition.meals",) and rec.get("kind") != "user_entered":
@@ -189,7 +201,7 @@ class Store:
             self._log({"op": "update", "domain": domain, "collection": collection, "record_id": rid, "before": before, "after": after})
         return after
 
-    def delete(self, collection, rid, _log=True):
+    def delete(self, collection, rid, _log=True, _force=False):
         domain, key, idf = self._spec(collection)
         data = self._load()
         items = data[domain].setdefault(key, [])
@@ -197,7 +209,7 @@ class Store:
         if idx is None:
             raise EntryError(404, f"{collection} {rid!r} not found")
         before = items[idx]
-        if not self._editable(collection, before):
+        if not _force and not self._editable(collection, before):
             raise EntryError(409, "imported HealthKit records are read-only")
         items.pop(idx)
         self._validate_and_write(data, domain)
@@ -208,7 +220,11 @@ class Store:
     def patch_profile(self, patch):
         data = self._load()
         before = copy.deepcopy(data["profile"])
-        for k, v in (patch or {}).items():
+        patch = dict(patch or {})
+        if "overtraining_warning" in patch:  # the one algorithm switch the owner may flip from the app
+            ov = data["profile"].setdefault("overrides", {})
+            ov.setdefault("load", {}).setdefault("overtraining", {})["enabled"] = bool(patch.pop("overtraining_warning"))
+        for k, v in patch.items():
             if k not in PROFILE_PATCHABLE:
                 raise EntryError(400, f"profile field '{k}' is not editable")
             if isinstance(v, dict) and isinstance(data["profile"].get(k), dict):
@@ -220,19 +236,33 @@ class Store:
         return data["profile"]
 
     def undo(self):
-        """Revert the most recent change that has not been undone. Logged as op=undo."""
+        """Revert the most recent change (or group of changes made by one action) not yet undone. Logged as op=undo."""
         hist = self.history(limit=100000)  # newest first
         undone = {h.get("undoes") for h in hist if h.get("op") == "undo"}
-        target = next((h for h in hist if h.get("op") in ("create", "update", "delete") and h["id"] not in undone), None)
-        if not target:
+        live = [h for h in hist if h.get("op") in ("create", "update", "delete") and h["id"] not in undone]
+        if not live:
             raise EntryError(404, "nothing to undo")
+        target = live[0]
+        batch = [h for h in live if target.get("group") and h.get("group") == target["group"]] or [target]
+        group, self.group = self.group, None
+        try:
+            last = None
+            for h in batch:  # newest first: inverse order of application
+                self._revert(h)
+                last = self._log({"op": "undo", "undoes": h["id"], "domain": h["domain"], "collection": h["collection"], "record_id": h["record_id"],
+                                  "before": h["after"], "after": h["before"], "undoes_group": h.get("group")})
+        finally:
+            self.group = group
+        return dict(last, count=len(batch))
+
+    def _revert(self, target):
         col, rid = target["collection"], target["record_id"]
         if col == "profile":
             data = self._load()
             data["profile"] = target["before"]
             self._validate_and_write(data, "profile")
         elif target["op"] == "create":
-            self.delete(col, rid, _log=False)
+            self.delete(col, rid, _log=False, _force=True)
         elif target["op"] == "delete":
             domain, key, idf = self._spec(col)
             data = self._load()
@@ -248,8 +278,6 @@ class Store:
             else:
                 items[idx] = target["before"]
             self._validate_and_write(data, domain)
-        return self._log({"op": "undo", "undoes": target["id"], "domain": target["domain"], "collection": col, "record_id": rid,
-                          "before": target["after"], "after": target["before"]})
 
     def export(self):
         data = self._load()

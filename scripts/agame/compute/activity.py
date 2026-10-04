@@ -558,8 +558,30 @@ def detail(ctx, w):
         "device": w.get("device"),
         "hr_recovery": next((v for dt, dd, v, _ in ctx.series("hr_recovery_bpm") if dt and abs((dt - w["_end"]).total_seconds()) < 900), None),
         "annotation": w.get("_ann"),
+        "race": race_view(ctx, w),
     }
     return out
+
+
+def race_view(ctx, w):
+    """For an activity tagged as a race: finish vs the prediction you had going in (efforts before race day only)."""
+    r = row(ctx, w)
+    if not r["race"] or not w.get("distance_m") or w["_family"] != "run":
+        return None
+    dist = w["distance_m"]
+    preds = predictions(ctx, before=w["_date"])
+    pred = None
+    if preds:
+        src = min(preds, key=lambda p: abs(math.log(dist / p["distance_m"])))["source"]
+        t = src["time_s"] * (dist / src["distance_m"]) ** ctx.cfg["activity"]["riegel_exponent"]
+        pred = {"time_s": round(t), "pace_s_per_km": round(t / dist * 1000.0, 1), "source": src, "kind": "estimated"}
+    finish = round(w["_dur"])
+    race = next((x for x in (ctx.data.get("plans") or {}).get("races", []) if x["date"] == w["_date"].isoformat()), None)
+    goal = race.get("goal_time_s") if race else None
+    return {"distance_m": dist, "finish_s": finish, "pace_s_per_km": round(finish / dist * 1000.0, 1), "prediction": pred,
+            "vs_prediction_s": finish - pred["time_s"] if pred else None, "race_name": race["name"] if race else None,
+            "goal_time_s": goal, "vs_goal_s": finish - goal if goal else None,
+            "planned_pace_s_per_km": round(goal / dist * 1000.0, 1) if goal else None, "splits_verdict": split_verdict(ctx, w)}
 
 
 @metric("records.all", method="records.v1", inputs=["activity.best_efforts", "workouts", "strength.sessions"])

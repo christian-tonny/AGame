@@ -43,15 +43,15 @@ function nutToday() {
       ${score ? `<div class="stat"><span class="v">${score.score}</span></div><div class="list">${Object.entries(score.components).map(([k, v]) => `<div class="li"><div class="grow small">${esc(fmt.sport(k))}</div><div class="r small">${v}</div></div>`).join("")}</div>
       ${score.contributors.length ? sectionTitle("Quality contributors") + score.contributors.map(c => `<div class="row" style="gap:10px;margin:6px 0"><span class="small" style="width:96px">${esc(c.label)}</span><div class="bar thin" style="flex:1"><i style="width:${Math.min(100, Math.abs(c.points) * 10)}%;background:${c.points >= 0 ? "var(--ok)" : "var(--bad)"}"></i></div><span class="small num" style="width:36px;text-align:right">${fmt.signed(c.points, 0)}</span></div>`).join("") : ""}
       ${score.missing_components.length ? `<p class="cap">Missing: ${esc(score.missing_components.join(", "))} (set targets in profile)</p>` : ""}` : `<p class="small muted">Score needs logged food and targets</p>`}</div>
-    <div class="card"><h3>Hydration & caffeine</h3><div class="stats-grid">${stat("Water", t && isNum(t.water_ml) ? fmt.n(t.water_ml) : "—", "ml", { d: isNum(tgt.water_ml) ? `<span class="cap">of ${fmt.n(tgt.water_ml)} ml</span>` : "" })}${stat("Caffeine", t && isNum(t.caffeine_mg) ? fmt.n(t.caffeine_mg) : "—", "mg", { d: tgt.caffeine_cutoff ? `<span class="cap">cutoff ${esc(tgt.caffeine_cutoff)}</span>` : "" })}</div></div>
-    <div class="card"><h3>Meals today</h3>${t && t.per_meal.length ? `<div class="list">${t.per_meal.map(m => `<div class="li"><div class="grow"><div class="t">${esc(m.name || fmt.sport(m.meal))}</div><div class="s">${fmt.time(m.t)} · ${esc(m.items.join(", "))}</div></div><div class="r small">${fmt.n(m.kcal)} kcal<div class="cap">${fmt.n(m.protein_g)} g P</div></div></div>`).join("")}</div>` : `<p class="small muted">Nothing logged yet today</p>`}
+    <div class="card"><div class="spread"><h3 style="margin:0">Hydration & caffeine</h3><span class="row">${editBtn("water-add", undefined, "+ Water")}${editBtn("caffeine-add", undefined, "+ Caffeine")}</span></div><div class="stats-grid" style="margin-top:8px">${stat("Water", t && isNum(t.water_ml) ? fmt.n(t.water_ml) : "—", "ml", { d: isNum(tgt.water_ml) ? `<span class="cap">of ${fmt.n(tgt.water_ml)} ml</span>` : "" })}${stat("Caffeine", t && isNum(t.caffeine_mg) ? fmt.n(t.caffeine_mg) : "—", "mg", { d: tgt.caffeine_cutoff ? `<span class="cap">cutoff ${esc(tgt.caffeine_cutoff)}</span>` : "" })}</div></div>
+    <div class="card"><h3>Meals today</h3>${t && t.per_meal.length ? `<div class="list">${t.per_meal.map(m => `<div class="li" ${AG.online ? `role="button" tabindex="0" data-open="meal-edit" data-arg="${esc(m.id)}"` : ""}><div class="grow"><div class="t">${esc(m.name || fmt.sport(m.meal))}</div><div class="s">${fmt.time(m.t)} · ${esc(m.items.join(", "))}</div></div><div class="r small">${fmt.n(m.kcal)} kcal<div class="cap">${fmt.n(m.protein_g)} g P</div></div></div>`).join("")}</div>` : `<p class="small muted">Nothing logged yet today</p>`}
       <details style="margin-top:10px"><summary class="small" style="cursor:pointer;color:var(--accent);font-weight:600">Add a meal</summary>${mealForm()}</details></div>
     ${N.glucose ? `<div class="card"><h3>Glucose</h3>${chart({ id: "glu", label: "Glucose samples", x: N.glucose.points.map(p => p.t), h: 130, series: [{ name: "Glucose", color: "var(--warn)", values: N.glucose.points.map(p => p.v) }], fmtX: t => fmt.time(t), fmtY: v => fmt.n(v) + " mg/dL" })}</div>` : ""}</div></div>`;
 }
 
 function mealForm() {
   return `<form class="form" id="meal-form" style="margin-top:8px">
-    <div class="grid g2"><label>Meal <select name="meal"><option>breakfast</option><option>lunch</option><option>dinner</option><option>snack</option></select></label><label>Time <input name="t" type="datetime-local" required></label></div>
+    <div class="grid g2"><label>Meal <select name="meal"><option>breakfast</option><option>lunch</option><option>dinner</option><option>snack</option></select></label><label>Time <input name="t" type="datetime-local" value="${nowInput()}" required></label></div>
     <label>Describe it <input name="name" placeholder="e.g. Chicken, rice, beans" required></label>
     <div class="grid g4"><label>kcal <input name="kcal" inputmode="decimal"></label><label>Protein g <input name="protein_g" inputmode="decimal"></label><label>Carbs g <input name="carbs_g" inputmode="decimal"></label><label>Fat g <input name="fat_g" inputmode="decimal"></label></div>
     <label>Barcode <input name="barcode" inputmode="numeric" placeholder="Stored as text; lookup needs a food database"></label>
@@ -65,16 +65,18 @@ function bindMealForm() {
     e.preventDefault();
     const num = k => f[k].value === "" ? null : +f[k].value;
     const item = { name: f.name.value, qty: 1, unit: "serving", kcal: num("kcal"), protein_g: num("protein_g"), carbs_g: num("carbs_g"), fat_g: num("fat_g"), barcode: f.barcode.value || null };
-    try { await api("POST", "entries/nutrition.meals", { t: new Date(f.t.value).toISOString(), meal: f.meal.value, name: f.name.value, items: [item] }); toast("Saved · rebuilding"); setTimeout(() => location.reload(), 900); }
-    catch (err) { toast(err.message); }
+    try { await save("POST", "entries/nutrition.meals", { t: inputToIso(f.t.value), meal: f.meal.value, name: f.name.value, items: [item] }, "Meal saved"); }
+    catch (err) { /* shown */ }
   };
 }
 
 function nutDiary() {
   const days = D.nutrition.days.slice().reverse().slice(0, 21);
   return `<div class="stack">${days.map(d => `<div class="card"><div class="spread"><b>${fmt.dow(d.date)} ${fmt.date(d.date)}</b><span class="small muted">${isNum(d.kcal) ? fmt.n(d.kcal) + " kcal" : "—"} · ${isNum(d.protein_g) ? fmt.n(d.protein_g) + " g P" : "—"}${d.complete === false ? " · incomplete" : d.complete === null ? " · in progress" : ""}</span></div>
-    <div class="list">${d.per_meal.map(m => `<div class="li"><div class="grow"><div class="t small">${esc(m.name || fmt.sport(m.meal))}</div><div class="s">${fmt.time(m.t)} · ${esc(m.items.join(", "))}</div></div><div class="r small">${fmt.n(m.protein_g)} g</div></div>`).join("")}</div></div>`).join("")}
-    <p class="cap">Copy a meal or day, edit date/time, multi-select and make a recipe through your AGame server (edits keep history and undo).</p></div>`;
+    ${AG.online ? `<div class="edit-row" style="margin:6px 0"><button class="btn sm secondary" data-open="day-copy" data-arg="${d.date}">Copy day</button></div>` : ""}
+    <div class="list">${d.per_meal.map(m => `<div class="li">${AG.online ? `<input type="checkbox" data-meal-pick value="${esc(m.id)}" aria-label="Select ${esc(m.name || m.meal)}" style="width:20px;height:20px;flex:none">` : ""}<div class="grow" ${AG.online ? `role="button" tabindex="0" data-open="meal-edit" data-arg="${esc(m.id)}"` : ""}><div class="t small">${esc(m.name || fmt.sport(m.meal))}</div><div class="s">${fmt.time(m.t)} · ${esc(m.items.join(", "))}</div></div><div class="r small">${fmt.n(m.protein_g)} g</div></div>`).join("")}</div></div>`).join("")}
+    ${AG.online ? `<button class="btn" data-open="recipe-from-selected">Make recipe from selected meals</button>` : ""}
+    <p class="cap">Tap a meal to edit its time, macros, copy it to another day, or delete it. Every change keeps history and undo.</p></div>`;
 }
 
 function nutTrends() {
@@ -91,9 +93,9 @@ function nutTrends() {
 
 function nutPlan() {
   const N = D.nutrition;
-  return `<div class="cols"><div class="card"><h3>Recipes</h3>${N.recipes.length ? `<div class="list">${N.recipes.map(r => `<div class="li"><div class="grow"><div class="t">${esc(r.name)} ${r.favorite ? badge("Favorite", "accent") : ""}</div><div class="s">${r.items.map(i => esc(i.name)).join(", ")}</div></div><div class="r small">${fmt.n(r.items.reduce((s, i) => s + (i.protein_g || 0), 0))} g P</div></div>`).join("")}</div>` : empty("No recipes yet")}
+  return `<div class="cols"><div class="card"><h3>Recipes</h3>${N.recipes.length ? `<div class="list">${N.recipes.map(r => `<div class="li" ${AG.online ? `role="button" tabindex="0" data-open="recipe" data-arg="${esc(r.id)}"` : ""}><div class="grow"><div class="t">${esc(r.name)} ${r.favorite ? badge("Favorite", "accent") : ""}</div><div class="s">${r.items.map(i => esc(i.name)).join(", ")}</div></div><div class="r small">${fmt.n(r.items.reduce((s, i) => s + (i.protein_g || 0), 0))} g P</div></div>`).join("")}</div>` : empty("No recipes yet")}
     ${sectionTitle("Favorites")}${N.favorites.length ? `<div class="list">${N.favorites.map(i => `<div class="li"><div class="grow"><div class="t">${esc(i.name)}</div></div><div class="r small">${fmt.n(i.kcal)} kcal</div></div>`).join("")}</div>` : empty("No favorites yet")}</div>
-    <div class="card"><h3>Planned meals</h3>${N.planned.length ? `<div class="list">${N.planned.map(p => `<div class="li"><div class="grow"><div class="t">${fmt.dow(p.date)} ${fmt.date(p.date)} · ${esc(p.meal || "")}</div><div class="s">${esc((N.recipes.find(r => r.id === p.recipe_id) || {}).name || p.items.map(i => i.name).join(", "))}</div></div></div>`).join("")}</div>` : empty("Nothing planned")}</div></div>`;
+    <div class="card"><h3>Planned meals</h3>${N.planned.length ? `<div class="list">${N.planned.map(p => `<div class="li"><div class="grow"><div class="t">${fmt.dow(p.date)} ${fmt.date(p.date)} · ${esc(p.meal || "")}</div><div class="s">${esc((N.recipes.find(r => r.id === p.recipe_id) || {}).name || p.items.map(i => i.name).join(", "))}</div></div>${AG.online && p.id ? `<button type="button" class="icon-btn" data-open="planned-meal" data-arg="${esc(p.id)}" aria-label="Remove planned meal">×</button>` : ""}</div>`).join("")}</div>` : empty("Nothing planned", "Open a recipe and choose Plan it")}</div></div>`;
 }
 
 /* ---------------- Body ---------------- */
@@ -102,14 +104,15 @@ AG.screens.body = {
   render() {
     const tab = chipVal("body-tab", "weight");
     const body = { weight: bodyWeight, vo2: bodyVO2, charts: bodyCharts, bp: bodyBP, bioage: bodyBioAge, records: bodyRecords }[tab] || bodyWeight;
-    return `${chips("body-tab", [["weight", "Weight"], ["vo2", "VO2 max"], ["charts", "Charts"], ["bp", "Blood pressure"], ["bioage", "Biological Age"], ["records", "Health records"]], tab)}<div style="margin-top:12px">${body()}</div>`;
+    const add = ["weight", "bp"].includes(tab) && AG.online ? `<div class="edit-row" style="margin:10px 0 0">${editBtn("measure-add", undefined, tab === "bp" ? "Add reading" : "Add measurement")}</div>` : "";
+    return `${chips("body-tab", [["weight", "Weight"], ["vo2", "VO2 max"], ["charts", "Charts"], ["bp", "Blood pressure"], ["bioage", "Biological Age"], ["records", "Health records"]], tab)}${add}<div style="margin-top:12px">${body()}</div>`;
   },
   after() { drawCharts(); },
 };
 
 function bodyWeight() {
   const W = D.body.weight;
-  if (W.status === "missing") return empty(STR.noWeight, "Weight comes from HealthKit body mass or manual entries");
+  if (W.status === "missing") return empty(STR.noWeight, "Weight comes from HealthKit body mass or your own entries (Add measurement)");
   const g = W.goal;
   const rng = chipVal("w-range", "180");
   const pts = sliceDays(W.points, rangeDays(rng === "180" ? "6m" : rng));
@@ -162,15 +165,25 @@ function bodyCharts() {
     pts = Object.keys(wk).sort().map(k => ({ date: k, v: m.agg === "sum" ? wk[k].reduce((a, b) => a + b, 0) : wk[k].reduce((a, b) => a + b, 0) / wk[k].length }));
   }
   const ytd = m.points.filter(p => p.date.slice(0, 4) === D.meta.build_date.slice(0, 4));
-  return `<div class="stack"><div class="card"><div class="spread"><h3 style="margin:0">Pinned</h3><span class="cap">Pin and reorder in profile.ui.pinned_charts</span></div><div class="grid g4" style="margin-top:8px">${pinned.filter(x => M[x]).map(x => `<button class="card tight flat" data-chip="cc-metric" data-val="${esc(x)}"><div class="cap">${esc(M[x].label)}</div><b>${fmt.n(M[x].latest, M[x].latest % 1 ? 1 : 0)} <small class="muted">${esc(M[x].unit)}</small></b>${sparkline(M[x].points.slice(-30).map(p => p.v), "var(--accent)")}</button>`).join("") || `<p class="small muted">Nothing pinned</p>`}</div></div>
+  const isPinned = pinned.includes(m.id);
+  const pins = pinned.filter(x => M[x]);
+  return `<div class="stack"><div class="card"><div class="spread"><h3 style="margin:0">Pinned</h3><span class="cap">${AG.online ? "☆ pins the chart below; ‹ › reorder" : "Pins are saved in your profile"}</span></div><div class="grid g4" style="margin-top:8px">${pins.map((x, i) => `<div class="card tight flat"><button class="grow" style="text-align:left;width:100%" data-chip="cc-metric" data-val="${esc(x)}"><div class="cap">${esc(M[x].label)}</div><b>${fmt.n(M[x].latest, M[x].latest % 1 ? 1 : 0)} <small class="muted">${esc(M[x].unit)}</small></b>${sparkline(M[x].points.slice(-30).map(p => p.v), "var(--accent)")}</button>${AG.online ? `<div class="row" style="justify-content:space-between;margin-top:4px"><button type="button" class="icon-btn" data-pin-move="${esc(x)}" data-dir="-1" aria-label="Move ${esc(M[x].label)} earlier" ${i === 0 ? "disabled" : ""}>‹</button><button type="button" class="icon-btn" data-pin-move="${esc(x)}" data-dir="1" aria-label="Move ${esc(M[x].label)} later" ${i === pins.length - 1 ? "disabled" : ""}>›</button></div>` : ""}</div>`).join("") || `<p class="small muted">Nothing pinned</p>`}</div></div>
     ${chips("cc-metric", ids.map(id => [id, M[id].label]), m.id)}
-    <div class="card"><div class="spread"><div><div class="cap">${esc(m.label)}</div><div class="stat"><span class="v">${fmt.n(m.latest, m.latest % 1 ? 1 : 0)}<small>${esc(m.unit)}</small></span></div><div class="cap">Latest ${fmt.date(m.latest_date)} · 7-day avg ${fmt.n(m.avg_7, 1)} · prior 4 weeks ${fmt.n(m.avg_prev_28, 1)}</div></div>${seg("cc-agg", [["day", "Day"], ["week", "Week"]], agg)}</div>
+    <div class="card"><div class="spread"><div><div class="cap">${esc(m.label)} ${AG.online ? `<button type="button" class="icon-btn" data-chart-pin="${esc(m.id)}" aria-pressed="${isPinned}" aria-label="${isPinned ? "Unpin" : "Pin"} ${esc(m.label)}">${isPinned ? "★" : "☆"}</button>` : ""}</div><div class="stat"><span class="v">${fmt.n(m.latest, m.latest % 1 ? 1 : 0)}<small>${esc(m.unit)}</small></span></div><div class="cap">Latest ${fmt.date(m.latest_date)} · 7-day avg ${fmt.n(m.avg_7, 1)} · prior 4 weeks ${fmt.n(m.avg_prev_28, 1)}</div></div>${seg("cc-agg", [["day", "Day"], ["week", "Week"]], agg)}</div>
       <div style="margin:8px 0">${chips("cc-range", RANGES_DWMY, rng)}</div>
       ${chart({ id: "cc", type: m.agg === "sum" ? "bar" : "line", label: m.label + " history", x: pts.map(p => p.date), h: 200, gapMs: agg === "week" ? 15 * 86400000 : 3.5 * 86400000,
         series: [{ name: m.label, color: "var(--accent)", values: pts.map(p => p.v), dots: m.agg !== "sum" && pts.length < 60 }], fmtX: d => fmt.date(d), fmtY: v => fmt.n(v, 1) + " " + m.unit, range: rangeLabel(pts) })}
       ${ytd.length ? `<p class="cap">Year to date: ${m.agg === "sum" ? "total " + fmt.n(ytd.reduce((a, p) => a + p.v, 0)) : "average " + fmt.n(ytd.reduce((a, p) => a + p.v, 0) / ytd.length, 1)} ${esc(m.unit)} over ${ytd.length} days.</p>` : ""}</div></div>`;
 }
 
+document.addEventListener("click", e => {
+  const pin = e.target.closest("[data-chart-pin]"), mv = e.target.closest("[data-pin-move]");
+  if (!pin && !mv) return;
+  let list = ((P.ui || {}).pinned_charts || []).slice();
+  if (pin) list = pin.getAttribute("aria-pressed") === "true" ? list.filter(x => x !== pin.dataset.chartPin) : list.concat([pin.dataset.chartPin]);
+  if (mv) { const i = list.indexOf(mv.dataset.pinMove), j = i + +mv.dataset.dir; if (i < 0 || j < 0 || j >= list.length) return; [list[i], list[j]] = [list[j], list[i]]; }
+  save("PATCH", "profile", { ui: Object.assign({}, P.ui || {}, { pinned_charts: list }) }, "Charts updated").catch(() => {});
+});
 function bodyBP() {
   const bp = D.body.bp;
   if (!bp.systolic || !bp.diastolic) return `<div class="card">${empty("No blood pressure readings", "From HealthKit or manual entries. AGame shows readings only — no categories or diagnosis.")}</div>`;
@@ -201,6 +214,6 @@ function bodyRecords() {
   const H = D.health.records;
   if (!H.enabled) return empty("Health records module is off", "Enable it in profile.modules");
   const bms = Object.entries(H.biomarkers);
-  return `<div class="cols"><div class="card"><h3>${icon("hrec")} Records</h3>${H.records.length ? `<div class="list">${H.records.map(r => `<div class="li"><div class="grow"><div class="t">${esc(r.title)}</div><div class="s">${fmt.date(r.date, { day: "numeric", month: "short", year: "numeric" })} · ${esc(fmt.sport(r.type))}${r.provider ? " · " + esc(r.provider) : ""}${r.file ? " · document" : ""}</div></div><div class="r small">${(r.biomarkers || []).length} markers</div></div>`).join("")}</div>` : empty(STR.noRecords, "Add labs, notes or PDFs through your AGame server. Records stay private and out of coaching unless you opt in.")}${offlineNote()}</div>
+  return `<div class="cols"><div class="card"><div class="spread"><h3 style="margin:0">${icon("hrec")} Records</h3>${editBtn("record-add", undefined, "Add")}</div>${H.records.length ? `<div class="list">${H.records.map(r => `<div class="li"><div class="grow"><div class="t">${esc(r.title)}</div><div class="s">${fmt.date(r.date, { day: "numeric", month: "short", year: "numeric" })} · ${esc(fmt.sport(r.type))}${r.provider ? " · " + esc(r.provider) : ""}${r.file && AG.online ? ` · <a href="records/${encodeURIComponent(r.file)}">open file</a>` : r.file ? " · file (server only)" : ""}</div></div><div class="r small">${(r.biomarkers || []).length} markers</div>${AG.online && r.kind === "user_entered" ? `<button type="button" class="icon-btn" data-open="record-del" data-arg="${esc(r.id)}" aria-label="Delete record">×</button>` : ""}</div>`).join("")}</div>` : empty(STR.noRecords, "Add labs, notes or PDFs. Records stay private and out of coaching unless you opt in.")}${offlineNote()}</div>
     <div class="card"><h3>Biomarkers</h3>${bms.length ? `<table class="tbl"><tr><th>Marker</th><th class="r">Latest</th><th class="r">Lab range</th></tr>${bms.map(([k, list]) => { const l = list[list.length - 1]; return `<tr><td>${esc(l.name)}</td><td class="r">${fmt.n(l.value, 1)} ${esc(l.unit)}</td><td class="r faint">${isNum(l.ref_low) && isNum(l.ref_high) ? `${l.ref_low}–${l.ref_high}` : esc(l.ref_text || "—")}</td></tr>`; }).join("")}</table><p class="cap">Ranges are the lab's own. AGame does not interpret or diagnose.</p>` : empty("No biomarkers yet")}</div></div>`;
 }

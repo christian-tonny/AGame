@@ -31,6 +31,20 @@ def synthetic_dir():
     return _CACHE["syn"]
 
 
+def small_synthetic_dir():
+    """60-day synthetic dataset for tests that rebuild snapshots many times."""
+    if "small" not in _CACHE:
+        from agame.synthetic import write_synthetic
+        out = _TMP / "small"
+        write_synthetic(out, BUILD_DATE, days=60)
+        _CACHE["small"] = out
+    return _CACHE["small"]
+
+
+def small_synthetic_copy():
+    return copy_dir(small_synthetic_dir(), "small")
+
+
 def copy_dir(src, name):
     dst = Path(tempfile.mkdtemp(prefix=name + "-", dir=_TMP))
     shutil.rmtree(dst)

@@ -44,6 +44,8 @@ def _recent_run_pace(ctx):
 def library(ctx):
     ps = privacy.privacy_settings(ctx)
     pace = _recent_run_pace(ctx)
+    ui = ctx.profile.get("ui") or {}
+    favs, offl = set(ui.get("favorite_routes") or []), set(ui.get("offline_routes") or [])
     out = []
     for f in (ctx.data.get("routes") or {}).get("features", []):
         p = f["properties"]
@@ -59,7 +61,8 @@ def library(ctx):
         pts = [(c[1], c[0]) for c in f["geometry"]["coordinates"]]
         lines = privacy.round_lines(privacy.apply(pts, ps, trim_ends=False), max_points=300)
         out.append({"id": p["id"], "name": p.get("name"), "sport": p.get("sport"), "distance_m": round(L), "elevation_gain_m": round(gain) if gain is not None else None,
-                    "surface": p.get("surface"), "difficulty": p.get("difficulty"), "favorite": bool(p.get("favorite")), "offline": bool(p.get("offline")),
+                    "surface": p.get("surface"), "difficulty": p.get("difficulty"), "favorite": bool(p.get("favorite")) or p["id"] in favs, "offline": bool(p.get("offline")) or p["id"] in offl,
+                    "imported": p.get("source") == "import",
                     "est_time_s": round(est) if est else None, "est_basis": "60-day median run pace + 6 s/m climb" if est else None,
                     "times_run": len(runs), "best": ({"workout_id": best["source_id"], "time_s": round(best["_dur"]), "date": best["_date"].isoformat()} if best else None),
                     "efforts": [{"workout_id": w["source_id"], "date": w["_date"].isoformat(), "time_s": round(w["_dur"]),

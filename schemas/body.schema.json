@@ -88,7 +88,9 @@
        "body_fat_pct",
        "lean_mass_kg",
        "waist_cm",
-       "bmi"
+       "bmi",
+       "bp_systolic_mmhg",
+       "bp_diastolic_mmhg"
       ]
      },
      "v": {

@@ -315,6 +315,53 @@
     "null"
    ]
   },
+  "decisions": {
+   "description": "Owner answers to suggested plan changes (accepted or declined).",
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "created_at": {
+      "format": "date-time",
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "date": {
+      "format": "date",
+      "type": "string"
+     },
+     "decision": {
+      "enum": [
+       "accepted",
+       "declined"
+      ]
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "rule": {
+      "type": "string"
+     },
+     "session_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "session_id",
+     "rule",
+     "decision",
+     "date"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
   "domain": {
    "const": "plans"
   },

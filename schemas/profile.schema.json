@@ -740,12 +740,24 @@
     "app_icon": {
      "type": "string"
     },
+    "favorite_routes": {
+     "items": {
+      "type": "string"
+     },
+     "type": "array"
+    },
     "mobile_tabs": {
      "items": {
       "type": "string"
      },
      "maxItems": 5,
      "minItems": 1,
+     "type": "array"
+    },
+    "offline_routes": {
+     "items": {
+      "type": "string"
+     },
      "type": "array"
     },
     "pinned_charts": {

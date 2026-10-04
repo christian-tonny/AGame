@@ -6,7 +6,7 @@ from agame.paths import WEB_DIR
 JS_ORDER = [
     "core.js", "ui.js", "charts.js",
     "screen_today.js", "screen_training.js", "screen_activities.js", "screen_recovery_sleep.js",
-    "screen_strength.js", "screen_nutrition_body.js", "screen_more.js",
+    "screen_strength.js", "screen_nutrition_body.js", "screen_more.js", "edits.js",
     "app.js",
 ]
 

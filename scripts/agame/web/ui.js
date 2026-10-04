@@ -180,7 +180,7 @@ function goalValue(g, v) {
   if (g.unit === "g") return fmt.n(v) + " g";
   return fmt.n(v) + (g.unit ? " " + g.unit : "");
 }
-function goalRow(g) {
+function goalRow(g, opts = {}) {
   let pct = g.progress_pct, marker = isNum(g.elapsed_frac) && g.partial && !["body_weight", "record", "strength", "nutrition", "streak"].includes(g.type) ? g.elapsed_frac * 100 : null;
   let right = `${goalValue(g, g.actual)}${isNum(g.target) ? ` <span class="faint">/ ${goalValue(g, g.target)}</span>` : ""}`;
   let sub = "";
@@ -191,7 +191,7 @@ function goalRow(g) {
   }
   if (g.type === "record") { pct = isNum(g.actual) && isNum(g.target) ? Math.min(100, g.target / g.actual * 100) : 0; sub = g.best_effort ? `Best ${fmt.dur(g.actual)} on ${fmt.date(g.best_effort.date)}` : "No qualifying effort yet"; }
   if (!sub && g.end) sub = g.end === D.meta.build_date ? "Ends today" : g.end > D.meta.build_date ? `Ends ${fmt.date(g.end)}` : `Ended ${fmt.date(g.end)}`;
-  return `<div class="goal-row"><div class="spread"><b>${esc(g.title)}</b>${goalStatusBadge(g.status_label)}</div>
+  return `<div class="goal-row"><div class="spread"><b>${esc(g.title)}</b><span class="row">${goalStatusBadge(g.status_label)}${opts.edit ? editBtn("goal-edit", g.id) : ""}</span></div>
     ${pct === null || pct === undefined ? "" : bar(pct, "var(--accent)", marker)}
     <div class="spread small"><span class="muted">${esc(sub)}</span><span class="num">${right}</span></div></div>`;
 }
@@ -295,4 +295,101 @@ function stepList(steps) {
   if (!steps || !steps.length) return "";
   const one = s => `<div class="li"><div class="grow"><div class="t">${esc(s.label || fmt.sport(s.kind))}</div><div class="s">${s.duration_s ? fmt.mins(s.duration_s) : s.distance_m ? fmt.dist(s.distance_m) : ""}</div></div><span class="small muted">${esc(targetText(s.target))}</span></div>`;
   return `<div class="list">${steps.map(s => s.kind === "repeat" ? `<div class="li"><div class="grow"><div class="t">Repeat ×${s.repeat}</div></div></div><div style="padding-left:14px;border-left:2px solid var(--line-2)">${(s.steps || []).map(one).join("")}</div>` : one(s)).join("")}</div>`;
+}
+
+/* ---------- toasts & edits (server only) ---------- */
+function toast(msg, action) {
+  let t = $("#toast");
+  if (!t) { t = document.createElement("div"); t.id = "toast"; t.className = "toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+  t.innerHTML = `<span>${esc(msg)}</span>${action ? `<button type="button">${esc(action.label)}</button>` : ""}`;
+  if (action) t.querySelector("button").onclick = () => { t.classList.remove("on"); action.run(); };
+  t.classList.add("on");
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), action ? 7000 : 2600);
+}
+/* One place for every write: call the API, remember an undo hint across the reload, rebuild view. */
+async function save(method, path, body, msg = "Saved") {
+  try {
+    const r = await api(method, path, body);
+    try { sessionStorage.setItem("agame:undo", msg); } catch (e) { /* private mode */ }
+    closeSheet(true);
+    toast(msg + " · rebuilding");
+    setTimeout(() => location.reload(), 700);
+    return r;
+  } catch (err) { toast(err.message); throw err; }
+}
+const act = (name, body, msg) => save("POST", "actions/" + name, body, msg);
+async function undoLast() {
+  try { await api("POST", "undo", {}); try { sessionStorage.setItem("agame:undo", ""); } catch (e) { } toast("Undone · rebuilding"); setTimeout(() => location.reload(), 700); }
+  catch (err) { toast(err.message); }
+}
+function undoToastOnBoot() {
+  let m = null;
+  try { m = sessionStorage.getItem("agame:undo"); sessionStorage.removeItem("agame:undo"); } catch (e) { return; }
+  if (m && AG.online) toast(m, { label: "Undo", run: undoLast });
+}
+function confirmSheet(title, text, label, run) {
+  openSheet(title, `<p class="small">${esc(text)}</p><div class="row" style="margin-top:12px"><button class="btn danger" id="cf-yes">${esc(label)}</button><button class="btn secondary" data-close>Cancel</button></div>`,
+    { after: sh => { $("#cf-yes", sh).onclick = run; $$("[data-close]", sh).forEach(b => b.onclick = () => closeSheet()); } });
+}
+
+/* Local <input> values <-> ISO with offset (the browser's own zone; Python re-reads it in the profile zone). */
+function isoToInput(iso, kind = "datetime-local") {
+  if (!iso) return "";
+  if (kind === "date") return iso.slice(0, 10);
+  const d = new Date(iso); const p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function inputToIso(v) {
+  if (!v) return null;
+  const d = new Date(v); const off = -d.getTimezoneOffset(); const p = n => String(Math.floor(Math.abs(n))).padStart(2, "0");
+  return `${v.length === 16 ? v + ":00" : v}${off >= 0 ? "+" : "-"}${p(off / 60)}:${p(off % 60)}`;
+}
+function nowInput() { return isoToInput(new Date().toISOString()); }
+
+/* Generic form sheet. fields: [{name,label,type,value,options,step,min,max,required,hint,full,placeholder}] */
+function fieldHtml(f) {
+  const v = f.value === null || f.value === undefined ? "" : f.value;
+  const req = f.required ? "required" : "";
+  const attrs = `name="${esc(f.name)}" ${req} ${f.step ? `step="${f.step}"` : ""} ${isNum(f.min) ? `min="${f.min}"` : ""} ${isNum(f.max) ? `max="${f.max}"` : ""} ${f.placeholder ? `placeholder="${esc(f.placeholder)}"` : ""}`;
+  let input;
+  if (f.type === "select") input = `<select ${attrs}>${(f.options || []).map(o => { const [ov, ol] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(ov)}" ${String(ov) === String(v) ? "selected" : ""}>${esc(ol)}</option>`; }).join("")}</select>`;
+  else if (f.type === "textarea") input = `<textarea ${attrs} rows="${f.rows || 3}">${esc(v)}</textarea>`;
+  else if (f.type === "checkbox") return `<label class="check ${f.full ? "full" : ""}"><input type="checkbox" name="${esc(f.name)}" ${v ? "checked" : ""}> <span>${esc(f.label)}</span></label>`;
+  else if (f.type === "html") return `<div class="${f.full ? "full" : ""}">${f.html}</div>`;
+  else input = `<input type="${f.type || "text"}" ${f.type === "number" ? 'inputmode="decimal"' : ""} value="${esc(v)}" ${attrs}>`;
+  return `<label class="${f.full ? "full" : ""}">${esc(f.label)}${input}${f.hint ? `<span class="cap">${esc(f.hint)}</span>` : ""}</label>`;
+}
+function readForm(form, fields) {
+  const out = {};
+  fields.forEach(f => {
+    if (f.type === "html") return;
+    const el = form.elements[f.name];
+    if (!el) return;
+    if (f.type === "checkbox") out[f.name] = el.checked;
+    else if (f.type === "number") out[f.name] = el.value === "" ? null : +el.value;
+    else out[f.name] = el.value === "" ? null : el.value;
+  });
+  return out;
+}
+function formSheet(title, fields, onSubmit, opts = {}) {
+  const body = `${opts.intro ? `<p class="small muted">${opts.intro}</p>` : ""}<form class="form grid-form" id="fs-form" novalidate>${fields.map(fieldHtml).join("")}
+    <div class="full row wrap" style="margin-top:6px"><button class="btn" type="submit" ${AG.online ? "" : "disabled"}>${esc(opts.submit || "Save")}</button>
+    ${opts.danger ? `<button class="btn danger" type="button" id="fs-danger" ${AG.online ? "" : "disabled"}>${esc(opts.danger.label)}</button>` : ""}
+    ${(opts.extra || []).map((x, i) => `<button class="btn secondary" type="button" data-fs-extra="${i}" ${AG.online ? "" : "disabled"}>${esc(x.label)}</button>`).join("")}</div>
+    ${offlineNote()}</form>${opts.after || ""}`;
+  return openSheet(title, body, { after: sh => {
+    const form = $("#fs-form", sh);
+    $("input,select,textarea", form) && $("input,select,textarea", form).setAttribute("data-autofocus", "");
+    form.onsubmit = async e => {
+      e.preventDefault();
+      if (!form.reportValidity()) return;
+      try { await onSubmit(readForm(form, fields), form); } catch (err) { /* toast already shown */ }
+    };
+    if (opts.danger) $("#fs-danger", sh).onclick = () => opts.danger.run(readForm(form, fields));
+    $$("[data-fs-extra]", sh).forEach(b => b.onclick = () => opts.extra[+b.dataset.fsExtra].run(readForm(form, fields), form));
+    if (opts.bind) opts.bind(sh, form);
+  } });
+}
+function editBtn(sheet, arg, label = "Edit") {
+  return AG.online ? `<button class="btn sm secondary" type="button" data-open="${esc(sheet)}" ${arg !== undefined ? `data-arg="${esc(arg)}"` : ""}>${esc(label)}</button>` : "";
 }

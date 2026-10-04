@@ -227,6 +227,8 @@ def schema_profile():
                 "app_icon": {"type": "string"},
                 "pinned_charts": {"type": "array", "items": {"type": "string"}},
                 "today_widgets": {"type": "array", "items": {"type": "string"}},
+                "favorite_routes": {"type": "array", "items": {"type": "string"}},
+                "offline_routes": {"type": "array", "items": {"type": "string"}},
             },
             "additionalProperties": False,
         },
@@ -422,7 +424,7 @@ def schema_body():
         "required": ["t", "type", "v", "source_id"],
         "properties": {
             "t": TS,
-            "type": {"enum": ["weight_kg", "body_fat_pct", "lean_mass_kg", "waist_cm", "bmi"]},
+            "type": {"enum": ["weight_kg", "body_fat_pct", "lean_mass_kg", "waist_cm", "bmi", "bp_systolic_mmhg", "bp_diastolic_mmhg"]},
             "v": {"type": "number", "minimum": 0},
             "source_id": ID, "source": STR_N, "kind": KIND,
         },
@@ -629,6 +631,10 @@ def schema_plans():
         "prehab_log": {"type": "array", "items": {
             "type": "object", "required": ["id", "date", "routine_id"],
             "properties": {"id": ID, "date": DATE, "routine_id": ID}, "additionalProperties": False}},
+        "decisions": {"type": "array", "description": "Owner answers to suggested plan changes (accepted or declined).", "items": {
+            "type": "object", "required": ["id", "session_id", "rule", "decision", "date"],
+            "properties": {"id": ID, "session_id": ID, "rule": {"type": "string"}, "decision": {"enum": ["accepted", "declined"]},
+                           "date": DATE, "created_at": TS_N}, "additionalProperties": False}},
         "mode": {"enum": ["race", "maintain", None]},
     }, required_extra=("sessions",))
     return_["$defs"] = defs()

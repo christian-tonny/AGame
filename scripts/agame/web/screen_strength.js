@@ -40,7 +40,8 @@ AG.sheets["str-session"] = function (id) {
   if (!s) return;
   openSheet(s.name || "Strength", `<div class="stats-grid s4">${stat("Elapsed", s.duration_s ? fmt.dur(s.duration_s) : "—")}${stat("Volume", s.logged ? fmt.kg(s.volume_kg, 0) : "—")}${stat("Sets", s.logged ? s.sets : "—")}${stat("Avg HR", isNum(s.avg_hr) ? s.avg_hr : "—", isNum(s.avg_hr) ? "bpm" : "")}</div>
     ${s.logged ? muscleMap({}, "freshness", s.muscles) + s.exercises.map(ex => `<div style="margin-top:10px"><b>${esc(ex.name)}</b><table class="tbl">${ex.sets.map((st, i) => `<tr><td>${st.warmup ? "W" : i}</td><td>${isNum(st.weight_kg) ? fmt.kg(st.weight_kg) : "BW"} × ${st.reps}</td><td class="r">${isNum(st.rpe) ? "RPE " + st.rpe : ""}${isNum(st.rir) ? " RIR " + st.rir : ""}</td></tr>`).join("")}</table></div>`).join("") : empty(STR.noExercise)}
-    ${s.workout_id ? `<a class="btn secondary" style="width:100%;margin-top:12px" href="#/activity/${encodeURIComponent(s.workout_id)}">Open workout</a>` : ""}`);
+    ${s.workout_id ? `<a class="btn secondary" style="width:100%;margin-top:12px" href="#/activity/${encodeURIComponent(s.workout_id)}">Open workout</a>` : ""}
+    ${AG.online && s.session_id ? `<button class="btn danger" style="width:100%;margin-top:8px" data-open="str-del" data-arg="${esc(s.session_id)}">Delete log</button>` : ""}`);
 };
 
 function strHistory() {
@@ -77,17 +78,17 @@ function strBuilder() {
   return `<div class="cols"><div class="stack"><div class="card"><h3>Log a workout</h3>
       <form class="form" id="str-log">
         <label>Name <input name="name" placeholder="e.g. Lower body"></label>
-        <label>Date & time <input name="start" type="datetime-local" required></label>
+        <label>Date & time <input name="start" type="datetime-local" value="${nowInput()}" required></label>
         <div id="str-ex-list"></div>
         <div class="row wrap"><select id="str-add" aria-label="Exercise to add" style="flex:1">${lib.map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}</select><button class="btn sm secondary" type="button" id="str-add-btn">Add exercise</button></div>
         <label>Notes <textarea name="notes" rows="2"></textarea></label>
-        <button class="btn" type="submit" ${AG.online ? "" : "disabled"}>Save workout</button>${offlineNote()}
+        <div class="row wrap"><button class="btn" type="submit" ${AG.online ? "" : "disabled"}>Save workout</button>${AG.online ? `<button class="btn secondary" type="button" data-open="str-routine-save">Save as routine</button>` : ""}</div>${offlineNote()}
       </form><p class="cap">Log live or after the fact. Saved to strength.json with edit history and undo.</p></div>
     <div class="card"><h3>Routines</h3>${routines.length ? `<div class="list">${routines.map(r => `<div class="li"><div class="grow"><div class="t">${esc(r.name)}</div><div class="s">${r.exercises.map(e => esc((lib.find(x => x.id === e.exercise_id) || {}).name || e.exercise_id) + ` ${e.sets || ""}×${esc(e.reps || "")}${e.rpe ? " @RPE" + e.rpe : ""}`).join(" · ")}</div></div><button class="btn sm secondary" type="button" data-use-routine="${esc(r.id)}">Use</button></div>`).join("")}</div>` : empty("No routines yet")}</div></div>
     <div class="stack"><div class="card"><h3>Rest timer</h3><div class="spread"><div class="stat hero"><span class="v num" id="rest-t" aria-live="polite">0:00</span></div><div class="row wrap">${[60, 90, 120, 180].map(s => `<button class="btn sm secondary" type="button" data-rest="${s}">${s < 120 ? s + "s" : s / 60 + "m"}</button>`).join("")}</div></div><p class="cap">Runs in the page, offline too.</p></div>
     <div class="card"><h3>Plate calculator</h3>${isNum(plates.bar_kg) && plates.plates_kg && plates.plates_kg.length ? `<form class="form" id="plate-form"><label>Target (${fmt.wUnit()}) <input name="target" type="number" step="0.5" inputmode="decimal" value=""></label></form><div id="plate-out" class="small" aria-live="polite"></div><p class="cap">Bar ${fmt.kg(plates.bar_kg, 1)} · plates ${plates.plates_kg.map(p => fmt.kgNum(p, 2)).join(", ")} (from strength.json).</p>` : empty("Plates not configured", "Set bar and plate weights in strength.json")}</div>
     <div class="card"><h3>Live workout & watch sync</h3><p class="small">${D.strength.live_state ? "In progress: exercise " + (D.strength.live_state.exercise_index + 1) : "No live session"}</p><p class="cap">${STR.companion}. The live-state contract (strength.json → live_state) is documented for a future phone/watch app.</p></div>
-    <div class="card"><h3>Exercise library</h3><p class="small muted">${lib.length} exercises (${lib.filter(x => x.source === "user").length} added by you)</p><div class="list" style="max-height:260px;overflow:auto">${lib.map(x => `<div class="li"><div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${(x.primary || []).map(m => esc(fmt.sport(m))).join(", ")}${x.cue ? " · " + esc(x.cue) : ""}</div></div></div>`).join("")}</div></div></div></div>`;
+    <div class="card"><div class="spread"><h3 style="margin:0">Exercise library</h3>${editBtn("exercise-new", undefined, "Add exercise")}</div><p class="small muted">${lib.length} exercises (${lib.filter(x => x.source === "user").length} added by you)</p><div class="list" style="max-height:260px;overflow:auto">${lib.map(x => `<div class="li"><div class="grow"><div class="t">${esc(x.name)}</div><div class="s">${(x.primary || []).map(m => esc(fmt.sport(m))).join(", ")}${x.cue ? " · " + esc(x.cue) : ""}</div></div></div>`).join("")}</div></div></div></div>`;
 }
 
 function bindBuilder() {
@@ -115,9 +116,8 @@ function bindBuilder() {
       const toKg = v => v === "" || v === null ? null : (IMPERIAL ? +v / 2.20462 : +v);
       const exercises = $$("[data-ex]", list).map(div => ({ exercise_id: div.dataset.ex, sets: $$("[data-sets] .row", div).filter(r => $("[data-r]", r).value).map(r => ({ reps: +$("[data-r]", r).value, weight_kg: toKg($("[data-w]", r).value), rpe: $("[data-rpe]", r).value ? +$("[data-rpe]", r).value : null, rir: null, warmup: $("[data-wu]", r).checked })) })).filter(x => x.sets.length);
       if (!exercises.length) { toast("Add at least one set"); return; }
-      const start = new Date(form.start.value);
-      try { await api("POST", "entries/strength.sessions", { name: form.name.value || null, start: start.toISOString(), exercises, notes: form.notes.value || null }); toast("Saved · rebuilding"); setTimeout(() => location.reload(), 900); }
-      catch (err) { toast(err.message); }
+      try { await save("POST", "entries/strength.sessions", { name: form.name.value || null, start: inputToIso(form.start.value), exercises, notes: form.notes.value || null }, "Workout saved"); }
+      catch (err) { /* shown */ }
     };
   }
   $$("[data-rest]").forEach(b => b.onclick = () => {
