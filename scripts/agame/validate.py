@@ -276,9 +276,9 @@ def semantic_checks(data, rep, build_date=None):
             rep.err("plans.json", f"/calendar/{i}", "event end before start")
 
     # journal
-    for i, s in enumerate((data.get("journal") or {}).get("status", [])):
+    for i, s in enumerate((data.get("journal") or {}).get("activity_status", [])):
         if s.get("end") and s["end"] < s["start"]:
-            rep.err("journal.json", f"/status/{i}", "status end before start")
+            rep.err("journal.json", f"/activity_status/{i}", "status end before start")
 
 
 def validate_data(data_dir, build_date=None):

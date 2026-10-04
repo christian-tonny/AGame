@@ -71,7 +71,7 @@ def empty_payload(domain, fixture="empty"):
         e.update({"connected": False, "athletes": [], "follows": [], "clubs": [], "posts": [], "kudos": [],
                   "comments": [], "challenges": [], "segment_efforts": [], "events": [], "flags": []})
     elif domain == "journal":
-        e.update({"entries": [], "habits": [], "status": [], "cycle": []})
+        e.update({"entries": [], "habits": [], "activity_status": [], "cycle": []})
     elif domain == "health_records":
         e.update({"records": []})
     elif domain == "coach":
@@ -95,7 +95,7 @@ RECORD_KEYS = {
     "plans": ["plans", "sessions", "templates", "races", "calendar", "routines", "prehab", "prehab_log"],
     "routes": ["features"],
     "social": ["athletes", "follows", "clubs", "posts", "kudos", "comments", "challenges", "segment_efforts", "events", "flags"],
-    "journal": ["entries", "habits", "status", "cycle"],
+    "journal": ["entries", "habits", "activity_status", "cycle"],
     "health_records": ["records"],
     "coach": ["memory", "checkins", "threads"],
     "profile": [],

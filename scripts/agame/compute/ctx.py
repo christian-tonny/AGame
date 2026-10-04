@@ -277,7 +277,7 @@ class Ctx:
     def status_on(self, d):
         """User/source-set activity status covering date d (latest start wins)."""
         best = None
-        for s in (self.data.get("journal") or {}).get("status", []):
+        for s in (self.data.get("journal") or {}).get("activity_status", []):
             st, en = tu.parse_date(s["start"]), tu.parse_date(s.get("end")) if s.get("end") else None
             if st <= d and (en is None or d <= en):
                 if best is None or st >= tu.parse_date(best["start"]):

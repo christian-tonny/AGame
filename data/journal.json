@@ -1,4 +1,5 @@
 {
+ "activity_status": [],
  "as_of": null,
  "cycle": [],
  "domain": "journal",
@@ -8,5 +9,5 @@
  "habits": [],
  "schema_version": "1.0.0",
  "source": null,
- "status": []
+ "status": "missing"
 }

@@ -54,7 +54,7 @@ def overtraining(ctx, pmc_today, week_sessions):
             "note": None if signals["execution"] is not None else "No plan to compare execution against"}
 
 
-@metric("insights.recommendation", method="daily_call.v1", inputs=["recovery.score", "load.pmc", "sleep.debt", "journal.status"])
+@metric("insights.recommendation", method="daily_call.v1", inputs=["recovery.score", "load.pmc", "sleep.debt", "journal.activity_status"])
 def recommendation(ctx, rec, pmc_today, ramp, sleep, status, today_sessions, ot, strain_yday=None, strain_range=None):
     rcfg = ctx.cfg["insights"]["recommendation"]
     factors = []

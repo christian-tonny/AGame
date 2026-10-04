@@ -161,7 +161,7 @@ def journal(ctx):
         logs = sorted(j.get("cycle", []), key=lambda c: c["date"])
         cyc = {"enabled": True, "logs": logs[-120:], "latest": logs[-1] if logs else None}
     return {"entries": entries[:300], "habits": j.get("habits", []), "status": status,
-            "status_history": sorted(j.get("status", []), key=lambda s: s["start"], reverse=True), "cycle": cyc or {"enabled": False}}
+            "status_history": sorted(j.get("activity_status", []), key=lambda s: s["start"], reverse=True), "cycle": cyc or {"enabled": False}}
 
 
 # ----------------------------------------------------------------- timeline

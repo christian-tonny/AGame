@@ -696,7 +696,7 @@ def schema_journal():
         "habits": {"type": "array", "items": {
             "type": "object", "required": ["id", "name"],
             "properties": {"id": ID, "name": {"type": "string"}, "unit": STR_N, "boolean": {"type": "boolean"}}, "additionalProperties": False}},
-        "status": {"type": "array", "items": {
+        "activity_status": {"type": "array", "items": {
             "type": "object", "required": ["id", "status", "start"],
             "properties": {"id": ID, "status": {"enum": ["normal", "sick", "traveling", "injured", "recovering"]},
                            "start": DATE, "end": DATE_N, "source": STR_N, "note": STR_N},

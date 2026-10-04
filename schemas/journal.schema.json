@@ -3,6 +3,57 @@
  "$schema": "https://json-schema.org/draft/2020-12/schema",
  "additionalProperties": false,
  "properties": {
+  "activity_status": {
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "end": {
+      "format": "date",
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "note": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "source": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "start": {
+      "format": "date",
+      "type": "string"
+     },
+     "status": {
+      "enum": [
+       "normal",
+       "sick",
+       "traveling",
+       "injured",
+       "recovering"
+      ]
+     }
+    },
+    "required": [
+     "id",
+     "status",
+     "start"
+    ],
+    "type": "object"
+   },
+   "type": "array"
+  },
   "as_of": {
    "format": "date-time",
    "type": [
@@ -224,55 +275,12 @@
    ]
   },
   "status": {
-   "items": {
-    "additionalProperties": false,
-    "properties": {
-     "end": {
-      "format": "date",
-      "type": [
-       "string",
-       "null"
-      ]
-     },
-     "id": {
-      "maxLength": 200,
-      "minLength": 1,
-      "type": "string"
-     },
-     "note": {
-      "type": [
-       "string",
-       "null"
-      ]
-     },
-     "source": {
-      "type": [
-       "string",
-       "null"
-      ]
-     },
-     "start": {
-      "format": "date",
-      "type": "string"
-     },
-     "status": {
-      "enum": [
-       "normal",
-       "sick",
-       "traveling",
-       "injured",
-       "recovering"
-      ]
-     }
-    },
-    "required": [
-     "id",
-     "status",
-     "start"
-    ],
-    "type": "object"
-   },
-   "type": "array"
+   "enum": [
+    "ok",
+    "partial",
+    "stale",
+    "missing"
+   ]
   }
  },
  "required": [

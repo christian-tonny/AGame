@@ -504,7 +504,7 @@ class Gen:
             if rng.random() < 0.25:
                 j["entries"].append({"id": f"j-al-{k}", "date": dd.isoformat(), "t": None, "type": "alcohol", "value": rng.choice([1, 2]), "unit": "drinks",
                                      "text": None, "habit_id": None, "kind": "user_entered"})
-        j["status"] = [{"id": "st-1", "status": "traveling", "start": (self.end - timedelta(days=33)).isoformat(),
+        j["activity_status"] = [{"id": "st-1", "status": "traveling", "start": (self.end - timedelta(days=33)).isoformat(),
                         "end": (self.end - timedelta(days=30)).isoformat(), "source": "user", "note": None}]
         data["health_records"]["records"] = [{"id": "lab-1", "date": (self.end - timedelta(days=60)).isoformat(), "type": "lab", "title": "Annual bloodwork",
                                               "provider": "Synthetic Lab", "file": None, "text": None, "kind": "user_entered",
