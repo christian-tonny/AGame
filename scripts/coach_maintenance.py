@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Overnight Coach memory maintenance (Steve runs this after the morning build).
+"""Overnight Coach memory maintenance (the agent runs this after the morning build).
 
 Removes exact and near-duplicate memories (same type, same normalised text), keeping the most
 recently updated one, and trims chat threads to the configured limit. Every removal goes through

@@ -386,7 +386,7 @@ def make_handler(cfg, state=None):
         def _checkins(self, q):
             data, _, _ = load_all(cfg.data_dir)
             tz = tu.tzinfo(((data.get("profile") or {}).get("locale") or {}).get("timezone") or tu.DEFAULT_TZ)
-            now = tu.parse_ts(q["now"]).astimezone(tz) if q.get("now") else datetime.now(tz)
+            now = tu.parse_ts(q["now"]).astimezone(tz) if q.get("now") else datetime.now(tz).replace(microsecond=0)
             try:
                 window = max(1, min(1440, int(q.get("window_min", 15))))
             except ValueError:

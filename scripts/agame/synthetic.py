@@ -1,6 +1,6 @@
 """Deterministic SYNTHETIC test data (fixture: "synthetic").
 
-Used only by automated tests, Playwright screenshots and the Steve dry run.
+Used only by automated tests, Playwright screenshots and the agent dry run.
 It is generic, clearly labelled, and never committed as anyone's records; the UI
 shows a "Synthetic test data" banner whenever it is loaded.
 

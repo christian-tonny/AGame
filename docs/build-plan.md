@@ -47,8 +47,8 @@
 
 ## 2. Ground rules (every issue inherits these)
 
-1. **Steve only touches data and runs commands.**
-   - Steve writes `data/*.json` and runs scripts. He never edits UI code to change a number.
+1. **The agent only touches data and runs commands.**
+   - The agent writes `data/*.json` and runs scripts. It never edits UI code to change a number.
 2. **One deterministic build.**
    - Same input + same `--date` gives the same bytes.
    - It succeeds on partial data, fails loudly on impossible data, and always writes `dist/build_report.json`.
@@ -64,7 +64,7 @@
    - No age-based HR max. No muscles guessed from a generic workout.
    - No VO2 max estimated from pace. No power curve without power data.
 7. **Allowed sources only.**
-   - HealthKit (via Steve) is the source of truth.
+   - HealthKit (via the agent) is the source of truth.
    - No Strava API data in any AI, prompt, embedding, or RAG pipeline. No Bevel API.
 8. **Fitness information, not medical advice.** No diagnosis language anywhere.
 9. **A screen is done only after inspection at 390×797**, in dark and light, not just rendering.
@@ -232,7 +232,7 @@ AGame/
 
 **Data path:**
 - `AGAME_DATA_DIR` points at the real data. Recommended: a separate **private** repo `agame-data`.
-- Steve commits data + dist there, never to this public repo.
+- The agent commits data + dist there, never to this public repo.
 
 **Data files:**
 - `profile.json`, `current.json` (sync manifest), `metrics.json`, `sleep.json`, `workouts.json`
@@ -293,7 +293,7 @@ Answer §6 in a comment, or reply "use defaults".
 ### AG-02 Data contract v1 — `docs/data-contract.md`
 `M0 · P1 · AG-01 · Linear: DEV-556`
 
-The contract Steve builds against. Freeze file names after approval.
+The contract the agent builds against. Freeze file names after approval.
 
 **AC**
 - [ ] Shared envelope on every file: `schema_version, generated_at, as_of, source, coverage{expected,received,ratio}, status(ok|partial|stale|missing)`.
@@ -742,7 +742,7 @@ Follows §4.
 **AC**
 - [ ] Plan = goal + phases + planned sessions.
   - Built from the default weekly template in data: Mon run, Tue + Wed lift, Thu run, Fri rest, weekend optional run.
-  - Created by user / Steve as data, or by Coach when an LLM is connected.
+  - Created by user / the agent as data, or by Coach when an LLM is connected.
 - [ ] Races with **A / B / C priority** (taper only for A). **Train-to-maintain** mode when no target race.
 - [ ] Adaptation rules (documented, each change shows its reason, original target kept visible):
   - missed / moved session → re-flow
@@ -790,7 +790,7 @@ Follows §4.
 - [ ] Weekly volume / sessions / time.
 - [ ] 390×797 inspected for both data cases.
 
-### AG-37 Weekly review + Steve weekly aggregates
+### AG-37 Weekly review + agent weekly aggregates
 `M1 · P2 · AG-21, AG-22 · Linear: DEV-586`
 
 **AC**
@@ -812,7 +812,7 @@ Follows §4.
   - zones (5 / 7 model), sleep base need, tab choice
 - [ ] Targets: protein, kcal, macros, water, caffeine + cutoff, vegetables / day. Every edit has history + undo.
 - [ ] Theme (system / dark / light). App icon choice.
-- [ ] Integrations panel showing the truthful status per source: HealthKit-via-Steve last sync per domain, nutrition, map provider, LLM, calendar, companion apps.
+- [ ] Integrations panel showing the truthful status per source: HealthKit via the agent last sync per domain, nutrition, map provider, LLM, calendar, companion apps.
 - [ ] Privacy zones, default activity privacy. Modules: cycle tracking (off), health records, social.
 - [ ] Data: export, delete user data, edit history, undo.
 - [ ] Coach: personality, tone, language complexity, check-in schedule.
@@ -907,9 +907,9 @@ Follows §4.
 - [ ] Personalities: Data Nerd / Guardian / Friend / Commander. Tone + language complexity (Athletica). Same facts.
 - [ ] Generated charts: the LLM returns a chart spec, the chart lib renders computed data. No LLM numbers.
 - [ ] Memory store (Files parity) in `coach.json`: preferences, goals, corrections, saved artifacts. View / edit / delete with history.
-  - Overnight memory maintenance job (Steve runs it) compacts and dedupes.
+  - Overnight memory maintenance job (the agent runs it) compacts and dedupes.
 - [ ] Plan actions: create / adjust plans and schedule sessions → writes via AG-13 after confirmation.
-- [ ] Proactive check-ins: schedule stored as data (morning report, log reminders, e.g. "creatine 15:00", goal progress, weekly / monthly). Steve delivers them.
+- [ ] Proactive check-ins: schedule stored as data (morning report, log reminders, e.g. "creatine 15:00", goal progress, weekly / monthly). The agent delivers them.
 - [ ] Ghost Mode: nothing persisted, visible indicator, no content in logs.
 - [ ] Citations only when a source is supplied. Empty → nothing rendered (tested).
 - [ ] 390×797 inspected.
@@ -1034,7 +1034,7 @@ Follows §4.
 - [ ] Rebuild on new data. A failed build keeps the last good snapshot. Keeps 7 snapshots. A pin flag allows rollback.
 - [ ] Local `docker build && docker run` smoke test passes.
 
-### AG-55 Steve's morning + weekly automation
+### AG-55 the agent's morning + weekly automation
 `M3 · P1 · AG-04, AG-06, AG-51 · Linear: DEV-603`
 
 **AC**
@@ -1065,7 +1065,7 @@ Follows §4.
 ## 8. Build order
 
 1. **Week-1 slice:**
-   - Steve can run the full loop on real data: AG-01…06, AG-10, AG-51 basics, AG-55 dry run.
+   - The agent can run the full loop on real data: AG-01…06, AG-10, AG-51 basics, AG-55 dry run.
    - Today shows recovery / sleep / strain / load: AG-14…19, AG-25.
 2. Core screens: AG-26…31, AG-36, AG-37, AG-38.
 3. Planning layer: AG-32…35, AG-22, AG-39.
@@ -1136,7 +1136,7 @@ Legend:
 | Widgets | Bevel | Profile, Today | Built + export | AG-49 |
 | Q&A, generated charts | Bevel, Strava, Athletica | Coach | Contract (LLM key) | AG-44 |
 | Train / rest call, helping / hurting | Bevel | Today, Coach | Built | AG-22 |
-| Check-ins, nudges | Bevel | Coach | Built (Steve delivers) | AG-44, AG-55 |
+| Check-ins, nudges | Bevel | Coach | Built (the agent delivers) | AG-44, AG-55 |
 | Memory, personalities, modes, Ghost Mode | Bevel | Coach | Built | AG-44 |
 | Citations | Bevel | Coach | Contract (source only) | AG-44 |
 | Weekly review, weight trajectory, annual recap | Owner | Training, Body | Built | AG-37, AG-19, AG-48 |
@@ -1147,7 +1147,7 @@ Legend:
 
 | Item | Why |
 |---|---|
-| Two-way device sync (Garmin, Coros, Wahoo, Concept2, Oura) | HealthKit via Steve is the only source. Watch export is a contract only (AG-35). |
+| Two-way device sync (Garmin, Coros, Wahoo, Concept2, Oura) | HealthKit via the agent is the only source. Watch export is a contract only (AG-35). |
 | Strava / Bevel / Athletica APIs | Forbidden by the brief. No public Bevel API. |
 | Athletica Velocity live classes | Third-party live human coaching service. |
 | Athletica coach platform (multi-athlete, billing) | AGame is single-owner. |
