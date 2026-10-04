@@ -44,6 +44,27 @@
    "additionalProperties": {
     "additionalProperties": false,
     "properties": {
+     "coverage": {
+      "additionalProperties": false,
+      "properties": {
+       "complete": {
+        "type": [
+         "boolean",
+         "null"
+        ]
+       },
+       "note": {
+        "type": [
+         "string",
+         "null"
+        ]
+       }
+      },
+      "type": [
+       "object",
+       "null"
+      ]
+     },
      "expected_for": {
       "format": "date",
       "type": [

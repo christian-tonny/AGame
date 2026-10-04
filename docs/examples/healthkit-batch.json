@@ -1,0 +1,341 @@
+{
+  "batch_version": 2,
+  "date": "2026-10-05",
+  "generated_at": "2026-10-05T06:17:29+02:00",
+  "timezone": "Africa/Kigali",
+  "source": "healthkit",
+  "samples": {
+    "metrics": {
+      "active_energy_kcal": [
+        {
+          "date": "2026-10-04",
+          "v": 1423.09,
+          "source_id": "healthkit_daily_active_energy_kcal_2026-10-04",
+          "partial": true
+        }
+      ],
+      "exercise_min": [
+        {
+          "date": "2026-10-04",
+          "v": 135.27,
+          "source_id": "healthkit_daily_exercise_min_2026-10-04",
+          "partial": true
+        }
+      ],
+      "wrist_temp_c": [
+        {
+          "date": "2026-10-04",
+          "v": 45.718,
+          "source_id": "healthkit_daily_wrist_temp_c_2026-10-04",
+          "partial": true
+        }
+      ],
+      "stand_min": [
+        {
+          "date": "2026-10-04",
+          "v": 160.677,
+          "source_id": "healthkit_daily_stand_min_2026-10-04",
+          "partial": true
+        }
+      ],
+      "resting_energy_kcal": [
+        {
+          "date": "2026-10-04",
+          "v": 1942.561,
+          "source_id": "healthkit_daily_resting_energy_kcal_2026-10-04",
+          "partial": true
+        }
+      ],
+      "distance_walk_run_m": [
+        {
+          "date": "2026-10-04",
+          "v": 17735.785,
+          "source_id": "healthkit_daily_distance_walk_run_m_2026-10-04",
+          "partial": true
+        }
+      ],
+      "hrv_sdnn_ms": [
+        {
+          "date": "2026-10-04",
+          "v": 45.317,
+          "source_id": "healthkit_daily_hrv_sdnn_ms_2026-10-04",
+          "partial": true
+        }
+      ],
+      "spo2_pct": [
+        {
+          "date": "2026-10-04",
+          "v": 93.078,
+          "source_id": "healthkit_daily_spo2_pct_2026-10-04",
+          "partial": true
+        }
+      ],
+      "respiratory_rate_brpm": [
+        {
+          "date": "2026-10-04",
+          "v": 18.014,
+          "source_id": "healthkit_daily_respiratory_rate_brpm_2026-10-04",
+          "partial": true
+        }
+      ],
+      "resting_hr_bpm": [
+        {
+          "date": "2026-10-04",
+          "v": 62.834,
+          "source_id": "healthkit_daily_resting_hr_bpm_2026-10-04",
+          "partial": true
+        }
+      ],
+      "ground_contact_ms": [
+        {
+          "date": "2026-10-04",
+          "v": 253.999,
+          "source_id": "healthkit_daily_ground_contact_ms_2026-10-04",
+          "partial": true
+        }
+      ],
+      "running_power_w": [
+        {
+          "date": "2026-10-04",
+          "v": 149.586,
+          "source_id": "healthkit_daily_running_power_w_2026-10-04",
+          "partial": true
+        }
+      ],
+      "stride_length_m": [
+        {
+          "date": "2026-10-04",
+          "v": 1.236,
+          "source_id": "healthkit_daily_stride_length_m_2026-10-04",
+          "partial": true
+        }
+      ],
+      "vertical_oscillation_cm": [
+        {
+          "date": "2026-10-04",
+          "v": 8.523,
+          "source_id": "healthkit_daily_vertical_oscillation_cm_2026-10-04",
+          "partial": true
+        }
+      ],
+      "steps": [
+        {
+          "date": "2026-10-04",
+          "v": 13707.408,
+          "source_id": "healthkit_daily_steps_2026-10-04",
+          "partial": true
+        }
+      ],
+      "vo2max_ml_kg_min": [
+        {
+          "date": "2026-10-04",
+          "v": 35.32,
+          "source_id": "healthkit_daily_vo2max_ml_kg_min_2026-10-04",
+          "partial": true
+        }
+      ],
+      "walking_asymmetry_pct": [
+        {
+          "date": "2026-10-04",
+          "v": 0.302,
+          "source_id": "healthkit_daily_walking_asymmetry_pct_2026-10-04",
+          "partial": true
+        }
+      ],
+      "walking_double_support_pct": [
+        {
+          "date": "2026-10-04",
+          "v": 20.032,
+          "source_id": "healthkit_daily_walking_double_support_pct_2026-10-04",
+          "partial": true
+        }
+      ],
+      "walking_hr_bpm": [
+        {
+          "date": "2026-10-04",
+          "v": 86.561,
+          "source_id": "healthkit_daily_walking_hr_bpm_2026-10-04",
+          "partial": true
+        }
+      ],
+      "walking_speed_mps": [
+        {
+          "date": "2026-10-04",
+          "v": 1.304,
+          "source_id": "healthkit_daily_walking_speed_mps_2026-10-04",
+          "partial": true
+        }
+      ]
+    },
+    "sleep": [
+      {
+        "source_id": "healthkit_FC773B3E-FBC1-42EF-AD2F-D6E039807610",
+        "date": "2026-10-04",
+        "start": "2026-10-04T00:08:43+02:00",
+        "end": "2026-10-04T06:15:37+02:00",
+        "source": "healthkit",
+        "stage_minutes": {
+          "awake": 15.505,
+          "core": 269.643,
+          "deep": 69.837,
+          "rem": 64.233
+        },
+        "efficiency_pct": 58.506,
+        "awakenings": 3,
+        "partial": true
+      }
+    ],
+    "workouts": [
+      {
+        "source_id": "healthkit_0594DA5B-D554-47FE-AC96-53E517E709F5",
+        "sport": "walk",
+        "start": "2026-10-04T18:31:13+02:00",
+        "end": "2026-10-04T18:24:45+02:00",
+        "duration_s": 2007,
+        "source": "healthkit",
+        "indoor": false,
+        "distance_m": 2751.694,
+        "avg_hr": 98.524,
+        "max_hr": 116.551,
+        "active_kcal": 198.109,
+        "avg_speed_mps": 1.424,
+        "elevation_gain_m": 65.655,
+        "moving_s": 3175.124,
+        "avg_mets": 4.559,
+        "steps": 3582,
+        "flights": 2,
+        "weather": {
+          "temp_c": 11.801,
+          "humidity_pct": 72.259,
+          "source": "healthkit"
+        },
+        "splits": [
+          {
+            "index": 0,
+            "start": "2026-10-04T18:43:05+02:00",
+            "end": "2026-10-04T19:24:43+02:00",
+            "duration_s": 814,
+            "distance_m": 637.388,
+            "moving_s": 1000.635,
+            "avg_hr": 113.143,
+            "max_hr": 90.084,
+            "avg_speed_mps": 0.771,
+            "kcal": 83.449,
+            "steps": 842,
+            "flights": 1
+          }
+        ],
+        "partial": true
+      }
+    ],
+    "nutrition": {
+      "daily_totals": [
+        {
+          "source_id": "healthkit_daily_nutrition_2026-10-04",
+          "date": "2026-10-04",
+          "carbs_g": 243.128,
+          "kcal": 1064.044,
+          "fat_g": 28.735,
+          "fiber_g": 25.262,
+          "protein_g": 81.16,
+          "sodium_mg": 925.616,
+          "sugar_g": 59.213,
+          "water_ml": 345.212,
+          "micros": {
+            "calcium_mg": 662.868,
+            "cholesterol_mg": 40.126,
+            "copper_mg": 0.415,
+            "fat_monounsaturated_g": 5.299,
+            "fat_polyunsaturated_g": 4.722,
+            "fat_saturated_g": 13.023,
+            "folate_ug": 193.079,
+            "iodine_ug": 158.716,
+            "iron_mg": 11.499,
+            "magnesium_mg": 124.563,
+            "manganese_mg": 1.114,
+            "niacin_mg": 6.183,
+            "pantothenic_acid_mg": 3.041,
+            "phosphorus_mg": 558.469,
+            "potassium_mg": 2212.022,
+            "riboflavin_mg": 1.094,
+            "selenium_ug": 47.701,
+            "thiamin_mg": 1.052,
+            "vitamin_a_ug": 278.197,
+            "vitamin_b12_ug": 2.401,
+            "vitamin_b6_mg": 0.246,
+            "vitamin_c_mg": 29.138,
+            "vitamin_d_ug": 8.311,
+            "vitamin_e_mg": 1.538,
+            "vitamin_k_ug": 4.61,
+            "zinc_mg": 2.308
+          },
+          "partial": true
+        }
+      ]
+    }
+  },
+  "series_meta": {
+    "wrist_temp_c": {
+      "unit": "\u00b0C",
+      "label": "Wrist temperature",
+      "agg": "mean",
+      "better": null
+    },
+    "running_power_w": {
+      "unit": "W",
+      "label": "Running power",
+      "agg": "mean",
+      "better": null
+    },
+    "walking_asymmetry_pct": {
+      "unit": "%",
+      "label": "Walking asymmetry",
+      "agg": "mean",
+      "better": "lower"
+    },
+    "walking_double_support_pct": {
+      "unit": "%",
+      "label": "Double support time",
+      "agg": "mean",
+      "better": "lower"
+    },
+    "walking_speed_mps": {
+      "unit": "m/s",
+      "label": "Walking speed",
+      "agg": "mean",
+      "better": "higher"
+    },
+    "stand_min": {
+      "unit": "min",
+      "label": "Stand time",
+      "agg": "sum",
+      "better": "higher"
+    },
+    "exercise_min": {
+      "unit": "min",
+      "label": "Exercise time",
+      "agg": "sum",
+      "better": "higher"
+    },
+    "distance_walk_run_m": {
+      "unit": "m",
+      "label": "Walking + running distance",
+      "agg": "sum",
+      "better": "higher"
+    }
+  },
+  "coverage": {
+    "sleep": {
+      "complete": false,
+      "note": "Health data (including daily metrics, sleep, workouts etc) on 2026-10-04 are not synced from the device, hence missing from this query result. To sync, run the `backfill_data_source` action of the `devices` tool with source: health, start_date: 2026-09-30T23:52:05+02:00, end_date: 2026-10-05T23:59:5"
+    },
+    "workouts": {
+      "complete": false,
+      "note": "Health data (including daily metrics, sleep, workouts etc) on 2026-10-04 are not synced from the device, hence missing from this query result. To sync, run the `backfill_data_source` action of the `devices` tool with source: health, start_date: 2026-09-30T23:56:36+02:00, end_date: 2026-10-05T23:59:5"
+    },
+    "metrics": {
+      "complete": false,
+      "note": "Health data (including daily metrics, sleep, workouts etc) on 2026-10-04 are not synced from the device, hence missing from this query result. To sync, run the `backfill_data_source` action of the `devices` tool with source: health, start_date: 2026-10-03T23:23:12+02:00, end_date: 2026-10-04T23:59:5"
+    }
+  }
+}

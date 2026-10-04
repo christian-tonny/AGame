@@ -25,7 +25,37 @@ def _minutes(intervals):
     return sum((e - s).total_seconds() for s, e in _merge(intervals)) / 60.0
 
 
+def summary_night_metrics(ctx, n):
+    """A night known only from stage totals (no timeline): no hypnogram, latency or disruption times are made up."""
+    sm = n.get("stage_minutes") or {}
+    stage_min = {st: round(v, 1) for st, v in sm.items() if v is not None and st != "in_bed"}
+    asleep_parts = [sm[st] for st in ASLEEP if sm.get(st) is not None]
+    asleep = sum(asleep_parts) if asleep_parts else None
+    in_bed = sm.get("in_bed") if sm.get("in_bed") is not None else (n["_end"] - n["_start"]).total_seconds() / 60.0
+    has_stages = any(sm.get(st) is not None for st in ("core", "deep", "rem"))
+    if n.get("efficiency_pct") is not None:
+        eff = n["efficiency_pct"] / 100.0
+    else:
+        eff = (asleep / in_bed) if (asleep and in_bed) else None
+    pct = {st: round(100.0 * stage_min.get(st, 0) / asleep, 1) for st in ("core", "deep", "rem")} if (asleep and has_stages) else {}
+    mid = n["_start"] + (n["_end"] - n["_start"]) / 2
+    anchor = datetime.combine(n["_date"], time(0, 0), tzinfo=ctx.tz)
+    return {
+        "id": n["source_id"], "date": n["_date"].isoformat(), "start": n["_start"].isoformat(), "end": n["_end"].isoformat(),
+        "bed": n["_start"].isoformat(), "wake": n["_end"].isoformat(),
+        "asleep_min": round(asleep, 1) if asleep is not None else None, "in_bed_min": round(in_bed, 1),
+        "efficiency": round(eff, 3) if eff is not None else None, "latency_min": None,
+        "stage_min": stage_min, "stage_pct": pct, "has_stages": has_stages,
+        "disruptions": [], "awakenings": n.get("awakenings"), "awake_min": stage_min.get("awake"),
+        "midpoint_min": round((mid - anchor).total_seconds() / 60.0, 1),
+        "source": n.get("source"), "is_nap": bool(n.get("is_nap")), "timeline": False, "partial": bool(n.get("partial")),
+        "segments": [],
+    }
+
+
 def night_metrics(ctx, n):
+    if not n.get("segments"):
+        return summary_night_metrics(ctx, n)
     cfg = ctx.cfg["sleep"]
     segs = [(seg["stage"], tu.local_dt(seg["start"], ctx.tz), tu.local_dt(seg["end"], ctx.tz)) for seg in n["segments"]]
     by = {}
@@ -65,9 +95,9 @@ def night_metrics(ctx, n):
         "asleep_min": round(asleep, 1) if asleep is not None else None, "in_bed_min": round(in_bed, 1),
         "efficiency": round(eff, 3) if eff is not None else None, "latency_min": latency,
         "stage_min": stage_min, "stage_pct": pct, "has_stages": has_stages,
-        "disruptions": disruptions, "awake_min": stage_min.get("awake"),
+        "disruptions": disruptions, "awakenings": len(disruptions), "awake_min": stage_min.get("awake"),
         "midpoint_min": round((mid - anchor).total_seconds() / 60.0, 1),
-        "source": n.get("source"), "is_nap": bool(n.get("is_nap")),
+        "source": n.get("source"), "is_nap": bool(n.get("is_nap")), "timeline": True, "partial": bool(n.get("partial")),
         "segments": [{"stage": st, "start": s.isoformat(), "end": e.isoformat()} for st, s, e in sorted(segs, key=lambda x: (x[1], x[0])) if st != "in_bed"],
     }
 
@@ -159,7 +189,7 @@ def sleep_regularity_index(ctx, d, days=7, bin_min=5):
     """SRI = -100 + 200 * P(same sleep/wake state 24 h apart), over the last `days` days."""
     cfg = ctx.cfg["sleep"]
     nights, _ = nights_by_date(ctx)
-    have = [dd for dd in (d - timedelta(days=k) for k in range(days + 1)) if dd in nights]
+    have = [dd for dd in (d - timedelta(days=k) for k in range(days + 1)) if dd in nights and nights[dd]["timeline"]]
     if len(have) < cfg["sri_min_nights"]:
         return None
     start = datetime.combine(d - timedelta(days=days), time(12, 0), tzinfo=ctx.tz)
@@ -234,7 +264,7 @@ def summary(ctx, strain_by_day=None):
         history.append({"date": d.isoformat(), "asleep_min": nm["asleep_min"], "in_bed_min": nm["in_bed_min"], "need_min": need["v"],
                         "score": sc["v"], "efficiency": nm["efficiency"], "debt_min": debt, "bed": nm["bed"], "wake": nm["wake"],
                         "midpoint_min": nm["midpoint_min"], "stage_pct": nm["stage_pct"], "stage_min": nm["stage_min"],
-                        "disruptions": len(nm["disruptions"]), "latency_min": nm["latency_min"]})
+                        "disruptions": nm["awakenings"], "latency_min": nm["latency_min"]})
     last_date = dates[-1] if dates else None
     out = {"history": history, "naps": [], "status": "missing"}
     if last_date is None:

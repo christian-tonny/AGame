@@ -1,0 +1,1421 @@
+{
+ "$id": "agame/healthkit_batch.schema.json",
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "additionalProperties": false,
+ "description": "One import. Records are matched by source_id (HealthKit UUID, prefixed healthkit_). Never send user_entered records.",
+ "properties": {
+  "batch_version": {
+   "enum": [
+    1,
+    2
+   ]
+  },
+  "coverage": {
+   "additionalProperties": {
+    "additionalProperties": false,
+    "properties": {
+     "complete": {
+      "type": [
+       "boolean",
+       "null"
+      ]
+     },
+     "note": {
+      "type": [
+       "string",
+       "null"
+      ]
+     }
+    },
+    "type": "object"
+   },
+   "description": "Per domain: was the query complete? complete=false marks that domain as still syncing",
+   "type": "object"
+  },
+  "date": {
+   "description": "The morning this batch is for, in the owner's timezone",
+   "format": "date",
+   "type": "string"
+  },
+  "generated_at": {
+   "description": "When the data was read from HealthKit; newer copies of a record win",
+   "type": "string"
+  },
+  "samples": {
+   "additionalProperties": false,
+   "properties": {
+    "body": {
+     "items": {
+      "additionalProperties": false,
+      "properties": {
+       "partial": {
+        "type": "boolean"
+       },
+       "source": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "source_id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+       },
+       "t": {
+        "description": "ISO 8601 with offset, or wall-clock time placed in the record's or batch's timezone",
+        "type": "string"
+       },
+       "timezone": {
+        "description": "IANA name; overrides the batch timezone for this record",
+        "type": "string"
+       },
+       "type": {
+        "enum": [
+         "weight_kg",
+         "body_fat_pct",
+         "lean_mass_kg",
+         "waist_cm",
+         "bmi",
+         "bp_systolic_mmhg",
+         "bp_diastolic_mmhg"
+        ]
+       },
+       "v": {
+        "minimum": 0,
+        "type": "number"
+       }
+      },
+      "required": [
+       "t",
+       "type",
+       "v",
+       "source_id"
+      ],
+      "type": "object"
+     },
+     "type": "array"
+    },
+    "metrics": {
+     "additionalProperties": {
+      "items": {
+       "additionalProperties": false,
+       "anyOf": [
+        {
+         "required": [
+          "t"
+         ]
+        },
+        {
+         "required": [
+          "date"
+         ]
+        }
+       ],
+       "properties": {
+        "date": {
+         "format": "date",
+         "type": "string"
+        },
+        "partial": {
+         "type": "boolean"
+        },
+        "source": {
+         "type": [
+          "string",
+          "null"
+         ]
+        },
+        "source_id": {
+         "maxLength": 200,
+         "minLength": 1,
+         "type": "string"
+        },
+        "t": {
+         "description": "ISO 8601 with offset, or wall-clock time placed in the record's or batch's timezone",
+         "type": "string"
+        },
+        "timezone": {
+         "description": "IANA name; overrides the batch timezone for this record",
+         "type": "string"
+        },
+        "v": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "v",
+        "source_id"
+       ],
+       "type": "object"
+      },
+      "type": "array"
+     },
+     "type": "object"
+    },
+    "nutrition": {
+     "additionalProperties": false,
+     "properties": {
+      "caffeine": {
+       "items": {
+        "additionalProperties": false,
+        "properties": {
+         "mg": {
+          "minimum": 0,
+          "type": "number"
+         },
+         "partial": {
+          "type": "boolean"
+         },
+         "source_id": {
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "t": {
+          "description": "ISO 8601 with offset, or wall-clock time placed in the record's or batch's timezone",
+          "type": "string"
+         },
+         "timezone": {
+          "description": "IANA name; overrides the batch timezone for this record",
+          "type": "string"
+         }
+        },
+        "required": [
+         "t",
+         "mg"
+        ],
+        "type": "object"
+       },
+       "type": "array"
+      },
+      "daily_totals": {
+       "items": {
+        "additionalProperties": false,
+        "properties": {
+         "carbs_g": {
+          "minimum": 0,
+          "type": [
+           "number",
+           "null"
+          ]
+         },
+         "date": {
+          "format": "date",
+          "type": "string"
+         },
+         "fat_g": {
+          "minimum": 0,
+          "type": [
+           "number",
+           "null"
+          ]
+         },
+         "fiber_g": {
+          "minimum": 0,
+          "type": [
+           "number",
+           "null"
+          ]
+         },
+         "kcal": {
+          "minimum": 0,
+          "type": [
+           "number",
+           "null"
+          ]
+         },
+         "micros": {
+          "additionalProperties": {
+           "type": "number"
+          },
+          "type": [
+           "object",
+           "null"
+          ]
+         },
+         "partial": {
+          "type": "boolean"
+         },
+         "protein_g": {
+          "minimum": 0,
+          "type": [
+           "number",
+           "null"
+          ]
+         },
+         "sodium_mg": {
+          "minimum": 0,
+          "type": [
+           "number",
+           "null"
+          ]
+         },
+         "source_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+         },
+         "sugar_g": {
+          "minimum": 0,
+          "type": [
+           "number",
+           "null"
+          ]
+         },
+         "timezone": {
+          "description": "IANA name; overrides the batch timezone for this record",
+          "type": "string"
+         },
+         "water_ml": {
+          "minimum": 0,
+          "type": [
+           "number",
+           "null"
+          ]
+         }
+        },
+        "required": [
+         "source_id",
+         "date"
+        ],
+        "type": "object"
+       },
+       "type": "array"
+      },
+      "meals": {
+       "items": {
+        "additionalProperties": false,
+        "properties": {
+         "id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+         },
+         "items": {
+          "items": {
+           "additionalProperties": false,
+           "properties": {
+            "barcode": {
+             "type": [
+              "string",
+              "null"
+             ]
+            },
+            "caffeine_mg": {
+             "type": [
+              "number",
+              "null"
+             ]
+            },
+            "carbs_g": {
+             "type": [
+              "number",
+              "null"
+             ]
+            },
+            "fat_g": {
+             "type": [
+              "number",
+              "null"
+             ]
+            },
+            "fiber_g": {
+             "type": [
+              "number",
+              "null"
+             ]
+            },
+            "food_groups": {
+             "additionalProperties": {
+              "type": "number"
+             },
+             "type": [
+              "object",
+              "null"
+             ]
+            },
+            "kcal": {
+             "type": [
+              "number",
+              "null"
+             ]
+            },
+            "micros": {
+             "additionalProperties": {
+              "type": "number"
+             },
+             "type": [
+              "object",
+              "null"
+             ]
+            },
+            "name": {
+             "type": "string"
+            },
+            "protein_g": {
+             "type": [
+              "number",
+              "null"
+             ]
+            },
+            "qty": {
+             "type": [
+              "number",
+              "null"
+             ]
+            },
+            "sodium_mg": {
+             "type": [
+              "number",
+              "null"
+             ]
+            },
+            "sugar_g": {
+             "type": [
+              "number",
+              "null"
+             ]
+            },
+            "unit": {
+             "type": [
+              "string",
+              "null"
+             ]
+            },
+            "water_ml": {
+             "type": [
+              "number",
+              "null"
+             ]
+            }
+           },
+           "required": [
+            "name"
+           ],
+           "type": "object"
+          },
+          "type": "array"
+         },
+         "meal": {
+          "enum": [
+           "breakfast",
+           "lunch",
+           "dinner",
+           "snack",
+           "pre_workout",
+           "post_workout",
+           null
+          ]
+         },
+         "name": {
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "partial": {
+          "type": "boolean"
+         },
+         "photo": {
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "recipe_id": {
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "source_id": {
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "t": {
+          "description": "ISO 8601 with offset, or wall-clock time placed in the record's or batch's timezone",
+          "type": "string"
+         },
+         "timezone": {
+          "description": "IANA name; overrides the batch timezone for this record",
+          "type": "string"
+         }
+        },
+        "required": [
+         "id",
+         "t",
+         "items"
+        ],
+        "type": "object"
+       },
+       "type": "array"
+      },
+      "water": {
+       "items": {
+        "additionalProperties": false,
+        "properties": {
+         "ml": {
+          "minimum": 0,
+          "type": "number"
+         },
+         "partial": {
+          "type": "boolean"
+         },
+         "source_id": {
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "t": {
+          "description": "ISO 8601 with offset, or wall-clock time placed in the record's or batch's timezone",
+          "type": "string"
+         },
+         "timezone": {
+          "description": "IANA name; overrides the batch timezone for this record",
+          "type": "string"
+         }
+        },
+        "required": [
+         "t",
+         "ml"
+        ],
+        "type": "object"
+       },
+       "type": "array"
+      }
+     },
+     "type": "object"
+    },
+    "routes": {
+     "items": {
+      "additionalProperties": false,
+      "properties": {
+       "geometry": {
+        "additionalProperties": false,
+        "properties": {
+         "coordinates": {
+          "items": {
+           "items": {
+            "type": "number"
+           },
+           "maxItems": 3,
+           "minItems": 2,
+           "type": "array"
+          },
+          "type": "array"
+         },
+         "type": {
+          "const": "LineString"
+         }
+        },
+        "required": [
+         "type",
+         "coordinates"
+        ],
+        "type": "object"
+       },
+       "id": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "properties": {
+        "additionalProperties": false,
+        "properties": {
+         "created_at": {
+          "format": "date-time",
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "difficulty": {
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "favorite": {
+          "type": "boolean"
+         },
+         "id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+         },
+         "kind": {
+          "enum": [
+           "route",
+           "trace",
+           "segment"
+          ]
+         },
+         "kind_detail": {
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "name": {
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "offline": {
+          "type": "boolean"
+         },
+         "source": {
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "sport": {
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "surface": {
+          "additionalProperties": false,
+          "properties": {
+           "paved_pct": {
+            "type": [
+             "number",
+             "null"
+            ]
+           },
+           "unknown_pct": {
+            "type": [
+             "number",
+             "null"
+            ]
+           },
+           "unpaved_pct": {
+            "type": [
+             "number",
+             "null"
+            ]
+           }
+          },
+          "type": [
+           "object",
+           "null"
+          ]
+         },
+         "workout_id": {
+          "type": [
+           "string",
+           "null"
+          ]
+         }
+        },
+        "required": [
+         "id",
+         "kind"
+        ],
+        "type": "object"
+       },
+       "type": {
+        "const": "Feature"
+       }
+      },
+      "required": [
+       "type",
+       "properties",
+       "geometry"
+      ],
+      "type": "object"
+     },
+     "type": "array"
+    },
+    "sleep": {
+     "items": {
+      "additionalProperties": false,
+      "anyOf": [
+       {
+        "required": [
+         "segments"
+        ]
+       },
+       {
+        "required": [
+         "stage_minutes"
+        ]
+       }
+      ],
+      "description": "One sleep session. Either segments (the stage timeline) or stage_minutes (totals from a summary source).",
+      "properties": {
+       "awakenings": {
+        "minimum": 0,
+        "type": [
+         "integer",
+         "null"
+        ]
+       },
+       "date": {
+        "format": "date",
+        "type": "string"
+       },
+       "efficiency_pct": {
+        "maximum": 100,
+        "minimum": 0,
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "end": {
+        "description": "ISO 8601 with offset, or wall-clock time placed in the record's or batch's timezone",
+        "type": "string"
+       },
+       "is_nap": {
+        "type": "boolean"
+       },
+       "partial": {
+        "type": "boolean"
+       },
+       "segments": {
+        "items": {
+         "additionalProperties": false,
+         "properties": {
+          "end": {
+           "description": "ISO 8601 with offset, or wall-clock time placed in the record's or batch's timezone",
+           "type": "string"
+          },
+          "stage": {
+           "enum": [
+            "in_bed",
+            "awake",
+            "core",
+            "deep",
+            "rem",
+            "asleep_unspecified"
+           ]
+          },
+          "start": {
+           "description": "ISO 8601 with offset, or wall-clock time placed in the record's or batch's timezone",
+           "type": "string"
+          }
+         },
+         "required": [
+          "stage",
+          "start",
+          "end"
+         ],
+         "type": "object"
+        },
+        "type": "array"
+       },
+       "source": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "source_id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+       },
+       "stage_minutes": {
+        "additionalProperties": false,
+        "properties": {
+         "asleep_unspecified": {
+          "minimum": 0,
+          "type": [
+           "number",
+           "null"
+          ]
+         },
+         "awake": {
+          "minimum": 0,
+          "type": [
+           "number",
+           "null"
+          ]
+         },
+         "core": {
+          "minimum": 0,
+          "type": [
+           "number",
+           "null"
+          ]
+         },
+         "deep": {
+          "minimum": 0,
+          "type": [
+           "number",
+           "null"
+          ]
+         },
+         "in_bed": {
+          "minimum": 0,
+          "type": [
+           "number",
+           "null"
+          ]
+         },
+         "rem": {
+          "minimum": 0,
+          "type": [
+           "number",
+           "null"
+          ]
+         }
+        },
+        "type": "object"
+       },
+       "start": {
+        "description": "ISO 8601 with offset, or wall-clock time placed in the record's or batch's timezone",
+        "type": "string"
+       },
+       "timezone": {
+        "description": "IANA name; overrides the batch timezone for this record",
+        "type": "string"
+       }
+      },
+      "required": [
+       "source_id",
+       "start",
+       "end"
+      ],
+      "type": "object"
+     },
+     "type": "array"
+    },
+    "workouts": {
+     "items": {
+      "additionalProperties": false,
+      "properties": {
+       "active_kcal": {
+        "minimum": 0,
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "avg_cadence": {
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "avg_hr": {
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "avg_mets": {
+        "minimum": 0,
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "avg_power_w": {
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "avg_speed_mps": {
+        "minimum": 0,
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "device": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "distance_m": {
+        "minimum": 0,
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "duration_s": {
+        "minimum": 0,
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "elevation_gain_m": {
+        "minimum": 0,
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "elevation_loss_m": {
+        "minimum": 0,
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "end": {
+        "description": "ISO 8601 with offset, or wall-clock time placed in the record's or batch's timezone",
+        "type": "string"
+       },
+       "flights": {
+        "type": [
+         "integer",
+         "null"
+        ]
+       },
+       "indoor": {
+        "type": [
+         "boolean",
+         "null"
+        ]
+       },
+       "laps": {
+        "items": {
+         "additionalProperties": false,
+         "properties": {
+          "avg_hr": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "avg_speed_mps": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "distance_m": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "end_s": {
+           "type": "number"
+          },
+          "flights": {
+           "type": [
+            "integer",
+            "null"
+           ]
+          },
+          "kcal": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "label": {
+           "type": [
+            "string",
+            "null"
+           ]
+          },
+          "max_hr": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "moving_s": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "start_s": {
+           "type": "number"
+          },
+          "steps": {
+           "type": [
+            "integer",
+            "null"
+           ]
+          }
+         },
+         "required": [
+          "start_s",
+          "end_s"
+         ],
+         "type": "object"
+        },
+        "type": [
+         "array",
+         "null"
+        ]
+       },
+       "max_hr": {
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "max_speed_mps": {
+        "minimum": 0,
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "moving_s": {
+        "minimum": 0,
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "name": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "partial": {
+        "type": "boolean"
+       },
+       "route_id": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "samples": {
+        "additionalProperties": false,
+        "properties": {
+         "cadence": {
+          "items": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "type": "array"
+         },
+         "dist_m": {
+          "items": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "type": "array"
+         },
+         "elev_m": {
+          "items": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "type": "array"
+         },
+         "gct_ms": {
+          "items": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "type": "array"
+         },
+         "hr": {
+          "items": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "type": "array"
+         },
+         "lat": {
+          "items": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "type": "array"
+         },
+         "lon": {
+          "items": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "type": "array"
+         },
+         "power_w": {
+          "items": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "type": "array"
+         },
+         "speed_mps": {
+          "items": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "type": "array"
+         },
+         "stride_m": {
+          "items": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "type": "array"
+         },
+         "t": {
+          "items": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "type": "array"
+         },
+         "temp_c": {
+          "items": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "type": "array"
+         },
+         "vo_cm": {
+          "items": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "type": "array"
+         }
+        },
+        "required": [
+         "t"
+        ],
+        "type": [
+         "object",
+         "null"
+        ]
+       },
+       "segments": {
+        "items": {
+         "additionalProperties": false,
+         "properties": {
+          "distance_m": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "end_s": {
+           "type": "number"
+          },
+          "sport": {
+           "enum": [
+            "run",
+            "trail_run",
+            "treadmill_run",
+            "track_run",
+            "walk",
+            "hike",
+            "ride",
+            "virtual_ride",
+            "swim",
+            "open_water_swim",
+            "row",
+            "strength",
+            "hiit",
+            "yoga",
+            "mobility",
+            "elliptical",
+            "multisport",
+            "other",
+            "transition"
+           ]
+          },
+          "start_s": {
+           "type": "number"
+          }
+         },
+         "required": [
+          "sport",
+          "start_s",
+          "end_s"
+         ],
+         "type": "object"
+        },
+        "type": [
+         "array",
+         "null"
+        ]
+       },
+       "source": {
+        "type": [
+         "string",
+         "null"
+        ]
+       },
+       "source_id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+       },
+       "splits": {
+        "description": "Splits provided by the source (for example Apple's 1 km workout segments), used when there are no samples.",
+        "items": {
+         "additionalProperties": false,
+         "properties": {
+          "avg_hr": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "avg_speed_mps": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "distance_m": {
+           "minimum": 0,
+           "type": "number"
+          },
+          "duration_s": {
+           "minimum": 0,
+           "type": "number"
+          },
+          "end": {
+           "description": "ISO 8601 with offset, or wall-clock time placed in the record's or batch's timezone",
+           "type": "string"
+          },
+          "flights": {
+           "type": [
+            "integer",
+            "null"
+           ]
+          },
+          "index": {
+           "minimum": 0,
+           "type": "integer"
+          },
+          "kcal": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "max_hr": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "moving_s": {
+           "type": [
+            "number",
+            "null"
+           ]
+          },
+          "start": {
+           "description": "ISO 8601 with offset, or wall-clock time placed in the record's or batch's timezone",
+           "type": "string"
+          },
+          "steps": {
+           "type": [
+            "integer",
+            "null"
+           ]
+          }
+         },
+         "required": [
+          "index",
+          "distance_m",
+          "duration_s"
+         ],
+         "type": "object"
+        },
+        "type": [
+         "array",
+         "null"
+        ]
+       },
+       "sport": {
+        "enum": [
+         "run",
+         "trail_run",
+         "treadmill_run",
+         "track_run",
+         "walk",
+         "hike",
+         "ride",
+         "virtual_ride",
+         "swim",
+         "open_water_swim",
+         "row",
+         "strength",
+         "hiit",
+         "yoga",
+         "mobility",
+         "elliptical",
+         "multisport",
+         "other"
+        ]
+       },
+       "start": {
+        "description": "ISO 8601 with offset, or wall-clock time placed in the record's or batch's timezone",
+        "type": "string"
+       },
+       "steps": {
+        "type": [
+         "integer",
+         "null"
+        ]
+       },
+       "tags": {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       "timezone": {
+        "description": "IANA name; overrides the batch timezone for this record",
+        "type": "string"
+       },
+       "weather": {
+        "additionalProperties": false,
+        "properties": {
+         "conditions": {
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "humidity_pct": {
+          "type": [
+           "number",
+           "null"
+          ]
+         },
+         "source": {
+          "type": [
+           "string",
+           "null"
+          ]
+         },
+         "temp_c": {
+          "type": [
+           "number",
+           "null"
+          ]
+         },
+         "wind_kph": {
+          "type": [
+           "number",
+           "null"
+          ]
+         }
+        },
+        "type": [
+         "object",
+         "null"
+        ]
+       }
+      },
+      "required": [
+       "source_id",
+       "sport",
+       "start",
+       "end"
+      ],
+      "type": "object"
+     },
+     "type": "array"
+    }
+   },
+   "type": "object"
+  },
+  "series_meta": {
+   "additionalProperties": {
+    "additionalProperties": false,
+    "properties": {
+     "agg": {
+      "enum": [
+       "mean",
+       "sum",
+       "last",
+       "max",
+       "min"
+      ]
+     },
+     "better": {
+      "enum": [
+       "higher",
+       "lower",
+       null
+      ]
+     },
+     "label": {
+      "type": [
+       "string",
+       "null"
+      ]
+     },
+     "unit": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "unit"
+    ],
+    "type": "object"
+   },
+   "type": "object"
+  },
+  "source": {
+   "type": [
+    "string",
+    "null"
+   ]
+  },
+  "timezone": {
+   "description": "IANA name used for timestamps without an offset",
+   "type": "string"
+  }
+ },
+ "required": [
+  "batch_version",
+  "date",
+  "generated_at",
+  "samples"
+ ],
+ "title": "AGame HealthKit batch",
+ "type": "object"
+}

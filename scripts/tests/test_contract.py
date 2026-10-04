@@ -12,7 +12,7 @@ from agame.datastore import load_all
 from agame.empty import empty_payload
 from agame.migrate import MigrationError, migrate
 from agame.paths import DATA_FILES, domain_of
-from agame.schema_defs import build_all
+from agame.schema_defs import EXTRA, build_all
 from agame.validate import validate_data
 
 
@@ -24,7 +24,7 @@ def _rw(path, fn):
 
 class SchemaFiles(unittest.TestCase):
     def test_schema_files_match_schema_defs(self):
-        for name, sch in build_all().items():
+        for name, sch in list(build_all().items()) + [(k, fn()) for k, fn in EXTRA.items()]:
             on_disk = json.loads((REPO_ROOT / "schemas" / f"{name}.schema.json").read_text())
             self.assertEqual(on_disk, sch, f"schemas/{name}.schema.json is stale; run python3 -m agame.schema_defs --write")
 

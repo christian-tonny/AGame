@@ -67,6 +67,9 @@
        "user_entered"
       ]
      },
+     "partial": {
+      "type": "boolean"
+     },
      "source": {
       "type": [
        "string",
@@ -76,6 +79,10 @@
      "source_id": {
       "maxLength": 200,
       "minLength": 1,
+      "type": "string"
+     },
+     "synced_at": {
+      "format": "date-time",
       "type": "string"
      },
      "t": {

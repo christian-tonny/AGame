@@ -57,16 +57,47 @@
   "nights": {
    "items": {
     "additionalProperties": false,
+    "anyOf": [
+     {
+      "required": [
+       "segments"
+      ]
+     },
+     {
+      "required": [
+       "stage_minutes"
+      ]
+     }
+    ],
+    "description": "One sleep session. Either segments (the stage timeline) or stage_minutes (totals from a summary source).",
     "properties": {
+     "awakenings": {
+      "minimum": 0,
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
      "date": {
       "format": "date",
       "type": "string"
+     },
+     "efficiency_pct": {
+      "maximum": 100,
+      "minimum": 0,
+      "type": [
+       "number",
+       "null"
+      ]
      },
      "end": {
       "format": "date-time",
       "type": "string"
      },
      "is_nap": {
+      "type": "boolean"
+     },
+     "partial": {
       "type": "boolean"
      },
      "segments": {
@@ -112,7 +143,59 @@
       "minLength": 1,
       "type": "string"
      },
+     "stage_minutes": {
+      "additionalProperties": false,
+      "properties": {
+       "asleep_unspecified": {
+        "minimum": 0,
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "awake": {
+        "minimum": 0,
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "core": {
+        "minimum": 0,
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "deep": {
+        "minimum": 0,
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "in_bed": {
+        "minimum": 0,
+        "type": [
+         "number",
+         "null"
+        ]
+       },
+       "rem": {
+        "minimum": 0,
+        "type": [
+         "number",
+         "null"
+        ]
+       }
+      },
+      "type": "object"
+     },
      "start": {
+      "format": "date-time",
+      "type": "string"
+     },
+     "synced_at": {
       "format": "date-time",
       "type": "string"
      }
@@ -120,8 +203,7 @@
     "required": [
      "source_id",
      "start",
-     "end",
-     "segments"
+     "end"
     ],
     "type": "object"
    },

@@ -101,7 +101,21 @@
        "null"
       ]
      },
+     "avg_mets": {
+      "minimum": 0,
+      "type": [
+       "number",
+       "null"
+      ]
+     },
      "avg_power_w": {
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "avg_speed_mps": {
+      "minimum": 0,
       "type": [
        "number",
        "null"
@@ -134,9 +148,22 @@
        "null"
       ]
      },
+     "elevation_loss_m": {
+      "minimum": 0,
+      "type": [
+       "number",
+       "null"
+      ]
+     },
      "end": {
       "format": "date-time",
       "type": "string"
+     },
+     "flights": {
+      "type": [
+       "integer",
+       "null"
+      ]
      },
      "indoor": {
       "type": [
@@ -148,6 +175,18 @@
       "items": {
        "additionalProperties": false,
        "properties": {
+        "avg_hr": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "avg_speed_mps": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
         "distance_m": {
          "type": [
           "number",
@@ -157,14 +196,44 @@
         "end_s": {
          "type": "number"
         },
+        "flights": {
+         "type": [
+          "integer",
+          "null"
+         ]
+        },
+        "kcal": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
         "label": {
          "type": [
           "string",
           "null"
          ]
         },
+        "max_hr": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "moving_s": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
         "start_s": {
          "type": "number"
+        },
+        "steps": {
+         "type": [
+          "integer",
+          "null"
+         ]
         }
        },
        "required": [
@@ -184,6 +253,13 @@
        "null"
       ]
      },
+     "max_speed_mps": {
+      "minimum": 0,
+      "type": [
+       "number",
+       "null"
+      ]
+     },
      "moving_s": {
       "minimum": 0,
       "type": [
@@ -196,6 +272,9 @@
        "string",
        "null"
       ]
+     },
+     "partial": {
+      "type": "boolean"
      },
      "route_id": {
       "type": [
@@ -395,6 +474,86 @@
       "minLength": 1,
       "type": "string"
      },
+     "splits": {
+      "description": "Splits provided by the source (for example Apple's 1 km workout segments), used when there are no samples.",
+      "items": {
+       "additionalProperties": false,
+       "properties": {
+        "avg_hr": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "avg_speed_mps": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "distance_m": {
+         "minimum": 0,
+         "type": "number"
+        },
+        "duration_s": {
+         "minimum": 0,
+         "type": "number"
+        },
+        "end": {
+         "format": "date-time",
+         "type": "string"
+        },
+        "flights": {
+         "type": [
+          "integer",
+          "null"
+         ]
+        },
+        "index": {
+         "minimum": 0,
+         "type": "integer"
+        },
+        "kcal": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "max_hr": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "moving_s": {
+         "type": [
+          "number",
+          "null"
+         ]
+        },
+        "start": {
+         "format": "date-time",
+         "type": "string"
+        },
+        "steps": {
+         "type": [
+          "integer",
+          "null"
+         ]
+        }
+       },
+       "required": [
+        "index",
+        "distance_m",
+        "duration_s"
+       ],
+       "type": "object"
+      },
+      "type": [
+       "array",
+       "null"
+      ]
+     },
      "sport": {
       "enum": [
        "run",
@@ -418,6 +577,16 @@
       ]
      },
      "start": {
+      "format": "date-time",
+      "type": "string"
+     },
+     "steps": {
+      "type": [
+       "integer",
+       "null"
+      ]
+     },
+     "synced_at": {
       "format": "date-time",
       "type": "string"
      },

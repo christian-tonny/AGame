@@ -27,6 +27,30 @@ def parse_ts(value):
     return dt
 
 
+class AmbiguousTime(ValueError):
+    pass
+
+
+def localize(value, tzname):
+    """ISO timestamp with offset. A wall-clock time ("YYYY-MM-DD HH:MM:SS" or ISO without offset) is placed in tzname.
+    Wall times that fall in a DST gap or overlap are refused rather than guessed."""
+    if value is None:
+        return None
+    s = str(value).strip()
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    dt = datetime.fromisoformat(s.replace(" ", "T", 1) if len(s) > 10 and s[10] == " " else s)
+    if dt.tzinfo is not None:
+        return dt.isoformat()
+    if not tzname:
+        raise ValueError(f"timestamp {value!r} has no UTC offset and no timezone was given")
+    tz = tzinfo(tzname)
+    a, b = dt.replace(tzinfo=tz, fold=0), dt.replace(tzinfo=tz, fold=1)
+    if a.utcoffset() != b.utcoffset():
+        raise AmbiguousTime(f"{value!r} is ambiguous or does not exist in {tzname} (daylight-saving change); send it with an offset")
+    return a.isoformat()
+
+
 def parse_date(value):
     if value is None:
         return None

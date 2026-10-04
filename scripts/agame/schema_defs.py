@@ -77,6 +77,8 @@ def defs():
                 "source_id": ID,
                 "source": STR_N,
                 "kind": KIND,
+                "partial": {"type": "boolean"},
+                "synced_at": TS,
             },
             "additionalProperties": False,
             "anyOf": [{"required": ["t"]}, {"required": ["date"]}],
@@ -282,6 +284,7 @@ def schema_current():
             "received": BOOL_N,
             "status": {"enum": ["ok", "partial", "stale", "missing"]},
             "note": STR_N,
+            "coverage": {"type": ["object", "null"], "properties": {"complete": BOOL_N, "note": STR_N}, "additionalProperties": False},
         },
         "additionalProperties": False,
     }
@@ -336,13 +339,24 @@ def schema_sleep():
     }
     night = {
         "type": "object",
-        "required": ["source_id", "start", "end", "segments"],
+        "description": "One sleep session. Either segments (the stage timeline) or stage_minutes (totals from a summary source).",
+        "required": ["source_id", "start", "end"],
         "properties": {
             "source_id": ID, "date": DATE, "start": TS, "end": TS, "source": STR_N,
             "is_nap": {"type": "boolean"},
             "segments": {"type": "array", "items": seg},
+            "stage_minutes": {
+                "type": "object",
+                "properties": {k: {"type": ["number", "null"], "minimum": 0} for k in ("in_bed", "awake", "core", "deep", "rem", "asleep_unspecified")},
+                "additionalProperties": False,
+            },
+            "efficiency_pct": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+            "awakenings": {"type": ["integer", "null"], "minimum": 0},
+            "partial": {"type": "boolean"},
+            "synced_at": TS,
         },
         "additionalProperties": False,
+        "anyOf": [{"required": ["segments"]}, {"required": ["stage_minutes"]}],
     }
     return envelope("sleep", {"nights": {"type": "array", "items": night}}, required_extra=("nights",))
 
@@ -363,7 +377,22 @@ def schema_workouts():
             "elevation_gain_m": {"type": ["number", "null"], "minimum": 0},
             "active_kcal": {"type": ["number", "null"], "minimum": 0},
             "avg_hr": NUM_N, "max_hr": NUM_N, "avg_cadence": NUM_N, "avg_power_w": NUM_N,
+            "avg_speed_mps": {"type": ["number", "null"], "minimum": 0}, "max_speed_mps": {"type": ["number", "null"], "minimum": 0},
+            "elevation_loss_m": {"type": ["number", "null"], "minimum": 0}, "avg_mets": {"type": ["number", "null"], "minimum": 0},
+            "steps": INT_N, "flights": INT_N,
             "source": STR_N, "device": STR_N, "indoor": BOOL_N,
+            "partial": {"type": "boolean"}, "synced_at": TS,
+            "splits": {
+                "type": ["array", "null"],
+                "description": "Splits provided by the source (for example Apple's 1 km workout segments), used when there are no samples.",
+                "items": {
+                    "type": "object", "required": ["index", "distance_m", "duration_s"],
+                    "properties": {"index": {"type": "integer", "minimum": 0}, "start": TS, "end": TS, "distance_m": {"type": "number", "minimum": 0},
+                                   "duration_s": {"type": "number", "minimum": 0}, "moving_s": NUM_N, "avg_hr": NUM_N, "max_hr": NUM_N,
+                                   "avg_speed_mps": NUM_N, "kcal": NUM_N, "steps": INT_N, "flights": INT_N},
+                    "additionalProperties": False,
+                },
+            },
             "route_id": STR_N,
             "samples": {
                 "type": ["object", "null"],
@@ -376,7 +405,8 @@ def schema_workouts():
                 "type": ["array", "null"],
                 "items": {
                     "type": "object", "required": ["start_s", "end_s"],
-                    "properties": {"start_s": {"type": "number"}, "end_s": {"type": "number"}, "distance_m": NUM_N, "label": STR_N},
+                    "properties": {"start_s": {"type": "number"}, "end_s": {"type": "number"}, "distance_m": NUM_N, "label": STR_N,
+                                   "moving_s": NUM_N, "avg_hr": NUM_N, "max_hr": NUM_N, "avg_speed_mps": NUM_N, "kcal": NUM_N, "steps": INT_N, "flights": INT_N},
                     "additionalProperties": False,
                 },
             },
@@ -426,7 +456,7 @@ def schema_body():
             "t": TS,
             "type": {"enum": ["weight_kg", "body_fat_pct", "lean_mass_kg", "waist_cm", "bmi", "bp_systolic_mmhg", "bp_diastolic_mmhg"]},
             "v": {"type": "number", "minimum": 0},
-            "source_id": ID, "source": STR_N, "kind": KIND,
+            "source_id": ID, "source": STR_N, "kind": KIND, "partial": {"type": "boolean"}, "synced_at": TS,
         },
         "additionalProperties": False,
     }
@@ -453,7 +483,7 @@ def schema_nutrition():
             "id": ID, "t": TS, "name": STR_N,
             "meal": {"enum": ["breakfast", "lunch", "dinner", "snack", "pre_workout", "post_workout", None]},
             "items": {"type": "array", "items": item},
-            "source_id": STR_N, "kind": KIND, "photo": STR_N, "recipe_id": STR_N,
+            "source_id": STR_N, "kind": KIND, "photo": STR_N, "recipe_id": STR_N, "partial": {"type": "boolean"}, "synced_at": TS,
         },
         "additionalProperties": False,
     }
@@ -469,7 +499,7 @@ def schema_nutrition():
     }
     simple = lambda field: {
         "type": "object", "required": ["t", field],
-        "properties": {"t": TS, field: {"type": "number", "minimum": 0}, "source_id": STR_N, "kind": KIND},
+        "properties": {"t": TS, field: {"type": "number", "minimum": 0}, "source_id": STR_N, "kind": KIND, "partial": {"type": "boolean"}, "synced_at": TS},
         "additionalProperties": False,
     }
     return envelope("nutrition", {
@@ -477,6 +507,17 @@ def schema_nutrition():
         "meals": {"type": "array", "items": meal},
         "water": {"type": "array", "items": simple("ml")},
         "caffeine": {"type": "array", "items": simple("mg")},
+        "daily_totals": {
+            "type": "array",
+            "description": "Whole-day totals from HealthKit (food logged in other apps). Added to meals logged in AGame.",
+            "items": {
+                "type": "object", "required": ["source_id", "date"],
+                "properties": {"source_id": ID, "date": DATE, "partial": {"type": "boolean"}, "synced_at": TS,
+                               **{k: {"type": ["number", "null"], "minimum": 0} for k in ("kcal", "protein_g", "carbs_g", "fat_g", "fiber_g", "sugar_g", "sodium_mg", "water_ml")},
+                               "micros": {"type": ["object", "null"], "additionalProperties": {"type": "number"}}},
+                "additionalProperties": False,
+            },
+        },
         "glucose_note": STR_N,
         "recipes": {"type": "array", "items": recipe},
         "favorites": {"type": "array", "items": item},
@@ -776,6 +817,72 @@ ALL = {
 }
 
 
+def _batch_record(item):
+    """A data-file record schema as a batch accepts it: wall-clock times are allowed (placed in the batch timezone)."""
+    import copy
+
+    def walk(x):
+        if isinstance(x, dict):
+            if x.get("format") == "date-time":
+                x = dict(x)
+                x.pop("format")
+                x["description"] = "ISO 8601 with offset, or wall-clock time placed in the record's or batch's timezone"
+            return {k: walk(v) for k, v in x.items()}
+        if isinstance(x, list):
+            return [walk(v) for v in x]
+        return x
+    out = walk(copy.deepcopy(item))
+    if isinstance(out.get("properties"), dict):
+        out["properties"]["timezone"] = {"type": "string", "description": "IANA name; overrides the batch timezone for this record"}
+        for k in ("kind", "synced_at"):
+            out["properties"].pop(k, None)
+    return out
+
+
+def schema_healthkit_batch():
+    """What an agent or the Apple Health export importer sends to POST /api/import (or update_from_healthkit.py)."""
+    d = defs()
+    nut = schema_nutrition()["properties"]
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "agame/healthkit_batch.schema.json",
+        "title": "AGame HealthKit batch",
+        "description": "One import. Records are matched by source_id (HealthKit UUID, prefixed healthkit_). Never send user_entered records.",
+        "type": "object",
+        "required": ["batch_version", "date", "generated_at", "samples"],
+        "properties": {
+            "batch_version": {"enum": [1, 2]},
+            "date": {**DATE, "description": "The morning this batch is for, in the owner's timezone"},
+            "generated_at": {"type": "string", "description": "When the data was read from HealthKit; newer copies of a record win"},
+            "timezone": {"type": "string", "description": "IANA name used for timestamps without an offset"},
+            "source": STR_N,
+            "coverage": {
+                "type": "object",
+                "description": "Per domain: was the query complete? complete=false marks that domain as still syncing",
+                "additionalProperties": {"type": "object", "properties": {"complete": BOOL_N, "note": STR_N}, "additionalProperties": False},
+            },
+            "series_meta": schema_metrics()["properties"]["series_meta"],
+            "samples": {
+                "type": "object",
+                "properties": {
+                    "metrics": {"type": "object", "additionalProperties": {"type": "array", "items": _batch_record(d["point"])}},
+                    "sleep": {"type": "array", "items": _batch_record(schema_sleep()["properties"]["nights"]["items"])},
+                    "workouts": {"type": "array", "items": _batch_record(schema_workouts()["properties"]["workouts"]["items"])},
+                    "body": {"type": "array", "items": _batch_record(schema_body()["properties"]["measurements"]["items"])},
+                    "nutrition": {"type": "object", "properties": {k: {"type": "array", "items": _batch_record(nut[k]["items"])}
+                                                                    for k in ("meals", "water", "caffeine", "daily_totals")}, "additionalProperties": False},
+                    "routes": {"type": "array", "items": schema_routes()["properties"]["features"]["items"]},
+                },
+                "additionalProperties": False,
+            },
+        },
+        "additionalProperties": False,
+    }
+
+
+EXTRA = {"healthkit_batch": schema_healthkit_batch}
+
+
 def build_all():
     return {name: fn() for name, fn in ALL.items()}
 
@@ -783,7 +890,7 @@ def build_all():
 def write(schema_dir):
     schema_dir = Path(schema_dir)
     schema_dir.mkdir(parents=True, exist_ok=True)
-    for name, sch in build_all().items():
+    for name, sch in list(build_all().items()) + [(k, fn()) for k, fn in EXTRA.items()]:
         (schema_dir / f"{name}.schema.json").write_text(json.dumps(sch, indent=1, sort_keys=True) + "\n", encoding="utf-8")
 
 

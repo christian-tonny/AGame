@@ -64,18 +64,29 @@ class Importer(unittest.TestCase):
         self.assertGreaterEqual(summary["skipped_duplicate"], 1)
         self.assertEqual(len(json.loads((self.d / "sleep.json").read_text())["nights"]), 2)
 
-    def test_changed_record_is_a_conflict_not_an_edit(self):
+    def test_newer_batch_updates_an_imported_record_and_logs_it(self):
         apply_batch(self.d, day_batch("2026-10-02"))
         b = day_batch("2026-10-03")
         changed = copy.deepcopy(day_batch("2026-10-02")["samples"]["metrics"]["resting_hr_bpm"][0])
         changed["v"] += 5
         b["samples"]["metrics"]["resting_hr_bpm"].append(changed)
         summary, code = apply_batch(self.d, b)
-        self.assertEqual(code, 2)
-        self.assertEqual(summary["conflicts"][0]["source_id"], changed["source_id"])
+        self.assertEqual(code, 0)
+        self.assertEqual(summary["updated"]["metrics.resting_hr_bpm"], 1)
         stored = [p for p in json.loads((self.d / "metrics.json").read_text())["series"]["resting_hr_bpm"] if p["source_id"] == changed["source_id"]]
-        self.assertEqual(len(stored), 1)
-        self.assertEqual(stored[0]["v"], changed["v"] - 5)
+        self.assertEqual([p["v"] for p in stored], [changed["v"]])
+        hist = [json.loads(x) for x in (self.d / "edit_history.jsonl").read_text().splitlines()]
+        h = [x for x in hist if x["op"] == "import_update"][-1]
+        self.assertEqual((h["record_id"], h["before"]["v"], h["after"]["v"], h["source"]), (changed["source_id"], changed["v"] - 5, changed["v"], "healthkit"))
+
+    def test_older_batch_never_overwrites_a_newer_copy(self):
+        apply_batch(self.d, day_batch("2026-10-03"))
+        old = day_batch("2026-10-03")
+        old["generated_at"] = "2026-10-03T01:00:00+02:00"
+        old["samples"]["metrics"]["resting_hr_bpm"][0]["v"] += 7
+        summary, code = apply_batch(self.d, old)
+        self.assertEqual(code, 2)
+        self.assertEqual(summary["stale"][0]["source_id"], old["samples"]["metrics"]["resting_hr_bpm"][0]["source_id"])
 
     def test_duplicate_ids_inside_batch(self):
         b = day_batch("2026-10-02")

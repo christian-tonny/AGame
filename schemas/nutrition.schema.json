@@ -27,11 +27,18 @@
       "minimum": 0,
       "type": "number"
      },
+     "partial": {
+      "type": "boolean"
+     },
      "source_id": {
       "type": [
        "string",
        "null"
       ]
+     },
+     "synced_at": {
+      "format": "date-time",
+      "type": "string"
      },
      "t": {
       "format": "date-time",
@@ -75,6 +82,101 @@
     "object",
     "null"
    ]
+  },
+  "daily_totals": {
+   "description": "Whole-day totals from HealthKit (food logged in other apps). Added to meals logged in AGame.",
+   "items": {
+    "additionalProperties": false,
+    "properties": {
+     "carbs_g": {
+      "minimum": 0,
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "date": {
+      "format": "date",
+      "type": "string"
+     },
+     "fat_g": {
+      "minimum": 0,
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "fiber_g": {
+      "minimum": 0,
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "kcal": {
+      "minimum": 0,
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "micros": {
+      "additionalProperties": {
+       "type": "number"
+      },
+      "type": [
+       "object",
+       "null"
+      ]
+     },
+     "partial": {
+      "type": "boolean"
+     },
+     "protein_g": {
+      "minimum": 0,
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "sodium_mg": {
+      "minimum": 0,
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "source_id": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "sugar_g": {
+      "minimum": 0,
+      "type": [
+       "number",
+       "null"
+      ]
+     },
+     "synced_at": {
+      "format": "date-time",
+      "type": "string"
+     },
+     "water_ml": {
+      "minimum": 0,
+      "type": [
+       "number",
+       "null"
+      ]
+     }
+    },
+    "required": [
+     "source_id",
+     "date"
+    ],
+    "type": "object"
+   },
+   "type": "array"
   },
   "day_status": {
    "items": {
@@ -364,6 +466,9 @@
        "null"
       ]
      },
+     "partial": {
+      "type": "boolean"
+     },
      "photo": {
       "type": [
        "string",
@@ -381,6 +486,10 @@
        "string",
        "null"
       ]
+     },
+     "synced_at": {
+      "format": "date-time",
+      "type": "string"
      },
      "t": {
       "format": "date-time",
@@ -712,11 +821,18 @@
       "minimum": 0,
       "type": "number"
      },
+     "partial": {
+      "type": "boolean"
+     },
      "source_id": {
       "type": [
        "string",
        "null"
       ]
+     },
+     "synced_at": {
+      "format": "date-time",
+      "type": "string"
      },
      "t": {
       "format": "date-time",
