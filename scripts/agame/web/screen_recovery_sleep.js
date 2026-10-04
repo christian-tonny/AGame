@@ -78,7 +78,7 @@ AG.screens.sleep = {
     return `<div class="cols"><div class="stack">
       ${S.stale ? `<div class="empty inline"><b>${STR.sleepNotSynced}</b><span class="cap">Showing ${fmt.dateLong(S.last_date)}</span></div>` : ""}
       <div class="card ${S.stale ? "is-stale" : ""}"><div class="spread"><div><div class="cap">Primary sleep · ${fmt.date(ln.date)} at ${fmt.time(ln.wake)}</div><div class="stat"><span class="v" style="font-size:34px">${fmt.hm(ln.asleep_min)}</span></div>
-        <div class="cap">${isNum(need.v) ? "of " + fmt.hm(need.v) + " needed" : esc(need.note || "")}</div></div>${ring("sleep", S.score, { label: "Sleep score", sub: "score" })}</div>
+        <div class="cap">${isNum(need.v) ? "of " + fmt.hm(need.v) + " needed" : esc(need.note || "")}</div></div><div style="text-align:center">${ring("sleep", S.score, { label: "Sleep score", sub: "score" })}${prov(S.score, "Sleep score")}</div></div>
         <div class="stats-grid s4" style="margin-top:12px">${stat("Efficiency", isNum(ln.efficiency) ? fmt.n(ln.efficiency * 100) + "%" : "—")}${stat("Sleep debt", debt && isNum(debt.v) ? fmt.hm(debt.v) : "—")}${stat("Consistency", isNum(reg.midpoint_sd_7) ? "±" + fmt.n(reg.midpoint_sd_7) + "m" : "—")}${stat("Disruptions", fmt.n(ln.disruptions.length))}</div>
         ${S.score.missing_components && S.score.missing_components.length ? `<p class="cap">Partial score: missing ${esc(S.score.missing_components.join(", "))}</p>` : ""}</div>
       <div class="card"><h3>Sleep stages</h3>${ln.has_stages ? chart({ id: "hyp", type: "hypno", label: "Sleep stage timeline", segments: ln.segments, start: ln.start, end: ln.end, h: 150 }) : empty("No stage data", "In-bed time only for this night")}

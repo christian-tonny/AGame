@@ -193,6 +193,8 @@ button.card:hover, a.card:hover { background: var(--surface-2); }
 .fresh { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); padding: 6px 10px; border-radius: 999px; background: var(--surface-2); white-space: nowrap; }
 .fresh i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: inline-block; }
 .fresh.partial i { background: var(--warn); } .fresh.stale i, .fresh.missing i { background: var(--bad); }
+.ring-prov { display: flex; gap: 12px; justify-content: center; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+.ring-prov span { display: inline-flex; align-items: center; gap: 4px; }
 .prov { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; color: var(--text-3); font-size: 12px; font-weight: 700; border: 1px solid var(--line-2); flex: none; }
 .is-stale { opacity: .55; }
 .st-line { font-size: 11px; color: var(--text-3); display: flex; gap: 6px; align-items: center; margin-top: 6px; }
@@ -278,6 +280,7 @@ button.li { width: 100%; text-align: left; }
 .wtile.planned { border-style: solid; }
 .wtile.rest { border-style: dotted; color: var(--text-3); }
 .wtile .tl { color: var(--text-3); font-size: 9px; text-transform: uppercase; letter-spacing: .02em; }
+@media (max-width: 599px) { .wtile .tl { display: none; } }  /* status is shown by the border + legend; text label kept for wider screens */
 button.wtile { width: 100%; }
 
 /* training log (Strava calendar) */

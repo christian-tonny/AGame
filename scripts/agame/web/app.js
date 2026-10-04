@@ -27,7 +27,7 @@ function buildShell() {
 AG.sheets.more = function () {
   const tabs = mobileTabs();
   const rest = DESTS.filter(d => !tabs.includes(d.id));
-  const extra = [{ id: "timeline", label: "Timeline", icon: "timeline" }, { id: "journal", label: "Journal", icon: "timeline" }, { id: "widgets", label: "Widgets", icon: "today" }];
+  const extra = [{ id: "timeline", label: "Timeline", icon: "timeline" }, { id: "journal", label: "Journal", icon: "calendar" }, { id: "widgets", label: "Widgets", icon: "today" }];
   openSheet("More", `<nav aria-label="More destinations"><div class="more-grid">${rest.concat(extra).map(d => `<a href="#/${d.id}" data-close-sheet>${icon(d.icon)}<span>${esc(d.label)}</span></a>`).join("")}</div></nav>`);
 };
 document.addEventListener("click", e => { if (e.target.closest("[data-close-sheet]")) closeSheet(true); });
