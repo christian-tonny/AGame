@@ -108,7 +108,7 @@ async function interactions(page, label) {
   check(await page.evaluate(() => location.hash === "#/sleep"), `${label}: More sheet navigates`);
   // provenance sheet
   await go(page, "#/recovery");
-  await page.click("[data-prov]");
+  await page.click("[data-prov], .card-h [data-info]");
   await page.waitForSelector("#sheet.on");
   const ptxt = await page.$eval("#sheet", el => el.innerText);
   check(/Value/.test(ptxt) && /(As of|Updated|as of)/i.test(ptxt), `${label}: provenance sheet shows value and timestamp`);
@@ -150,6 +150,13 @@ async function interactions(page, label) {
     check(await page.evaluate(() => !document.querySelector("#hdr-back").hidden), `${label}: ${sub} has a back button`);
     check(await overflow(page) <= 0, `${label}: ${sub} overflow`);
   }
+  // Deep links must select a tab without trapping subsequent tab clicks.
+  for (const [route, first, next] of [["body", "vo2", "weight"], ["training", "plan", "fitness"]]) {
+    await go(page, "#/" + route + "?tab=" + first);
+    check(await page.getAttribute(`[data-chip="${route}-tab"][data-val="${first}"]`, "aria-pressed") === "true", `${label}: ${route} deep link selects tab`);
+    await page.click(`[data-chip="${route}-tab"][data-val="${next}"]`);
+    check(await page.getAttribute(`[data-chip="${route}-tab"][data-val="${next}"]`, "aria-pressed") === "true", `${label}: ${route} tab changes after deep link`);
+  }
   // activity detail + route detail
   await go(page, "#/activities");
   const href = await page.$eval("#main a.li[href^='#/activity/']", a => a.getAttribute("href"));
@@ -182,7 +189,7 @@ async function pwaOffline(browser, dataDir, distDir) {
   console.log("\nPWA offline via dev server");
   const port = await freePort();
   const srv = spawn("python3", ["fitness_server.py", "--dev", "--port", String(port), "--data-dir", dataDir, "--dist-dir", distDir],
-    { cwd: SCRIPTS, env: { ...process.env, AGAME_QUIET: "1" }, stdio: "ignore" });
+    { cwd: SCRIPTS, env: { ...process.env, AGAME_QUIET: "1", AGAME_DEV_TODAY: DATE }, stdio: "ignore" });
   try {
     const base = `http://127.0.0.1:${port}`;
     for (let i = 0; i < 100; i++) { try { const r = await fetch(base + "/healthz"); if (r.ok) break; } catch (e) { /* not up */ } await new Promise(r => setTimeout(r, 150)); }

@@ -24,11 +24,12 @@ const freePort = () => new Promise(res => { const s = net.createServer(); s.list
   const data = path.join(tmp, "data"), dist = path.join(tmp, "dist");
   execFileSync("python3", ["-m", "agame.synthetic", "--out", data, "--date", "2026-10-04", "--days", "60"], { cwd: SCRIPTS, stdio: "ignore" });
   const port = await freePort();
-  const srv = spawn("python3", ["fitness_server.py", "--dev", "--port", String(port), "--data-dir", data, "--dist-dir", dist], { cwd: SCRIPTS, env: { ...process.env, AGAME_QUIET: "1" }, stdio: "ignore" });
+  const srv = spawn("python3", ["fitness_server.py", "--dev", "--port", String(port), "--data-dir", data, "--dist-dir", dist], { cwd: SCRIPTS, env: { ...process.env, AGAME_QUIET: "1", AGAME_DEV_TODAY: "2026-10-04" }, stdio: "ignore" });
   const base = `http://127.0.0.1:${port}`;
   for (let i = 0; i < 200; i++) { try { if ((await fetch(base + "/healthz")).ok && fs.existsSync(path.join(dist, "fitness_dashboard.html"))) break; } catch (e) { /* not yet */ } await new Promise(r => setTimeout(r, 200)); }
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 390, height: 797 }, colorScheme: "dark", serviceWorkers: "block" });
+  await ctx.clock.setFixedTime(new Date("2026-10-04T12:00:00+02:00"));
   const page = await ctx.newPage();
   const errs = [];
   page.on("pageerror", e => errs.push(e.message));
@@ -154,7 +155,7 @@ const freePort = () => new Promise(res => { const s = net.createServer(); s.list
     await sheetSave({ status: "traveling", note: "E2E trip" });
     check((await raw("journal.json")).activity_status.some(s => s.note === "E2E trip"), "status saved");
     await go("#/today");
-    check(/Traveling/.test(await page.textContent("#main .page-head")), "Today shows the status chip");
+    check(/Traveling/.test(await page.textContent("#hdr-r")), "Today shows the status chip");
   });
 
   await flow("plans: adaptation, move, wizard, instant, race, routine", async () => {
@@ -169,6 +170,9 @@ const freePort = () => new Promise(res => { const s = net.createServer(); s.list
     const mv = await page.$("#sheet [data-open=session-move]");
     if (mv) {
       await mv.click();
+      const moveDate = await page.inputValue('#sheet [name="date"]');
+      const originalDate = await page.evaluate(id => [].concat(D.plans.upcoming, D.plans.this_week.sessions, D.plans.next_week.sessions).find(s => s.id === id).date, sid);
+      check(moveDate !== originalDate, "move picker defaults to a different day");
       await sheetSave({});
       check(true, "session moved via keyboard-friendly sheet");
     }
