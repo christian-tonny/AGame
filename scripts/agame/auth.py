@@ -19,7 +19,7 @@ SESSION_COOKIE = "agame_session"
 FLOW_COOKIE = "agame_oidc"
 SESSION_TTL = 30 * 24 * 3600
 FLOW_TTL = 600
-ROTATE_AFTER = 24 * 3600
+ROTATE_AFTER = 0  # every signed-in request renews the 30-day session
 
 
 def _b64e(b):

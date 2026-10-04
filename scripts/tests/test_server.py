@@ -21,6 +21,7 @@ ISS = "https://idp.test"
 OWNER = "owner@example.com"
 SECRET = "s" * 40
 TOKEN = "upload-token-for-tests"
+AGENT = "agent-token-for-tests"
 
 
 def _jwt(claims):
@@ -60,7 +61,7 @@ class ServerCase(unittest.TestCase):
         cls.dist = cls.data / "dist"
         build(cls.data, cls.dist, BUILD_DATE)
         env = {"AGAME_OIDC_ISSUER": ISS, "AGAME_OIDC_CLIENT_ID": "client-id", "AGAME_OIDC_CLIENT_SECRET": "x", "AGAME_OWNER_EMAIL": OWNER,
-               "AGAME_SESSION_SECRET": SECRET, "AGAME_BASE_URL": "http://127.0.0.1", "AGAME_UPLOAD_TOKEN": TOKEN}
+               "AGAME_SESSION_SECRET": SECRET, "AGAME_BASE_URL": "http://127.0.0.1", "AGAME_UPLOAD_TOKEN": TOKEN, "AGAME_AGENT_TOKEN": AGENT}
         cls.cfg = Config(cls.data, cls.dist, dev=False, host="127.0.0.1", port=0, env=env)
         cls.idp = FakeIdP()
         cls.cfg.oidc._open = cls.idp
@@ -256,6 +257,63 @@ class Upload(ServerCase):
         self.assertIn(body["build"]["status"], ("ok", "degraded"))
         self.assertEqual(json.loads((self.data / "body.json").read_text())["fixture"], "synthetic")
 
+
+
+class Agent(ServerCase):
+    def bearer(self, token=AGENT, **extra):
+        return dict({"Authorization": f"Bearer {token}"}, **extra)
+
+    def muse(self):
+        from test_muse import envelope
+        return envelope()
+
+    def test_agent_runs_a_morning_over_http(self):
+        st, _, body, _ = self.req("POST", "/api/import", self.muse(), headers=self.bearer())
+        self.assertEqual(st, 200, body)
+        self.assertEqual(body["import"]["added"]["sleep"], 1)
+        self.assertEqual(body["rejected"], [])
+        self.assertIn(body["build_report"]["status"], ("ok", "degraded"))
+        self.assertEqual(body["morning_summary"]["contract"], "agame.morning_summary.v2")
+        self.assertTrue(body["morning_summary"]["message"])
+        self.assertIn("schedule", body["checkins"])
+        for path in ("/api/agent/morning-summary", "/api/agent/build-report", "/api/agent/weekly-review", "/api/agent/checkins"):
+            st, _, b, _ = self.req("GET", path, headers=self.bearer())
+            self.assertEqual(st, 200, (path, b))
+        st, _, body, _ = self.req("POST", "/api/import", self.muse(), headers=self.bearer())
+        self.assertEqual(body["import"]["status"], "already_imported")
+
+    def test_agent_logs_are_marked_and_retries_are_not_doubled(self):
+        coffee = {"t": "2026-10-04T08:00:00+02:00", "mg": 95}
+        st, _, body, _ = self.req("POST", "/api/entries/nutrition.caffeine", coffee, headers=self.bearer(**{"Idempotency-Key": "coffee-1"}))
+        self.assertEqual(st, 200, body)
+        st, _, again, _ = self.req("POST", "/api/entries/nutrition.caffeine", coffee, headers=self.bearer(**{"Idempotency-Key": "coffee-1"}))
+        self.assertTrue(again["duplicate"])
+        caffeine = json.loads((self.data / "nutrition.json").read_text())["caffeine"]
+        self.assertEqual(len([c for c in caffeine if c.get("kind") == "user_entered"]), 1)
+        hist = [json.loads(x) for x in (self.data / "edit_history.jsonl").read_text().splitlines()]
+        mine = [h for h in hist if h.get("idempotency_key") == "coffee-1"]
+        self.assertEqual([(h["actor"], h["source"]) for h in mine], [("agent", "agent")])
+
+    def test_agent_never_deletes_or_changes_settings(self):
+        st, _, _, _ = self.req("DELETE", "/api/entries/journal.entries/x", headers=self.bearer())
+        self.assertEqual(st, 403)
+        for path in ("/api/undo", "/api/delete-all", "/api/actions/privacy.zone_remove"):
+            st, _, _, _ = self.req("POST", path, {}, headers=self.bearer())
+            self.assertEqual(st, 403, path)
+        st, _, _, _ = self.req("PATCH", "/api/profile", {"display_name": "x"}, headers=self.bearer())
+        self.assertEqual(st, 403)
+
+    def test_wrong_or_missing_token(self):
+        st, _, _, _ = self.req("GET", "/api/agent/morning-summary")
+        self.assertEqual(st, 401)
+        st, _, _, _ = self.req("POST", "/api/import", self.muse(), headers=self.bearer("nope"))
+        self.assertEqual(st, 401)
+        st, _, _, _ = self.req("POST", "/api/import", {"format": "muse.v1"}, headers=self.bearer())
+        self.assertEqual(st, 400)
+
+    def test_signed_in_requests_renew_the_session(self):
+        _, _, _, cookies = self.req("GET", "/api/ping", cookie=self.session_cookie())
+        self.assertTrue(any(c.startswith(auth.SESSION_COOKIE + "=") and "Max-Age=2592000" in c for c in cookies))
 
 if __name__ == "__main__":
     unittest.main()

@@ -3,7 +3,7 @@
 Outputs (dist/):
   fitness_dashboard.html   self-contained dashboard (inline CSS/JS/data)
   manifest.webmanifest, fitness_sw.js, icons/   PWA assets
-  build_report.json        machine-readable status for Steve
+  build_report.json        machine-readable status for the agent
   morning_summary.json     compact numbers for the morning message
   weekly_review.json       weekly aggregates (agame.weekly_review.v1)
   widgets.json             compact widget payload (agame.widgets.v1)
@@ -19,6 +19,7 @@ from pathlib import Path
 
 from agame import SCHEMA_VERSION, __version__
 from agame import timeutil as tu
+from agame.compute import memo
 from agame.jsonio import atomic_write_text, canonical_dumps
 from agame.paths import DATA_FILES
 from agame.pwa import write_assets
@@ -28,7 +29,6 @@ from agame.validate import validate_data
 
 EXIT_OK, EXIT_FAILED, EXIT_DEGRADED = 0, 1, 2
 KEEP_SNAPSHOTS = 7
-TEST_COMMAND = "python3 -m unittest discover scripts/tests -p 'test_*.py'"
 
 
 def _sha(b):
@@ -44,16 +44,22 @@ def input_hashes(data_dir):
 
 
 def morning_summary(snap):
+    """What the agent tells the owner each morning. Sentences come from compute/wording.py, the same ones the app shows."""
+    from agame.compute import wording
     t = snap["today"]
+    ds = snap["meta"]["data_status"]
     pick = lambda v: {"v": v.get("v"), "status": v.get("status"), "as_of": v.get("as_of")} if isinstance(v, dict) else None
+    asleep = (snap["sleep"].get("last_night") or {}).get("asleep_min") if not snap["sleep"].get("stale") else None
+    suggestion = next(({k: a[k] for k in ("title", "sub", "sentence", "session_id", "rule")} for a in t["adaptations"]), None)
     return {
-        "contract": "agame.morning_summary.v1", "date": snap["meta"]["build_date"], "data_status": snap["meta"]["data_status"]["overall"],
-        "last_sync": snap["meta"]["data_status"]["last_sync"], "sleep_missing": snap["meta"]["data_status"]["sleep_missing"],
+        "contract": "agame.morning_summary.v2", "date": snap["meta"]["build_date"], "data_status": ds["overall"],
+        "last_sync": ds["last_sync"], "sleep_missing": ds["sleep_missing"],
+        "message": wording.morning_message(t["rings"], asleep, ds["sleep_missing"], t["coach_line"], suggestion),
+        "coach_line": t["coach_line"], "suggestion": suggestion, "call": t["recommendation"]["call"],
+        "action": {"id": t["action"]["id"], "text": t["action"]["text"], "kind": t["action"]["kind"]} if t.get("action") else None,
         "recovery": pick(t["rings"]["recovery"]), "sleep": pick(t["rings"]["sleep"]), "strain_yesterday": t["rings"]["strain"].get("yesterday") if t["rings"]["strain"] else None,
-        "sleep_asleep_min": (snap["sleep"].get("last_night") or {}).get("asleep_min") if not snap["sleep"].get("stale") else None,
-        "call": t["recommendation"]["call"], "why": t["recommendation"]["why"], "action": t["action"],
-        "plan": [{"title": s.get("title"), "type": s["type"], "duration_s": s.get("duration_s")} for s in t["plan"]],
-        "form_tsb": t["load"]["tsb"].get("v"), "cardio_status": t["load"]["status"].get("v"),
+        "sleep_asleep_min": asleep,
+        "plan": [{"title": s.get("title"), "type": s["type"], "duration_s": s.get("duration_s"), "duration": wording.hm(s.get("duration_s"))} for s in t["plan"]],
         "goals": [{"title": g["title"], "status": g.get("status_label"), "progress_pct": g.get("progress_pct")} for g in t["goals"]],
         "big_day": [{"title": b["title"], "when": b["when"]} for b in t["big_day"]],
         "fixture": snap["meta"]["fixture"],
@@ -76,7 +82,20 @@ def _degraded_reasons(snap):
     return reasons
 
 
+def _next_step(report):
+    """What the agent does next: the first real error and how to recover, or nothing when the build is fine."""
+    errs = [e for e in report.get("errors") or [] if e.get("severity", "error") == "error"]
+    if errs:
+        e = errs[0]
+        where = f"{e.get('file') or 'data'}{e.get('pointer') or ''}"
+        return f"{where}: {e.get('message')}. Fix the batch and re-import."
+    if report.get("status") == "degraded":
+        return "Built with partial data. Re-import when the phone has synced: " + "; ".join(report.get("degraded_reasons") or [])
+    return None
+
+
 def _write_report(dist, report):
+    report["next"] = _next_step(report)
     dist.mkdir(parents=True, exist_ok=True)
     atomic_write_text(dist / "build_report.json", json.dumps(report, indent=1, sort_keys=True) + "\n")
 
@@ -88,12 +107,13 @@ def build(data_dir, dist, build_date):
         "contract": "agame.build_report.v1", "app_version": __version__, "schema_version": SCHEMA_VERSION,
         "build_date": build_date.isoformat(), "data_dir_hashes": input_hashes(data_dir) if data_dir.is_dir() else {},
         "status": "failed", "exit_code": EXIT_FAILED, "errors": [], "warnings": [], "degraded_reasons": [],
-        "outputs": {}, "next": TEST_COMMAND,
+        "outputs": {}, "next": None,
     }
     if not data_dir.is_dir():
         report["errors"].append({"file": "", "pointer": "/", "message": f"data directory not found: {data_dir}"})
         _write_report(dist, report)
         return report
+    memo.load(dist / ".cache" / "memo.json")
     rep, data = validate_data(data_dir, build_date)
     report["warnings"] = rep.warnings
     if not rep.ok:
@@ -116,7 +136,7 @@ def build(data_dir, dist, build_date):
     staging = Path(tempfile.mkdtemp(prefix=".staging-", dir=str(dist)))
     try:
         (staging / "fitness_dashboard.html").write_bytes(html_b)
-        pwa = write_assets(staging, snap, out_hash[:16], icon_cache=dist / ".icon-cache")
+        pwa = write_assets(staging, snap, out_hash[:16], icon_cache=dist / ".cache" / "icons")
         extras = {
             "morning_summary.json": morning_summary(snap),
             "weekly_review.json": snap["weekly_review"],
@@ -151,5 +171,6 @@ def build(data_dir, dist, build_date):
                    "metrics_series": len(snap["body"]["metrics"]), "goals": len(snap["goals"])},
         "metrics_registry_size": len(snap["meta"]["metrics_registry"]),
     })
+    memo.save(dist / ".cache" / "memo.json")
     _write_report(dist, report)
     return report

@@ -1,7 +1,7 @@
 {
   "_doc": "Algorithm parameters. Not personal data. profile.json may override any key under 'overrides'. See README.md §6.",
   "version": "1.0.0",
-  "sync": {"agent_name": "Steve", "_doc": "Name shown in the UI for the agent that imports HealthKit data each morning."},
+  "sync": {"agent_name": "Muse", "_doc": "Name shown in the UI for the agent that imports HealthKit data each morning."},
   "periods": {
     "week_start": "monday"
   },
@@ -88,6 +88,8 @@
     "baseline_drain_per_hour": 2.0
   },
   "body": {
+    "wrist_temp_baseline_min_nights": 7,
+    "wrist_temp_baseline_days": 28,
     "trend_days": 28,
     "trend_min_points": 6,
     "trend_min_span_days": 14,
@@ -204,7 +206,7 @@
     "length_tolerance": 0.1
   },
   "metrics_catalog": {
-    "hrv_sdnn_ms": {"label": "HRV (SDNN)", "unit": "ms", "agg": "mean", "better": "higher"},
+    "hrv_sdnn_ms": {"label": "HRV (daily average)", "unit": "ms", "agg": "mean", "better": "higher"},
     "resting_hr_bpm": {"label": "Resting HR", "unit": "bpm", "agg": "mean", "better": "lower"},
     "vo2max_ml_kg_min": {"label": "VO2 max", "unit": "ml/kg/min", "agg": "mean", "better": "higher"},
     "respiratory_rate_brpm": {"label": "Respiratory rate", "unit": "br/min", "agg": "mean", "better": null},

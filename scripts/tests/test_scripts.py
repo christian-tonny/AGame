@@ -1,4 +1,4 @@
-"""Steve's helper scripts, accessibility contrast, metric registry, snapshot pin."""
+"""Agent helper scripts, accessibility contrast, metric registry, snapshot pin."""
 
 import json
 import re

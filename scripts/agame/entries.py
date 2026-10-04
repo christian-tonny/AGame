@@ -72,9 +72,10 @@ def _fname(domain):
 
 
 class Store:
-    def __init__(self, data_dir, actor="owner"):
+    def __init__(self, data_dir, actor="owner", idempotency_key=None):
         self.dir = Path(data_dir)
         self.actor = actor
+        self.idempotency_key = idempotency_key
         self.group = None  # set by actions so one undo reverts every change they made
 
     def begin_group(self, label):
@@ -106,12 +107,27 @@ class Store:
         atomic_write_text(self.dir / _fname(domain), canonical_dumps(p, ndigits=6, indent=1) + "\n")
 
     def _log(self, entry):
-        entry = dict(entry, id=secrets.token_hex(8), ts=_now(), actor=self.actor)
+        entry = dict(entry, id=secrets.token_hex(8), ts=_now(), actor=self.actor, source="agent" if self.actor == "agent" else "app")
+        if self.idempotency_key:
+            entry["idempotency_key"] = self.idempotency_key
         if self.group and entry.get("op") != "undo":
             entry["group"] = self.group
         with open(self.dir / HISTORY_FILE, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(entry, sort_keys=True) + "\n")
         return entry
+
+    def replay(self, key):
+        """The first change already made under this agent Idempotency-Key, so a retried request is not applied twice."""
+        p = self.dir / HISTORY_FILE
+        if not key or not p.exists():
+            return None
+        with open(p, encoding="utf-8") as fh:
+            for line in fh:
+                if key in line:
+                    h = json.loads(line)
+                    if h.get("idempotency_key") == key and h.get("actor") == "agent":
+                        return h
+        return None
 
     def history(self, limit=50):
         p = self.dir / HISTORY_FILE

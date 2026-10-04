@@ -1,5 +1,5 @@
 """AGame HTTP server (stdlib): owner sign-in, dashboard + PWA behind auth, entries API,
-snapshot upload for Steve, rebuilds, and optional Coach chat.
+agent API (imports, check-ins), snapshot upload, rebuilds, and optional Coach chat.
 
 Nothing sensitive is served before authentication: the sign-in page and /healthz carry no
 data. Edit endpoints require JSON and a same-origin request; session cookies are HttpOnly,
@@ -11,6 +11,7 @@ import json
 import mimetypes
 import os
 import re
+import secrets
 import threading
 import time
 import urllib.parse
@@ -20,6 +21,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from agame import auth
+from agame import checkins
 from agame import coach_llm
 from agame import timeutil as tu
 from agame.build import build
@@ -46,6 +48,8 @@ LOGO_SVG = ('<svg class="mark" width="64" height="64" viewBox="0 0 100 100" aria
             '<path d="M28 78L50 22L72 78" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>'
             '<path d="M17 62H35L41 51L49 72L55 62H83" fill="none" stroke="#fff" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/></svg>')
 SIGNIN_HTML = SIGNIN_HTML.replace("{logo}", LOGO_SVG)
+AGENT_BLOCKED_ACTIONS = {"privacy.zone_remove"}
+JOBS = {}
 GZIP_TYPES = ("text/html", "application/javascript", "text/javascript", "application/json", "application/manifest+json")
 
 
@@ -60,6 +64,7 @@ class Config:
         self.base_url = (env.get("AGAME_BASE_URL") or f"http://127.0.0.1:{port}").rstrip("/")
         self.owner = (env.get("AGAME_OWNER_EMAIL") or "").strip().lower()
         self.upload_token = env.get("AGAME_UPLOAD_TOKEN") or ""
+        self.agent_token = env.get("AGAME_AGENT_TOKEN") or ""
         self.secure = self.base_url.startswith("https://")
         missing = [k for k in REQUIRED_ENV if not env.get(k)]
         if not dev and missing:
@@ -76,7 +81,7 @@ class Config:
 class State:
     def __init__(self, cfg):
         self.cfg = cfg
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self._snap = None
         self._snap_key = None
 
@@ -154,6 +159,9 @@ def make_handler(cfg, state=None):
 
         def _send(self, code, body, ctype="application/json", headers=None, api=True):
             b = body if isinstance(body, bytes) else (json.dumps(body).encode() if ctype == "application/json" else body.encode())
+            headers = list(headers or [])
+            if getattr(self, "_refresh", None) and not any(k == "Set-Cookie" for k, _ in headers):
+                headers.append(("Set-Cookie", self._refresh))
             self.send_response(code)
             self.send_header("Content-Type", ctype + ("; charset=utf-8" if ctype.startswith(("text/", "application/json")) else ""))
             self.send_header("Content-Length", str(len(b)))
@@ -194,6 +202,16 @@ def make_handler(cfg, state=None):
             except json.JSONDecodeError:
                 raise EntryError(400, "invalid JSON body")
 
+        def _agent(self):
+            """True for a valid AGAME_AGENT_TOKEN, False when no bearer token was sent. A wrong token is refused outright."""
+            auth_h = self.headers.get("Authorization") or ""
+            if not auth_h.startswith("Bearer "):
+                return False
+            import hmac as _h
+            if cfg.agent_token and _h.compare_digest(auth_h[7:].strip(), cfg.agent_token):
+                return True
+            raise EntryError(401, "invalid agent token")
+
         def _same_origin_json(self):
             if (self.headers.get("Content-Type") or "").split(";")[0].strip() != "application/json":
                 raise EntryError(415, "JSON body required")
@@ -211,6 +229,7 @@ def make_handler(cfg, state=None):
             self.do_GET()
 
         def do_GET(self):
+            self._refresh = None
             path = urllib.parse.urlparse(self.path).path
             q = dict(urllib.parse.parse_qsl(urllib.parse.urlparse(self.path).query))
             if path == "/healthz":
@@ -228,10 +247,17 @@ def make_handler(cfg, state=None):
             if path == "/auth/logout":
                 return self._logout()
             api = path.startswith("/api/")
+            if path.startswith("/api/agent/"):
+                try:
+                    if not self._agent() and not self._user():
+                        return self._send(401, {"error": "agent token required (Authorization: Bearer <AGAME_AGENT_TOKEN>)"})
+                    return self._agent_get(path, q)
+                except EntryError as e:
+                    return self._send(e.status, {"error": e.message, "details": e.details})
             user = self._user()
             if not user:
                 return self._deny(api)
-            refresh = self._maybe_rotate(user)
+            refresh = self._refresh = self._maybe_rotate(user)
             if path in ("/", "/index.html"):
                 return self._redirect("/fitness_dashboard.html")
             if path.lstrip("/") in STATIC or re.fullmatch(r"/icons/[a-z0-9\-]+\.png", path):
@@ -266,6 +292,7 @@ def make_handler(cfg, state=None):
             return self._mutate("DELETE")
 
         def _mutate(self, method):
+            self._refresh = None
             path = urllib.parse.urlparse(self.path).path
             if path == "/api/snapshot" and method == "POST":
                 return self._upload()
@@ -273,13 +300,31 @@ def make_handler(cfg, state=None):
                 return self._logout()
             if not path.startswith("/api/"):
                 return self._send(405, {"error": "method not allowed"})
-            if not self._user():
-                return self._send(401, {"error": "sign-in required"})
             try:
+                agent = self._agent()
+            except EntryError as e:
+                return self._send(e.status, {"error": e.message})
+            user = None if agent else self._user()
+            if not agent and not user:
+                return self._send(401, {"error": "sign-in required"})
+            if user:
+                self._refresh = self._maybe_rotate(user)
+            try:
+                if agent:
+                    self._agent_allowed(path, method)
+                if path == "/api/import/apple-health-export" and method == "POST":
+                    return self._export_upload()
                 if method != "DELETE":
                     self._same_origin_json()
+                if path == "/api/import" and method == "POST":
+                    return self._import(self._body(limit=50 * 1024 * 1024))
                 body = self._body() if method != "DELETE" else {}
-                store = Store(cfg.data_dir)
+                key = (self.headers.get("Idempotency-Key") or "").strip()[:200] or None
+                store = Store(cfg.data_dir, actor="agent" if agent else "owner", idempotency_key=key if agent else None)
+                if agent and key:
+                    prev = store.replay(key)
+                    if prev:
+                        return self._send(200, {"ok": True, "duplicate": True, "record": prev.get("after"), "build": "unchanged"})
                 m = re.fullmatch(r"/api/entries/([a-z_]+\.[a-z_]+)(?:/([^/]+))?", path)
                 if m:
                     col, rid = m.group(1), urllib.parse.unquote(m.group(2)) if m.group(2) else None
@@ -319,6 +364,113 @@ def make_handler(cfg, state=None):
             except EntryError as e:
                 return self._send(e.status, {"error": e.message, "details": e.details})
             return self._send(404, {"error": "not found"})
+
+        # -------------------------------------------------------------- agent
+        def _agent_allowed(self, path, method):
+            """The agent logs and plans; it never deletes, undoes or changes settings. docs/agents.md lists the same rules."""
+            if method == "DELETE":
+                raise EntryError(403, "agents never delete; ask the owner to delete it in the app")
+            if path in ("/api/import", "/api/import/apple-health-export"):
+                return
+            if path.startswith("/api/entries/") and method in ("POST", "PATCH"):
+                return
+            m = re.fullmatch(r"/api/actions/([a-z_]+\.[a-z_]+)", path)
+            if m and method == "POST" and m.group(1) not in AGENT_BLOCKED_ACTIONS:
+                return
+            raise EntryError(403, "the agent token cannot use this endpoint")
+
+        def _read_dist(self, name):
+            p = cfg.dist_dir / name
+            return json.loads(p.read_text()) if p.exists() else None
+
+        def _checkins(self, q):
+            data, _, _ = load_all(cfg.data_dir)
+            tz = tu.tzinfo(((data.get("profile") or {}).get("locale") or {}).get("timezone") or tu.DEFAULT_TZ)
+            now = tu.parse_ts(q["now"]).astimezone(tz) if q.get("now") else datetime.now(tz)
+            try:
+                window = max(1, min(1440, int(q.get("window_min", 15))))
+            except ValueError:
+                raise EntryError(400, "window_min must be a number of minutes")
+            out = checkins.report(data["coach"].get("checkins", []), now, window, cfg.dist_dir)
+            out["timezone"] = str(tz)
+            return out
+
+        def _agent_get(self, path, q):
+            names = {"/api/agent/morning-summary": "morning_summary.json", "/api/agent/build-report": "build_report.json",
+                     "/api/agent/weekly-review": "weekly_review.json"}
+            if path in names:
+                body = self._read_dist(names[path])
+                if body is None:
+                    return self._send(404, {"error": "not built yet; POST /api/import first"})
+                if path == "/api/agent/build-report":
+                    body["pinned_snapshot"] = pinned_snapshot(cfg)
+                return self._send(200, body)
+            if path == "/api/agent/checkins":
+                return self._send(200, self._checkins(q))
+            if path == "/api/agent/job":
+                job = JOBS.get(q.get("id", ""))
+                return self._send(200, job) if job else self._send(404, {"error": "unknown job"})
+            return self._send(404, {"error": "not found"})
+
+        def _import(self, body):
+            """One HealthKit batch (or Muse's muse.v1 results) -> importer -> rebuild, answered in one response."""
+            from agame.importer import BatchError, apply_batch
+            if any(j["status"] == "running" for j in JOBS.values()):
+                return self._send(409, {"status": "busy", "error": "an Apple Health export import is running; try again in 10 minutes"})
+            with state.lock:
+                try:
+                    summary, code = apply_batch(cfg.data_dir, body, lenient=True)
+                except BatchError as e:
+                    return self._send(400, {"status": "rejected", "exit_code": 1, "error": str(e),
+                                            "next": "Fix the batch envelope and re-import. Nothing was written."})
+                if code == 1:
+                    return self._send(422, {"status": "rejected", "exit_code": 1, "import": summary, "rejected": summary.get("rejected", []),
+                                            "errors": summary.get("errors", []), "next": "Nothing was written. Fix the batch and re-import."})
+                rep = state.rebuild()
+            q = {}
+            out = {
+                "status": summary["status"], "exit_code": 2 if (code == 2 or rep["status"] == "degraded") else 0,
+                "import": {k: summary[k] for k in ("idempotency_key", "date", "status", "added", "updated", "skipped_duplicate", "duplicates", "conflicts", "stale", "domains_touched") if k in summary},
+                "rejected": summary.get("rejected", []), "ignored_fields": (summary.get("adapter") or {}).get("ignored_fields", []),
+                "build_report": {k: rep.get(k) for k in ("status", "exit_code", "build_date", "degraded_reasons", "errors", "next", "freshness")},
+                "morning_summary": self._read_dist("morning_summary.json") if rep["status"] != "failed" else None,
+                "checkins": self._checkins(q),
+            }
+            if rep["status"] == "failed":
+                out["exit_code"] = 1
+                return self._send(500, out)
+            return self._send(200, out)
+
+        def _export_upload(self):
+            """Apple Health export.zip as the raw request body. Saved to the volume, imported in the background."""
+            origin = self.headers.get("Origin")
+            if origin and not cfg.dev and origin.rstrip("/") != cfg.base_url:
+                raise EntryError(403, "cross-origin request refused")
+            n = int(self.headers.get("Content-Length") or 0)
+            if n <= 0:
+                raise EntryError(400, "send the export.zip file as the request body")
+            if n > EXPORT_MAX_BYTES:
+                raise EntryError(413, f"export larger than {EXPORT_MAX_BYTES // (1024 * 1024)} MB")
+            if any(j["status"] == "running" for j in JOBS.values()):
+                raise EntryError(409, "an export import is already running")
+            up = cfg.data_dir / ".uploads"
+            up.mkdir(exist_ok=True)
+            job_id = secrets.token_hex(6)
+            path = up / f"export-{job_id}.zip"
+            left = n
+            with open(path, "wb") as fh:
+                while left > 0:
+                    chunk = self.rfile.read(min(1 << 20, left))
+                    if not chunk:
+                        break
+                    fh.write(chunk)
+                    left -= len(chunk)
+            if left:
+                path.unlink(missing_ok=True)
+                raise EntryError(400, "upload ended early")
+            JOBS[job_id] = {"id": job_id, "status": "running", "step": "reading export.xml", "started_at": datetime.now().astimezone().isoformat()}
+            threading.Thread(target=_run_export_job, args=(job_id, path, cfg, state), daemon=True).start()
+            return self._send(202, {"job": job_id, "status": "running", "status_url": f"/api/agent/job?id={job_id}"})
 
         # -------------------------------------------------------------- endpoints
         def _static(self, rel, refresh):
@@ -373,7 +525,7 @@ def make_handler(cfg, state=None):
         def _maybe_rotate(self, user):
             if user.get("dev") or not user.get("iat"):
                 return None
-            if time.time() - user["iat"] > auth.ROTATE_AFTER:
+            if time.time() - user["iat"] >= auth.ROTATE_AFTER:
                 return auth.cookie_header(auth.SESSION_COOKIE, auth.new_session(cfg.signer, user["email"]), auth.SESSION_TTL, cfg.secure)
             return None
 
@@ -441,6 +593,31 @@ def make_handler(cfg, state=None):
             atomic_write_text(cfg.data_dir / "coach.json", canonical_dumps(data["coach"], ndigits=6, indent=1) + "\n")
 
     return Handler
+
+
+EXPORT_MAX_BYTES = 4 * 1024 * 1024 * 1024
+
+
+def _run_export_job(job_id, path, cfg, state):
+    from agame.apple_export import ExportError, run
+    from agame.importer import BatchError
+    job = JOBS[job_id]
+    try:
+        with state.lock:
+            summary, code = run(path, cfg.data_dir, progress=lambda m: job.update(step=m))
+            job["step"] = "rebuilding"
+            rep = state.rebuild() if code != 1 else None
+        job.update(status="done" if code != 1 else "rejected", exit_code=code, import_status=summary["status"],
+                   added=summary.get("added"), updated=summary.get("updated"), rejected=summary.get("rejected", [])[:200],
+                   export=summary.get("export"), build=rep and {k: rep.get(k) for k in ("status", "degraded_reasons", "errors", "next")})
+    except (ExportError, BatchError, OSError, ValueError) as exc:
+        job.update(status="failed", error=str(exc))
+    finally:
+        job["finished_at"] = datetime.now().astimezone().isoformat()
+        try:
+            Path(path).unlink()
+        except OSError:
+            pass
 
 
 def serve(cfg):
