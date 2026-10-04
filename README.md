@@ -87,6 +87,7 @@ Think of it like a kitchen. The data folder is the pantry. Python is the cook. T
 | `data/` | Empty, schema-valid fixtures only. Safe for a public repo |
 | `scripts/tests/`, `scripts/e2e/` | Unit/integration tests, browser tests, Steve dry run |
 | `docs/build-plan.md` | Research, the 57-issue plan and the full feature matrix |
+| `docs/design.md` | Design rules for every screen. Read before changing the UI |
 | `docs/screenshots/` | Screenshots from synthetic data |
 
 ---
