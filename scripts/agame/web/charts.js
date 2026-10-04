@@ -104,7 +104,7 @@ function axes(s, L, Y, X, Yr) {
   let g = `<g class="grid">`;
   const ticks = niceTicks(Y.lo, Y.hi, s.yTicks || 4);
   const tstep = ticks.length > 1 ? Math.abs(ticks[1] - ticks[0]) : 1;
-  const fy = s.fmtYAxis || (v => fmt.n(v, tstep < 1 ? (tstep < 0.1 ? 2 : 1) : 0));
+  const fy = s.fmtYAxis || (v => Math.abs(v) >= 10000 ? fmt.n(v / 1000, 0) + "k" : fmt.n(v, tstep < 1 ? (tstep < 0.1 ? 2 : 1) : 0));
   ticks.forEach(t => { const y = Y(t); if (y >= L.padT - 1 && y <= L.padT + L.ih + 1) g += `<line x1="${L.padL}" x2="${L.w - L.padR}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}"/>`; });
   g += `</g><g class="axis">`;
   ticks.forEach(t => { const y = Y(t); if (y >= L.padT - 1 && y <= L.padT + L.ih + 1) g += `<text x="${L.padL - 5}" y="${(y + 3).toFixed(1)}" text-anchor="end">${esc(fy(t))}</text>`; });
@@ -290,7 +290,7 @@ function bindChart(el, s) {
     const rows = s.series.map(se => {
       const v = se.values[i];
       const f = se.fmt || s.fmtY || (q => fmt.n(q, 1));
-      return `<div><span style="color:${se.color}">●</span> ${esc(se.name)}: <b>${v === null || v === undefined ? "no data" : esc(f(v))}</b></div>`;
+      return `<div><i class="zdot" style="background:${se.color}"></i>${esc(se.name)}: <b>${v === null || v === undefined ? "no data" : esc(f(v))}</b></div>`;
     }).join("");
     const extra = s.tipExtra ? s.tipExtra(i) : "";
     let px = cx, py = cy;
@@ -400,21 +400,29 @@ function heatGrid(days, opts = {}) {
 function consistencyCard() {
   const series = (D.training.pmc.series || []).slice(-182).map(r => ({ date: r.date, v: r.known ? r.load : null }));
   const st = D.streak;
-  return `<div class="card"><div class="spread"><h3 style="margin:0">Consistency</h3><span class="cap">${st.current} week streak</span></div>
-    <div style="margin-top:10px">${heatGrid(series, { label: "Daily training load, last 26 weeks", fmt: v => "load " + fmt.n(v) })}</div>
-    <p class="cap">Daily training load for the last 26 weeks. Grey = no data synced that day (not a rest day).</p></div>`;
+  return `<div class="card">${cardHead("Consistency", `<span class="small muted">${st.current} week streak · longest ${st.longest}</span>`, "Daily training load for the last 26 weeks. Hatched days had no data synced, which is different from a rest day.")}
+    ${heatGrid(series, { label: "Daily training load, last 26 weeks", fmt: v => "load " + fmt.n(v) })}</div>`;
 }
 
 /* ---------- share card (SVG/PNG, built from computed recap numbers; no maps, no health records) ---------- */
 function shareCardSvg(y) {
   const all = Object.values(y.totals || {}).reduce((a, t) => ({ d: a.d + (t.distance_m || 0), s: a.s + (t.duration_s || 0), e: a.e + (t.elevation_gain_m || 0) }), { d: 0, s: 0, e: 0 });
-  const rows = [["Activities", fmt.n(y.activities)], ["Distance", fmt.dist(all.d, 0)], ["Time", fmt.mins(all.s)], ["Elevation", fmt.elev(all.e)], ["Active weeks", `${y.active_weeks}/${y.total_weeks}`], ["PRs", fmt.n(y.prs)]];
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350"><rect width="1080" height="1350" fill="#0b0b0c"/>
-    <rect x="80" y="90" width="64" height="64" rx="16" fill="#fc5200"/><text x="170" y="138" fill="#f4f4f6" font-family="Helvetica,Arial,sans-serif" font-size="40" font-weight="700">AGame</text>
-    <text x="80" y="290" fill="#f4f4f6" font-family="Helvetica,Arial,sans-serif" font-size="88" font-weight="800">${esc(y.label)}</text>
-    ${y.partial ? `<text x="80" y="350" fill="#a3a3ab" font-family="Helvetica,Arial,sans-serif" font-size="34">to date</text>` : ""}
-    ${rows.map(([k, v], i) => `<text x="${80 + (i % 2) * 480}" y="${520 + Math.floor(i / 2) * 230}" fill="#a3a3ab" font-family="Helvetica,Arial,sans-serif" font-size="34">${esc(k)}</text><text x="${80 + (i % 2) * 480}" y="${600 + Math.floor(i / 2) * 230}" fill="#f4f4f6" font-family="Helvetica,Arial,sans-serif" font-size="72" font-weight="800">${esc(v)}</text>`).join("")}
-    <text x="80" y="1270" fill="#6b6b74" font-family="Helvetica,Arial,sans-serif" font-size="26">From my own HealthKit data · no maps or health records</text></svg>`;
+  const F = `font-family="-apple-system,'SF Pro Display','Helvetica Neue',Helvetica,Arial,sans-serif"`;
+  const tiles = [["Activities", fmt.n(y.activities)], ["Time", fmt.mins(all.s)], ["Elevation", fmt.elev(all.e)], ["Active weeks", `${y.active_weeks} of ${y.total_weeks}`], ["Personal records", fmt.n(y.prs)], ["Avg sleep", isNum(y.avg_sleep_min) ? fmt.hm(y.avg_sleep_min) : "—"]];
+  const tile = ([k, v], i) => { const x = 80 + (i % 2) * 470, yy = 760 + Math.floor(i / 2) * 170;
+    return `<rect x="${x}" y="${yy}" width="450" height="150" rx="28" fill="#1d1e23"/><text x="${x + 36}" y="${yy + 56}" fill="#a4a6ae" ${F} font-size="28" font-weight="600">${esc(k)}</text><text x="${x + 36}" y="${yy + 118}" fill="#f5f5f7" ${F} font-size="52" font-weight="700">${esc(v)}</text>`; };
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
+    <defs><radialGradient id="glow" cx="0.85" cy="0.08" r="0.75"><stop offset="0" stop-color="#ff6b1a" stop-opacity=".45"/><stop offset="1" stop-color="#ff6b1a" stop-opacity="0"/></radialGradient>
+      <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff6b1a"/><stop offset="1" stop-color="#e8430a"/></linearGradient></defs>
+    <rect width="1080" height="1350" fill="#121316"/><rect width="1080" height="1350" fill="url(#glow)"/>
+    <svg x="80" y="84" width="76" height="76" viewBox="0 0 100 100"><rect width="100" height="100" rx="23" fill="url(#tile)"/><path d="M28 78L50 22L72 78" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 62H35L41 51L49 72L55 62H83" fill="none" stroke="#fff" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <text x="166" y="137" fill="#f5f5f7" ${F} font-size="46" font-weight="800" letter-spacing="-1">Game</text>
+    <text x="80" y="300" fill="#ff8a4c" ${F} font-size="34" font-weight="700">${y.label.length === 4 ? "Year in Sport" : "Month in Sport"}${y.partial ? " · so far" : ""}</text>
+    <text x="74" y="430" fill="#f5f5f7" ${F} font-size="150" font-weight="800" letter-spacing="-5">${esc(y.label)}</text>
+    <text x="80" y="560" fill="#a4a6ae" ${F} font-size="32" font-weight="600">Distance</text>
+    <text x="76" y="680" fill="#f5f5f7" ${F} font-size="128" font-weight="800" letter-spacing="-4">${esc(fmt.dist(all.d, 0))}</text>
+    ${tiles.map(tile).join("")}
+    <text x="80" y="1290" fill="#6f727b" ${F} font-size="26" font-weight="500">From my own Apple Health data</text></svg>`;
 }
 function downloadShare(i, kind) {
   const y = (D.recaps.years.concat(D.recaps.months))[i];

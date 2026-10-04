@@ -7,6 +7,11 @@ function applyTheme() {
   else document.documentElement.setAttribute("data-theme", t);
 }
 
+function logo(size = 28) {
+  return `<svg class="logo" width="${size}" height="${size}" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="lg-tile" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff6b1a"/><stop offset="1" stop-color="#e8430a"/></linearGradient></defs>
+    <rect width="100" height="100" rx="23" fill="url(#lg-tile)"/><path d="M28 78L50 22L72 78" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M17 62H35L41 51L49 72L55 62H83" fill="none" stroke="#fff" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
 function buildShell() {
   const tabs = mobileTabs();
   const label = id => id === "more" ? "More" : (DESTS.find(d => d.id === id) || { label: id }).label;
@@ -14,10 +19,9 @@ function buildShell() {
   $("#tabbar").innerHTML = tabs.map(id => id === "more"
     ? `<button data-nav="more" data-open="more" aria-label="More destinations">${icon("more")}<span>More</span></button>`
     : `<a href="#/${id}" data-nav="${id}">${icon(ic(id))}<span>${esc(label(id))}</span></a>`).join("");
-  $("#sidebar").innerHTML = `<div class="brand"><i aria-hidden="true"></i>AGame</div>${DESTS.map(d => `<a href="#/${d.id}" data-nav="${d.id}">${icon(d.icon)}<span>${esc(d.label)}</span></a>`).join("")}
+  $("#sidebar").innerHTML = `<div class="brand" aria-label="AGame">${logo()}<span aria-hidden="true">Game</span></div>${DESTS.map(d => `<a href="#/${d.id}" data-nav="${d.id}">${icon(d.icon)}<span>${esc(d.label)}</span></a>`).join("")}
     <div class="foot">Build ${esc(D.meta.build_date)}<br>${esc(TZ)}</div>`;
   const banners = [];
-  if (D.meta.fixture === "synthetic") banners.push(`<div class="banner synthetic" role="note">${icon("info")}<span><b>Synthetic test data.</b> Generated for automated tests and screenshots — not anyone's real records.</span></div>`);
   if (D.meta.fixture === "empty") banners.push(`<div class="banner sync" role="note">${icon("info")}<span><b>${STR.waiting}.</b> This build uses the empty fixtures shipped with the public repo.</span></div>`);
   const ds = D.meta.data_status;
   if (D.meta.fixture !== "empty" && ds.overall !== "ok") banners.push(`<div class="banner sync" role="status">${icon("info")}<span>${ds.sleep_missing ? STR.sleepNotSynced + " · " : ""}${ds.last_sync ? "Last successful update " + fmt.dt(ds.last_sync) : "No sync yet"}</span></div>`);

@@ -26,7 +26,7 @@ const EXEC = fs.existsSync("/opt/pw-browsers/chromium") ? undefined : undefined;
 
 const DESTS = ["today", "training", "activities", "recovery", "sleep", "strength", "nutrition", "body", "routes", "goals", "coach", "profile",
   "strain", "timeline", "journal", "widgets"];
-const TRAINING_TABS = ["fitness", "log", "progress", "plan", "zones", "records", "recaps", "review"];
+const TRAINING_TABS = ["fitness", "plan", "log", "progress", "records", "zones"];
 
 const failures = [];
 let passed = 0;
@@ -107,7 +107,7 @@ async function interactions(page, label) {
   await page.waitForTimeout(350);
   check(await page.evaluate(() => location.hash === "#/sleep"), `${label}: More sheet navigates`);
   // provenance sheet
-  await go(page, "#/today");
+  await go(page, "#/recovery");
   await page.click("[data-prov]");
   await page.waitForSelector("#sheet.on");
   const ptxt = await page.$eval("#sheet", el => el.innerText);
@@ -142,6 +142,13 @@ async function interactions(page, label) {
     check(ow <= 0, `${label}: training/${t} overflow ${ow}px`);
     check(!/could not render/i.test(await mainText(page)), `${label}: training/${t} render error`);
     if (!NO_SHOTS && ["plan", "zones", "records"].includes(t)) await shot(page, "dark-training-" + t);
+  }
+  // weekly review and Year in Sport are sub-pages with a way back
+  for (const sub of ["review", "recaps"]) {
+    await go(page, "#/" + sub);
+    check(!/could not render/i.test(await mainText(page)), `${label}: ${sub} renders`);
+    check(await page.evaluate(() => !document.querySelector("#hdr-back").hidden), `${label}: ${sub} has a back button`);
+    check(await overflow(page) <= 0, `${label}: ${sub} overflow`);
   }
   // activity detail + route detail
   await go(page, "#/activities");

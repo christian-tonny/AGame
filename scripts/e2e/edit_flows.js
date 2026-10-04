@@ -86,9 +86,9 @@ const freePort = () => new Promise(res => { const s = net.createServer(); s.list
     const ph = (await raw("profile.json")).physiology;
     check(ph.hr_max.value === 191 && ph.hr_max.method === "e2e field test" && ph.threshold_pace_s_per_km.value === 265, "physiology saved with method and date");
     await page.click("[data-open=edit-appearance]");
-    await sheetSave({ app_icon: "orange", tab3: "sleep" });
+    await sheetSave({ app_icon: "dark", tab3: "sleep" });
     const ui = (await raw("profile.json")).ui;
-    check(ui.app_icon === "orange" && ui.mobile_tabs.includes("sleep") && ui.mobile_tabs[ui.mobile_tabs.length - 1] === "more", "appearance saved");
+    check(ui.app_icon === "dark" && ui.mobile_tabs.includes("sleep") && ui.mobile_tabs[ui.mobile_tabs.length - 1] === "more", "appearance saved");
     check(await page.isVisible("#tabbar a[href='#/sleep']"), "tab bar follows the new tab choice");
   });
 
@@ -154,7 +154,7 @@ const freePort = () => new Promise(res => { const s = net.createServer(); s.list
     await sheetSave({ status: "traveling", note: "E2E trip" });
     check((await raw("journal.json")).activity_status.some(s => s.note === "E2E trip"), "status saved");
     await go("#/today");
-    check((await page.textContent("#main")).includes("Status: Traveling"), "Today shows the status chip");
+    check(/Traveling/.test(await page.textContent("#main .page-head")), "Today shows the status chip");
   });
 
   await flow("plans: adaptation, move, wizard, instant, race, routine", async () => {
@@ -162,7 +162,7 @@ const freePort = () => new Promise(res => { const s = net.createServer(); s.list
     const adapt = await page.$("[data-adapt=accepted]");
     if (adapt) { await clickAndReload("[data-adapt=accepted]"); check(((await raw("plans.json")).decisions || []).some(d => d.decision === "accepted"), "adaptation accepted and recorded"); }
     await go("#/training?tab=plan");
-    const sid = await page.$eval("#main button.li[data-open=session][data-arg]", el => el.dataset.arg);
+    const sid = await page.$eval("#main [data-upcoming] button.li[data-open=session][data-arg]", el => el.dataset.arg);
     await page.click(`#main button.li[data-open=session][data-arg="${sid}"]`);
     await page.waitForSelector("#sheet.on");
     await shot("dark-session-sheet");

@@ -151,7 +151,7 @@ def one_action(ctx, rec_call, sync, sleep, nutrition, today_sessions, weight, be
     if planned:
         s = planned[0]
         return {"id": "session", "text": f"{s['title']}", "detail": s.get("objective") or s.get("label"), "kind": "training"}
-    return {"id": "move", "text": "Easy day — keep moving", "detail": None, "kind": "recovery"}
+    return {"id": "move", "text": "Easy day: keep moving", "detail": None, "kind": "recovery"}
 
 
 @metric("insights.helping_hurting", method="lagged_pearson_gated.v1", inputs=["sleep", "strain", "nutrition", "journal", "recovery.score"])

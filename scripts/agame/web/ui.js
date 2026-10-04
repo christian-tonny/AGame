@@ -8,7 +8,7 @@ const STR = {
   noNutrition: "Nutrition not connected",
   noLeaderboard: "No leaderboard data connected",
   noPower: "Power meter not connected",
-  noExercise: "No exercise details — muscles not inferred",
+  noExercise: "No exercise details, so muscles are not inferred",
   sleepNotSynced: "Sleep not synced yet",
   noData: "No data yet",
   waiting: `Waiting for ${AGENT}'s first sync`,
@@ -34,7 +34,7 @@ function prov(v, label) {
   if (!v || typeof v !== "object") return "";
   const id = "p" + (++provSeq);
   PROV[id] = { v, label };
-  return `<button class="prov" data-prov="${id}" aria-label="Data details for ${esc(label || "value")}" title="Data details">i</button>`;
+  return `<button type="button" class="info-btn" data-prov="${id}" aria-label="Data details for ${esc(label || "value")}" title="Data details">${icon("info")}</button>`;
 }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-prov]");
@@ -96,6 +96,27 @@ document.addEventListener("click", e => {
   rerender();
 });
 function chipVal(name, d) { return uiGet("chip:" + name, d); }
+function tabs(name, options, current) {
+  return `<div class="tabs" role="group" aria-label="${esc(name)}">${options.map(([id, label]) => `<button data-chip="${esc(name)}" data-val="${esc(id)}" aria-pressed="${id === current}">${esc(label)}</button>`).join("")}</div>`;
+}
+/* Card header: one title, one optional control on the right. Explanations live behind the info button. */
+function cardHead(title, right = "", about = "") {
+  return `<div class="card-h"><h3>${title}</h3>${right || about ? `<div class="r">${right}${about ? info(title.replace(/<[^>]+>/g, "").trim(), about) : ""}</div>` : ""}</div>`;
+}
+const INFO = {};
+let infoSeq = 0;
+function info(title, text) {
+  const id = "i" + (++infoSeq);
+  INFO[id] = { title, text };
+  return `<button type="button" class="info-btn" data-info="${id}" aria-label="About ${esc(title)}">${icon("info")}</button>`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-info]");
+  if (!b || !INFO[b.dataset.info]) return;
+  e.preventDefault(); e.stopPropagation();
+  const { title, text } = INFO[b.dataset.info];
+  openSheet(title, `<p class="small" style="margin:0;line-height:1.55">${text}</p>`);
+});
 function sectionTitle(t, link) { return `<div class="section-title"><h2>${esc(t)}</h2>${link || ""}</div>`; }
 function bar(pct, color, marker) {
   const p = Math.max(0, Math.min(100, pct || 0));
@@ -127,7 +148,7 @@ function freshChip() {
   const ds = D.meta.data_status;
   const st = ds.overall;
   const txt = ds.last_sync ? `Updated ${fmt.time(ds.last_sync)}${st === "partial" ? " · partial" : st === "stale" ? " · stale" : ""}` : "No sync yet";
-  return `<button class="fresh ${st}" data-open="data-status" aria-label="Data freshness: ${esc(txt)}"><i></i>${esc(txt)}</button>`;
+  return `<button class="fresh-ic ${st}" data-open="data-status" aria-label="Data freshness: ${esc(txt)}" title="${esc(txt)}">${icon(st === "ok" ? "cloud-check" : "refresh")}</button>`;
 }
 document.addEventListener("click", e => {
   const o = e.target.closest("[data-open]");
@@ -148,7 +169,7 @@ AG.sheets["data-status"] = function () {
 
 /* ---------- factor & insight rows ---------- */
 function factorRow(f) {
-  const sym = f.direction === "helping" ? "↑" : f.direction === "hurting" ? "↓" : "·";
+  const sym = icon(f.direction === "helping" ? "up" : f.direction === "hurting" ? "down" : "minus");
   let detail = "";
   if (f.baseline !== undefined && f.baseline !== null) detail = `usual ${fmt.n(f.baseline, 1)} ${f.unit || ""}`;
   else if (f.need) detail = `need ${fmt.hm(f.need)}`;
@@ -161,15 +182,15 @@ function factorRow(f) {
     <div class="s">${dirTxt}${detail ? " · " + esc(detail) : ""}${f.stale ? " · stale" : ""}</div></div><span class="r">${r}</span></div>`;
 }
 function insightCard(text, sub, cls = "") {
-  return `<div class="insight ${cls}"><span class="spark" aria-hidden="true">${cls.includes("action") ? "!" : "✦"}</span><div><b>${esc(text)}</b>${sub ? `<span>${esc(sub)}</span>` : ""}</div></div>`;
+  return `<div class="insight ${cls}"><span class="spark" aria-hidden="true">${icon(cls.includes("action") ? "alert" : "sparkles")}</span><div><b>${esc(text)}</b>${sub ? `<span>${esc(sub)}</span>` : ""}</div></div>`;
 }
 
 /* ---------- goals ---------- */
 function goalStatusBadge(s) {
-  const m = { on_track: ["On track", "ok"], ahead: ["Ahead", "ok"], done: ["Done", "ok"], behind: ["Behind", "warn"], in_progress: ["In progress", "info"],
-    insufficient: ["Need more data", ""], no_data: ["No data", ""], not_logged: ["Not logged", ""], no_effort: ["No effort yet", ""], active: ["Active", "ok"], start: ["Start", ""] };
-  const [t, c] = m[s] || [s || "—", ""];
-  return badge(t, c);
+  const m = { on_track: ["On track", "ok"], ahead: ["Ahead", "ok"], done: ["Done", "ok"], behind: ["Behind", "warn"], in_progress: ["", ""],
+    insufficient: ["Need more data", ""], no_data: ["No data", ""], not_logged: ["Not logged", ""], no_effort: ["No effort yet", ""], active: ["", ""], start: ["", ""] };
+  const [t, c] = m[s] || [s || "", ""];
+  return t ? badge(t, c) : "";
 }
 function goalValue(g, v) {
   if (!isNum(v)) return "—";
@@ -242,43 +263,23 @@ function surfaceBar(s) {
 }
 
 /* ---------- muscle map (front/back) ---------- */
-const MUSCLE_SHAPES = {
-  front: [
-    ["front_delts", "M27 44c-5 1-8 5-8 10l7 1 4-9z M73 44c5 1 8 5 8 10l-7 1-4-9z"],
-    ["chest", "M31 46c5-2 12-2 18 0v12c-6 3-13 3-18 0z M51 46c6-2 13-2 18 0v12c-5 3-12 3-18 0z"],
-    ["biceps", "M19 56l7 1-1 16-7-2z M81 56l-7 1 1 16 7-2z"],
-    ["forearms", "M18 73l7 2-2 20-7-2z M82 73l-7 2 2 20 7-2z"],
-    ["abs", "M42 61h16v34H42z"],
-    ["obliques", "M33 62l8 1v30l-7-4z M67 62l-8 1v30l7-4z"],
-    ["adductors", "M44 100l6 1-1 28-5-3z M56 100l-6 1 1 28 5-3z"],
-    ["quads", "M33 99l10 2 1 30-9 7-4-18z M67 99l-10 2-1 30 9 7 4-18z"],
-    ["calves", "M35 145l7 1-1 30-5 1z M65 145l-7 1 1 30 5 1z"],
-    ["side_delts", "M22 47l-4 6 1 3 5-1z M78 47l4 6-1 3-5-1z"],
-  ],
-  back: [
-    ["traps", "M38 38l12-3 12 3-5 12H43z"],
-    ["rear_delts", "M27 44c-5 1-8 5-8 10l7 1 4-9z M73 44c5 1 8 5 8 10l-7 1-4-9z"],
-    ["lats", "M32 52l11-2 2 26-9-4z M68 52l-11-2-2 26 9-4z"],
-    ["triceps", "M19 56l7 1-1 16-7-2z M81 56l-7 1 1 16 7-2z"],
-    ["lower_back", "M44 74h12v18H44z"],
-    ["glutes", "M34 94c5-3 11-3 15 0v12c-5 3-11 3-15 0z M51 94c4-3 10-3 15 0v12c-4 3-10 3-15 0z"],
-    ["hamstrings", "M34 109l10 1v28l-8 2z M66 109l-10 1v28l8 2z"],
-    ["calves", "M35 145l8 1-1 26-6 2z M65 145l-8 1 1 26 6 2z"],
-    ["forearms", "M18 73l7 2-2 20-7-2z M82 73l-7 2 2 20 7-2z"],
-  ],
-};
-const BODY_OUTLINE = "M50 8c6 0 10 5 10 11s-4 11-10 11-10-5-10-11 4-11 10-11zM35 34h30c9 1 15 6 16 14l3 26 1 22-6 2-5-24-1 12 2 44-3 44h-8l-4-46-4 0-4 46h-8l-3-44 2-44-1-12-5 24-6-2 1-22 3-26c1-8 7-13 16-14z";
+/* Anatomy polygons from react-body-highlighter (MIT, github.com/giavinh79/react-body-highlighter), 100x200 viewBox. */
+const BODY = {"front":[{"m":"chest","p":["51.8 41.6 51 55.1 58 58 67.8 55.5 70.6 47.3 62 41.6","29.8 46.5 31.4 55.5 40.8 58 48.2 55.1 47.8 42 37.6 42"]},{"m":"obliques","p":["68.6 63.3 67.3 57.1 58.8 59.6 60 64.1 60.4 83.3 65.7 78.8 66.5 69.8","33.9 78.4 33.1 71.8 31 63.3 32.2 57.1 40.8 59.2 39.2 63.3 39.2 83.7"]},{"m":"abs","p":["56.3 59.2 58 64.1 58.4 78 58.4 92.7 56.3 98.4 55.1 104.1 51.4 107.8 51 84.5 50.6 67.3 51 57.1","43.7 58.8 48.6 57.1 49 67.3 48.6 84.5 48.2 107.3 44.5 103.7 40.8 91.4 40.8 78.4 41.2 64.5"]},{"m":"biceps","p":["16.7 68.2 18 71.4 22.9 66.1 29 53.9 27.8 49.4 20.4 55.9","71.4 49.4 70.2 54.7 76.3 66.1 81.6 71.8 82.9 69 78.8 55.5"]},{"m":"triceps","p":["69.4 55.5 69.4 61.6 75.9 72.7 77.6 70.2 75.5 67.3","22.4 69.4 29.8 55.5 29.8 60.8 22.9 73.1"]},{"m":"neck","p":["55.5 23.7 50.6 33.5 50.6 39.2 61.6 40 70.6 44.9 69.4 36.7 63.3 35.1 58.4 30.6","29 44.9 30.2 37.1 36.3 35.1 41.2 30.2 44.5 24.5 49 33.9 48.6 39.2 38 39.6"]},{"m":"front_deltoids","p":["78.4 53.1 79.6 47.8 79.2 41.2 75.9 38 71 36.3 72.2 42.9 71.4 47.3","28.2 47.3 21.2 53.1 20 47.8 20.4 40.8 24.5 37.1 28.6 37.1 26.9 43.3"]},{"m":"head","p":["42.4 2.9 40 11.8 42 19.6 46.1 23.3 49.8 25.3 54.7 22.4 57.6 19.2 59.2 10.2 57.1 2.4 49.8 0"]},{"m":"abductors","p":["52.7 110.2 54.3 124.9 60 110.2 62 100 64.9 94.3 60 92.7 56.7 104.5","47.8 110.6 44.9 125.3 42 115.9 40.4 113.1 39.6 107.3 38 102.4 34.7 93.9 39.6 92.2 41.6 99.2 43.7 105.3"]},{"m":"quadriceps","p":["34.7 98.8 37.1 108.2 37.1 127.8 34.3 137.1 31 132.7 29.4 120 28.2 111.4 29.4 100.8 32.2 94.7","63.3 105.7 64.5 100 66.9 94.7 70.2 101.2 71 111.8 68.2 133.1 65.3 137.6 62.4 128.6 62 111.4","38.8 129.4 38.4 112.2 41.2 118.4 44.5 129.4 42.9 135.1 40 146.1 36.3 146.5 35.5 140","59.6 145.7 55.5 129 60.8 113.9 61.2 130.2 64.1 139.6 62.9 146.5","32.7 138.4 26.5 145.7 25.7 136.7 25.7 127.3 26.9 114.3 29.4 133.5","71.8 113.1 73.9 124.1 73.9 140.4 72.7 145.7 66.5 138.4 70.2 133.5"]},{"m":"knees","p":["33.9 140 34.7 143.3 35.5 147.3 36.3 151 35.1 156.7 29.8 156.7 27.3 152.7 27.3 147.3 30.2 144.1","65.7 140 72.2 147.8 72.2 152.2 69.8 157.1 64.9 156.7 62.9 151"]},{"m":"calves","p":["71.4 160.4 73.5 153.5 76.7 161.2 79.6 167.8 78.4 187.8 79.6 195.5 74.7 195.5","24.9 194.7 27.8 164.9 28.2 160.4 26.1 154.3 24.9 157.6 22.4 161.6 20.8 167.8 22 188.2 20.8 195.5","72.7 195.1 69.8 159.2 65.3 158.4 64.1 162.4 64.1 165.3 65.7 177.1","35.5 158.4 35.9 162.4 35.9 166.9 35.1 172.2 35.1 176.7 32.2 182 30.6 187.3 26.9 194.7 27.3 187.8 28.2 180.4 28.6 175.5 29 169.8 29.8 164.1 30.2 158.8"]},{"m":"forearm","p":["6.1 88.6 10.2 75.1 14.7 70.2 16.3 74.3 19.2 73.5 4.5 97.6 0 100","84.5 69.8 83.3 73.5 80 73.1 95.1 98.4 100 100.4 93.5 89.4 89.8 76.3","77.6 72.2 77.6 77.6 80.4 84.1 85.3 89.8 92.2 101.2 94.7 99.6","6.9 101.2 13.5 90.6 18.8 84.1 21.6 77.1 21.2 71.8 4.9 98.8"]}],"back":[{"m":"head","p":["50.6 0 46 0.9 40.9 5.5 40.4 12.8 45.1 20 55.7 20 59.1 13.6 59.6 4.7 55.7 1.3"]},{"m":"trapezius","p":["44.7 21.7 47.7 21.7 47.2 38.3 47.7 64.7 38.3 53.2 35.3 40.9 31.1 36.6 39.1 33.2 43.8 27.2","52.3 21.7 55.7 21.7 56.6 27.2 60.9 32.8 68.9 36.6 64.7 40.4 61.7 53.2 52.3 64.7 53.2 38.3"]},{"m":"back_deltoids","p":["29.4 37 23 39.1 17.4 44.3 18.3 53.6 24.3 49.4 27.2 46.4","71.1 37 78.3 39.6 82.6 44.7 81.7 53.6 74.9 48.9 72.3 45.1"]},{"m":"upper_back","p":["31.1 38.7 28.1 48.9 28.5 55.3 34 75.3 47.2 71.1 47.2 66.4 36.6 54 33.6 41.3","68.9 38.7 71.9 49.4 71.5 56.2 66 75.3 52.8 71.1 52.8 66.4 63.4 54.5 66.4 41.7"]},{"m":"triceps","p":["26.8 49.8 17.9 55.7 14.5 72.3 16.6 81.7 21.7 63.8 26.8 55.7","73.6 50.2 82.1 55.7 86 73.2 83.4 82.1 77.9 63 73.2 55.7","26.8 58.3 26.8 68.5 23 75.3 19.1 77.4 22.6 65.5","72.8 58.3 77 64.7 80.4 77.4 76.6 75.3 72.8 68.9"]},{"m":"lower_back","p":["47.7 72.8 34.5 77 35.3 83.4 49.4 102.1 46.8 83","52.3 72.8 65.5 77 64.7 83.4 50.6 102.1 53.2 83.8"]},{"m":"forearm","p":["86.4 75.7 91.1 83.4 93.2 94 100 106.4 96.2 104.3 88.1 89.4 84.3 83.8","13.6 75.7 8.9 83.8 6.8 93.6 0 106.4 3.8 104.3 12.3 88.5 15.7 83","81.3 79.6 77.4 77.9 79.1 84.7 91.1 103.8 93.2 108.9 94.5 104.7","18.7 79.6 22.1 77.9 20.9 84.3 9.4 103 6.8 108.5 5.1 104.7"]},{"m":"gluteal","p":["44.7 99.6 30.2 108.5 29.8 118.7 31.5 126 47.2 121.3 49.4 114.9","55.3 99.1 51.1 114.5 52.3 120.9 68.1 126 69.8 119.1 69.4 108.5"]},{"m":"abductor","p":["48.1 123 44.7 123 41.3 125.5 45.1 144.3 48.5 135.7 48.9 129.4","51.9 122.6 55.7 123.4 59.1 126 54.9 144.3 51.9 136.2 51.1 129.4"]},{"m":"hamstring","p":["28.9 122.1 31.1 129.4 36.6 126 35.3 135.3 34.5 150.2 29.4 158.3 28.9 146.8 27.7 141.3 27.2 131.5","71.5 121.7 69.4 128.9 63.8 126 65.5 136.6 66.4 150.2 71.1 158.3 71.5 147.7 72.8 142.1 73.6 131.9","38.7 125.5 44.3 146 40.4 166.8 36.2 152.8 37 135.3","61.7 125.5 63.4 136.2 64.3 153.2 60 166.8 56.2 146.4"]},{"m":"knees","p":["34.5 153.2 31.1 159.1 33.6 166.4 37.4 162.6","66.4 153.6 63 163 66.8 166.4 69.4 159.1"]},{"m":"calves","p":["29.4 160.4 28.5 167.2 24.7 179.6 23.8 192.8 25.5 197 28.5 193.2 29.8 180 31.9 171.1 31.9 166.8","37.4 165.1 35.3 167.7 33.2 171.9 31.1 180.4 30.2 191.9 34 200 38.7 190.6 39.1 168.9","63 165.1 61.3 168.5 61.7 190.6 66.4 199.6 70.6 191.9 68.9 179.6 66.8 170.2","70.6 160.4 72.3 168.5 75.7 179.1 76.6 192.8 74.5 196.6 72.3 193.6 70.6 179.6 68.1 168.1"]},{"m":"left_soleus","p":["28.5 195.7 30.2 195.7 33.6 201.7 30.6 220 28.5 213.6 26.8 198.3"]},{"m":"right_soleus","p":["69.8 195.7 71.9 195.7 73.6 198.3 71.9 213.2 70.2 219.6 67.2 202.1"]}]};
+const BODY_REGIONS = {"chest":["chest"],"obliques":["obliques"],"abs":["abs"],"biceps":["biceps"],"triceps":["triceps"],"front_deltoids":["front_delts","side_delts"],"abductors":["adductors"],"abductor":["adductors"],"quadriceps":["quads"],"calves":["calves"],"left_soleus":["calves"],"right_soleus":["calves"],"forearm":["forearms"],"trapezius":["traps"],"back_deltoids":["rear_delts","side_delts"],"upper_back":["lats"],"lower_back":["lower_back"],"gluteal":["glutes"],"hamstring":["hamstrings"]};
+const MM_RANK = ["no_data", "detraining", "calibrating", "approximate", "recovered", "maintaining", "productive", "trained", "fatigued", "overtraining", "depleted"];
 function muscleMap(groups, mode = "freshness", trained) {
-  const cls = m => {
+  const state = m => {
     if (trained) return trained.includes(m) ? "trained" : "no_data";
     const g = groups[m]; if (!g) return "no_data";
-    return mode === "load" ? g.load_status : g.freshness;
+    return (mode === "load" ? g.load_status : g.freshness) || "no_data";
   };
-  const side = (name, shapes) => `<figure style="margin:0"><svg viewBox="0 0 100 190" role="img" aria-label="${name} muscle map">
-    <defs><pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" fill="var(--surface-3)"/><line x1="0" y1="0" x2="0" y2="4" stroke="var(--text-3)" stroke-width="1.5"/></pattern></defs>
-    <path class="mm-base" d="${BODY_OUTLINE}"/>${shapes.map(([m, d]) => `<path class="mm ${cls(m)}" d="${d}"><title>${esc(fmt.sport(m))}: ${esc(fmt.sport(cls(m)))}</title></path>`).join("")}</svg>
-    <figcaption class="cap" style="text-align:center">${name}</figcaption></figure>`;
-  return `<div class="muscle-map">${side("Front", MUSCLE_SHAPES.front)}${side("Back", MUSCLE_SHAPES.back)}</div>`;
+  const region = r => (BODY_REGIONS[r] || []).map(state).sort((a, b) => MM_RANK.indexOf(b) - MM_RANK.indexOf(a))[0];
+  const side = (name, parts) => `<figure style="margin:0"><svg viewBox="-2 -2 104 204" role="img" aria-label="${name} muscle map">
+    <defs><pattern id="hatch" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="3" fill="var(--surface-3)"/><line x1="0" y1="0" x2="0" y2="3" stroke="var(--text-3)" stroke-width="1"/></pattern></defs>
+    ${parts.map(({ m, p }) => { const st = BODY_REGIONS[m] ? region(m) : null; const label = (BODY_REGIONS[m] || []).map(x => fmt.sport(x)).join(", ");
+      return p.map(pts => `<polygon class="mm ${st ? esc(st) : "mm-base"}" points="${pts}">${st ? `<title>${esc(label)}: ${esc(fmt.sport(st))}</title>` : ""}</polygon>`).join(""); }).join("")}</svg>
+    <figcaption class="cap" style="text-align:center;margin-top:6px">${name}</figcaption></figure>`;
+  return `<div class="muscle-map">${side("Front", BODY.front)}${side("Back", BODY.back)}</div>`;
 }
 
 /* ---------- workout steps (Bevel step list) ---------- */

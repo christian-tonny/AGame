@@ -19,7 +19,7 @@ const csv = v => (v || "").split(",").map(x => x.trim()).filter(Boolean);
 AG.sheets["edit-athlete"] = () => formSheet("Athlete", [
   { name: "display_name", label: "Name", value: P.display_name, full: true },
   { name: "sex", label: "Sex (for TRIMP constants)", type: "select", value: P.sex || "", options: [["", "Not set"], ["female", "Female"], ["male", "Male"]] },
-  { name: "birth_year", label: "Birth year", type: "number", value: P.birth_year, min: 1900, max: 2100, hint: "Used for biological age only — never for HR max" },
+  { name: "birth_year", label: "Birth year", type: "number", value: P.birth_year, min: 1900, max: 2100, hint: "Used for biological age only, never for HR max" },
   { name: "height_cm", label: "Height (cm)", type: "number", value: P.height_cm, min: 50, max: 260 },
 ], v => save("PATCH", "profile", { athlete: { display_name: v.display_name, sex: v.sex || null, birth_year: v.birth_year, height_cm: v.height_cm } }, "Athlete saved"));
 
@@ -74,7 +74,7 @@ AG.sheets["edit-appearance"] = () => {
   const opts = DESTS.map(d => [d.id, d.label]);
   formSheet("Appearance", [
     { name: "theme", label: "Theme", type: "select", value: ui.theme || "system", options: [["system", "System"], ["dark", "Dark"], ["light", "Light"]] },
-    { name: "app_icon", label: "App icon", type: "select", value: ui.app_icon || "default", options: [["default", "Dark (default)"], ["light", "Light"], ["orange", "Orange"]], hint: "Applied at the next build; re-add to home screen on iOS" },
+    { name: "app_icon", label: "App icon", type: "select", value: ui.app_icon || "default", options: [["default", "Orange (default)"], ["dark", "Dark"], ["light", "Light"]], hint: "Applied at the next build; re-add to home screen on iOS" },
     ...[0, 1, 2, 3].map(i => ({ name: "tab" + i, label: `Tab ${i + 1}`, type: "select", value: tabs[i] || DESTS[i].id, options: opts })),
   ], v => {
     const t = [v.tab0, v.tab1, v.tab2, v.tab3].filter((x, i, a) => x && a.indexOf(x) === i);
@@ -127,7 +127,7 @@ AG.sheets["edit-coach"] = () => {
     { name: "language", label: "Language", type: "select", value: c.language || "standard", options: [["simple", "Simple"], ["standard", "Standard"], ["technical", "Technical"]] },
     { name: "mode", label: "Default mode", type: "select", value: c.mode || "adaptive", options: [["fast", "Fast"], ["thinking", "Thinking"], ["adaptive", "Adaptive"]] },
     { name: "hr", label: "Let Coach read health records", type: "checkbox", value: c.include_health_records, full: true },
-  ], v => save("PATCH", "profile", { coach: { personality: v.personality, language: v.language, mode: v.mode, include_health_records: v.hr } }, "Coach settings saved"), { intro: "Tone changes wording only — facts stay the same." });
+  ], v => save("PATCH", "profile", { coach: { personality: v.personality, language: v.language, mode: v.mode, include_health_records: v.hr } }, "Coach settings saved"), { intro: "Tone changes the wording only. The facts stay the same." });
 };
 
 AG.sheets["edit-companion"] = () => {
@@ -156,7 +156,7 @@ function goalFields(g = {}) {
   return [
     { name: "type", label: "Type", type: "select", value: g.type || "distance", options: GOAL_TYPES },
     { name: "title", label: "Title", value: g.title, required: true },
-    { name: "target", label: `Target (in the type's unit — ${goalUnit(g.type || "distance") || "count"})`, type: "number", step: "any", value: goalIn(g.type, g.target), full: true, hint: "Distance in " + fmt.distUnit() + ", time in hours, record in minutes, weight in " + fmt.wUnit() },
+    { name: "target", label: `Target (${goalUnit(g.type || "distance") || "count"})`, type: "number", step: "any", value: goalIn(g.type, g.target), full: true, hint: "Distance in " + fmt.distUnit() + ", time in hours, record in minutes, weight in " + fmt.wUnit() },
     { name: "period", label: "Period", type: "select", value: g.period_type || (g.end && !g.partial ? "by_date" : "week"), options: [["week", "Week"], ["month", "Month"], ["year", "Year"], ["by_date", "By date"]] },
     { name: "end", label: "End date (for by date)", type: "date", value: g.end },
     { name: "sport", label: "Sport", type: "select", value: g.sport || "", options: [["", "Any"], ["run", "Run"], ["ride", "Ride"], ["swim", "Swim"], ["walk", "Walk"], ["strength", "Strength"]] },
@@ -191,7 +191,7 @@ AG.sheets["act-edit"] = id => {
     { name: "title", label: "Title", value: ann.title || a.name, full: true },
     { name: "race", label: "Race", type: "checkbox", value: a.race },
     { name: "private", label: "Private", type: "checkbox", value: a.private },
-    { name: "tags", label: "Tags (comma-separated)", value: (ann.tags || []).join(", "), full: true, hint: "e.g. tempo, intervals, threshold — used for pace calibration" },
+    { name: "tags", label: "Tags (comma-separated)", value: (ann.tags || []).join(", "), full: true, hint: "e.g. tempo, intervals, threshold. Used for pace calibration" },
   ], v => save("POST", "entries/load.annotations", { workout_id: id, title: v.title === a.name && !ann.title ? null : v.title, race: v.race, private: v.private, tags: csv(v.tags) }, "Activity updated"),
   { intro: "An overlay on the HealthKit workout. The imported record itself never changes." });
 };
@@ -258,14 +258,14 @@ AG.sheets["measure-add"] = () => formSheet("Add measurement", [
   }
   const val = v.type === "weight_kg" || v.type === "lean_mass_kg" ? kgOut(v.v) : v.v;
   return save("POST", "entries/body.measurements", { t, type: v.type, v: val }, "Measurement saved");
-}, { intro: "Saved as your own entry next to HealthKit data. Readings only — no categories or diagnosis." });
+}, { intro: "Saved as your own entry next to HealthKit data. Readings only, with no categories or diagnosis." });
 
 /* ================= Health records ================= */
 AG.sheets["record-add"] = () => formSheet("Add health record", [
   { name: "title", label: "Title", required: true, full: true }, { name: "date", label: "Date", type: "date", value: todayISO(), required: true },
   { name: "type", label: "Type", type: "select", value: "lab", options: [["lab", "Lab results"], ["note", "Note"], ["document", "Document"], ["imaging", "Imaging"], ["vaccination", "Vaccination"]] },
   { name: "provider", label: "Provider", full: true },
-  { name: "markers", label: "Biomarkers — one per line: name, value, unit, low-high", type: "textarea", full: true, placeholder: "Albumin, 45, g/L, 35-50\nCRP, 0.8, mg/L, 0-5" },
+  { name: "markers", label: "Biomarkers, one per line: name, value, unit, low-high", type: "textarea", full: true, placeholder: "Albumin, 45, g/L, 35-50\nCRP, 0.8, mg/L, 0-5" },
   { name: "text", label: "Notes", type: "textarea", full: true, rows: 2 },
   { name: "file", type: "html", full: true, html: `<label>Attach a file (PDF or image, 15 MB max)<input type="file" id="rec-file" accept=".pdf,.png,.jpg,.jpeg,.txt"></label>` },
 ], async v => {
@@ -365,7 +365,7 @@ AG.sheets["race-edit"] = id => {
   const r = id ? D.plans.races.races.find(x => x.id === id) : null;
   formSheet(r ? "Edit race" : "Add race", [
     { name: "name", label: "Name", value: r ? r.name : "", required: true, full: true }, { name: "date", label: "Date", type: "date", value: r ? r.date : addDays(todayISO(), 60), required: true },
-    { name: "priority", label: "Priority", type: "select", value: r ? r.priority : "B", options: [["A", "A — goal race (taper)"], ["B", "B"], ["C", "C — training race"]] },
+    { name: "priority", label: "Priority", type: "select", value: r ? r.priority : "B", options: [["A", "A: goal race, with taper"], ["B", "B"], ["C", "C: training race"]] },
     { name: "dist", label: `Distance (${fmt.distUnit()})`, type: "number", step: "any", value: r && r.distance_m ? +(r.distance_m / (IMPERIAL ? 1609.344 : 1000)).toFixed(2) : null },
     { name: "goal", label: "Goal time (h:mm:ss)", value: r && r.goal_time_s ? fmt.dur(r.goal_time_s) : "" }, { name: "location", label: "Location", value: r ? r.location : "" },
   ], v => {
@@ -385,7 +385,7 @@ AG.sheets["plan-new"] = () => formSheet("New training plan", [
   { name: "mode", label: "Mode", type: "select", value: "race", options: [["race", "Race"], ["build", "Build"], ["maintain", "Maintain"]] },
   { name: "race_id", label: "Target race", type: "select", value: "", options: [["", "None"]].concat(D.plans.races.races.map(r => [r.id, r.name])) },
   { name: "start", label: "Start", type: "date", value: todayISO() }, { name: "end", label: "End", type: "date" },
-  { name: "phases", label: "Phases — one per line: name, start, end, focus", type: "textarea", full: true, placeholder: "Base, YYYY-MM-DD, YYYY-MM-DD, aerobic volume\nBuild, YYYY-MM-DD, YYYY-MM-DD, threshold" },
+  { name: "phases", label: "Phases, one per line: name, start, end, focus", type: "textarea", full: true, placeholder: "Base, YYYY-MM-DD, YYYY-MM-DD, aerobic volume\nBuild, YYYY-MM-DD, YYYY-MM-DD, threshold" },
 ], v => {
   let phases;
   try { phases = (v.phases || "").split("\n").map(l => l.trim()).filter(Boolean).map(l => { const [name, start, end, focus] = l.split(",").map(x => x.trim()); if (!/^\d{4}-\d\d-\d\d$/.test(start || "") || !/^\d{4}-\d\d-\d\d$/.test(end || "")) throw new Error(`Phase dates must be YYYY-MM-DD: "${l}"`); return { name, start, end, focus: focus || null }; }); }
@@ -397,7 +397,7 @@ AG.sheets["plan-new"] = () => formSheet("New training plan", [
 AG.sheets["routine-new"] = () => {
   const row = (kind = "work") => `<div class="step-row" data-step><select aria-label="Step" data-k>${["warmup", "work", "recovery", "cooldown"].map(k => `<option ${k === kind ? "selected" : ""} value="${k}">${fmt.sport(k)}</option>`).join("")}</select>
     <input aria-label="Minutes" placeholder="min" inputmode="decimal" data-min><select aria-label="Target" data-t><option value="open">Open</option><option value="zone">HR zone</option><option value="hr">HR range</option><option value="pace">Pace range</option><option value="power">Power</option></select>
-    <button type="button" class="icon-btn" data-rm aria-label="Remove step">×</button><input aria-label="Target low / zone" placeholder="low or zone" data-lo style="grid-column:2"><input aria-label="Target high" placeholder="high" data-hi></div>`;
+    <button type="button" class="icon-btn" data-rm aria-label="Remove step">${icon("x")}</button><input aria-label="Target low / zone" placeholder="low or zone" data-lo style="grid-column:2"><input aria-label="Target high" placeholder="high" data-hi></div>`;
   formSheet("New routine", [
     { name: "name", label: "Name", required: true, full: true }, { name: "sport", label: "Sport", type: "select", value: "run", options: [["run", "Run"], ["ride", "Ride"], ["swim", "Swim"], ["row", "Row"], ["strength", "Strength"]] },
     { name: "guiding", label: "Guide by", type: "select", value: "hr", options: [["hr", "Heart rate"], ["pace", "Pace"], ["power", "Power"], ["rpe", "RPE"]] },

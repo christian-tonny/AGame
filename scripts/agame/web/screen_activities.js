@@ -5,7 +5,7 @@ AG.screens.activities = {
   title: "Activities",
   render() {
     const tab = chipVal("act-tab", "list");
-    return `${seg("act-tab", [["list", "Activities"], ["social", "Social"]], tab)}<div style="margin-top:12px">${tab === "social" ? socialView() : activityList()}</div>`;
+    return `${tabs("act-tab", [["list", "Activities"], ["social", "Social"]], tab)}${tab === "social" ? socialView() : activityList()}`;
   },
 };
 
@@ -23,11 +23,15 @@ function activityList() {
   if (!D.activities.list.length) return empty(STR.noData, `Workouts appear after ${AGENT} imports them from HealthKit`);
   const groups = {};
   rows.slice(0, 200).forEach(a => { const k = a.date.slice(0, 7); (groups[k] = groups[k] || []).push(a); });
-  return `<div class="stack"><label class="sr" for="act-q">Search activities</label><input id="act-q" type="search" placeholder="Search activities" value="${esc(uiGet("act-q", ""))}" data-search>
+  return `<div class="stack"><div class="toolbar"><label class="sr" for="act-q">Search activities</label><input id="act-q" type="search" placeholder="Search" value="${esc(uiGet("act-q", ""))}" data-search>
     ${chips("act-fam", [["all", "All"], ["run", "Run"], ["ride", "Ride"], ["strength", "Strength"], ["walk", "Walk"], ["swim", "Swim"], ["other", "Other"]], fam)}
-    ${chips("act-flt", [["any", "Any"], ["gps", "With map"], ["pr", "PRs"], ["planned", "Planned"], ["unplanned", "Unplanned"]], flt, "accent")}
-    ${Object.keys(groups).length ? Object.entries(groups).map(([m, list]) => `<div>${sectionTitle(fmt.date(m + "-15", { month: "long", year: "numeric" }), `<span class="cap">${list.length}</span>`)}<div class="card tight"><div class="list">${list.map(feedCard).join("")}</div></div></div>`).join("") : empty("No activities match")}</div>`;
+    <select data-select="act-flt" aria-label="Filter">${[["any", "Any activity"], ["gps", "With map"], ["pr", "With PRs"], ["planned", "Planned"], ["unplanned", "Unplanned"]].map(([v, l]) => `<option value="${v}" ${v === flt ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+    ${Object.keys(groups).length ? Object.entries(groups).map(([m, list]) => `<div class="card">${cardHead(fmt.date(m + "-15", { month: "long", year: "numeric" }), `<span class="small muted">${list.length}</span>`)}<div class="list">${list.map(feedCard).join("")}</div></div>`).join("") : empty("No activities match")}</div>`;
 }
+document.addEventListener("change", e => {
+  const sel = e.target.closest("[data-select]");
+  if (sel) { uiSet("chip:" + sel.dataset.select, sel.value); rerender(); }
+});
 document.addEventListener("input", e => {
   if (e.target.matches("[data-search]")) { uiSet("act-q", e.target.value); clearTimeout(AG._sq); AG._sq = setTimeout(() => { rerender(); const el = $("#act-q"); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }, 250); }
 });
@@ -35,27 +39,26 @@ document.addEventListener("input", e => {
 function feedCard(a) {
   const det = D.activities.details[a.id];
   const prs = det && det.efforts ? det.efforts.filter(e => e.pr).length : 0;
-  const statsRow = a.family === "run" || a.family === "walk" || a.family === "ride"
-    ? `${stat("Distance", fmt.dist(a.distance_m))}${stat(a.family === "ride" ? "Speed" : "Pace", a.family === "ride" ? fmt.n(a.speed_kph, 1) + " km/h" : fmt.pace(a.pace_s_per_km))}${stat("Time", fmt.dur(a.moving_s || a.duration_s))}`
-    : `${stat("Time", fmt.dur(a.duration_s))}${stat("Avg HR", isNum(a.avg_hr) ? fmt.n(a.avg_hr) : "—", isNum(a.avg_hr) ? "bpm" : "")}${stat("Load", a.load && isNum(a.load.v) ? fmt.n(a.load.v) : "—")}`;
-  return `<a class="li" href="#/activity/${encodeURIComponent(a.id)}" style="align-items:flex-start">
+  const main = a.family === "run" || a.family === "walk" ? [fmt.dist(a.distance_m), fmt.pace(a.pace_s_per_km), fmt.dur(a.moving_s || a.duration_s)]
+    : a.family === "ride" ? [fmt.dist(a.distance_m), fmt.n(a.speed_kph, 1) + " km/h", fmt.dur(a.moving_s || a.duration_s)]
+    : ["", isNum(a.avg_hr) ? fmt.n(a.avg_hr) + " bpm" : "", fmt.dur(a.duration_s)];
+  return `<a class="li" href="#/activity/${encodeURIComponent(a.id)}">
     <span class="icon-dot" style="color:${sportColor(a.family)}">${sportIcon(a.family)}</span>
-    <div class="grow"><div class="spread"><div class="t">${esc(a.name)}</div>${prs ? badge(prs + " PR", "accent") : a.planned ? badge(fmt.sport(a.planned.compliance || "planned"), a.planned.compliance === "as_planned" ? "ok" : "info") : ""}</div>
-      <div class="s">${fmt.dow(a.date)} ${fmt.date(a.date)} · ${fmt.time(a.start)}${a.private ? " · private" : ""}</div>
-      <div class="stats-grid s3" style="margin-top:8px">${statsRow}</div></div>
-    ${det && det.map ? `<span class="hide-m">${routeThumb(det.map)}</span>` : ""}</a>`;
+    <div class="grow"><div class="t">${esc(a.name)}</div><div class="s">${fmt.dow(a.date)} ${fmt.date(a.date)} · ${fmt.time(a.start)}${a.private ? " · Private" : ""}</div></div>
+    <div class="feed-stats hide-m">${main.map(x => `<span>${x}</span>`).join("")}</div>
+    <div class="r feed-r">${prs ? badge(prs === 1 ? "PR" : prs + " PRs", "accent") : `<span class="hide-d">${esc(main[0] || main[2])}</span><span class="hide-m small muted" style="font-weight:500">${a.load && isNum(a.load.v) ? fmt.n(a.load.v) + " load" : ""}</span>`}</div></a>`;
 }
 
 function socialView() {
   const S = D.social;
   return `<div class="cols"><div class="stack">
-    <div class="card"><h3>${icon("social")} Feed</h3>${S.posts.length ? `<div class="list">${S.posts.map(p => `<div class="li"><div class="grow"><div class="t">${esc(p.title || "Post")}</div><div class="s">${esc(p.source)}</div></div></div>`).join("")}</div>` : empty(STR.noFeed, "Comparing with other runners comes later, on real data only. No names or ranks are ever generated.")}</div>
-    <div class="card"><h3>Clubs</h3>${S.clubs.length ? `<div class="list">${S.clubs.map(c => `<div class="li"><div class="grow"><div class="t">${esc(c.name || c.id)}</div><div class="s">${esc(c.source)}</div></div></div>`).join("")}</div>` : empty(STR.noClubs)}</div>
-    <div class="card"><h3>Leaderboards</h3>${empty(STR.noLeaderboard, "Segment leaderboards render only from supplied participant data")}</div></div>
-    <div class="stack"><div class="card"><h3>My challenges</h3>${S.own_challenges.length ? S.own_challenges.map(goalRow).join("") : empty(STR.noChallenges, "Distance, time or session goals for a period show here as personal challenges")}</div>
-    <div class="card"><h3>Group challenges</h3>${S.challenges.length ? `<div class="list">${S.challenges.map(c => `<div class="li"><div class="grow"><div class="t">${esc(c.name || c.id)}</div><div class="s">${esc(c.source)}</div></div></div>`).join("")}</div>` : empty(STR.noChallenges)}</div>
-    <div class="card"><h3>Events & races</h3>${S.races.length ? `<div class="list">${S.races.map(r => `<div class="li"><span class="badge ${r.priority === "A" ? "accent" : ""}">${esc(r.priority || "")}</span><div class="grow"><div class="t">${esc(r.name)}</div><div class="s">${fmt.date(r.date, { day: "numeric", month: "short", year: "numeric" })}${r.distance_m ? " · " + fmt.dist(r.distance_m) : ""}</div></div></div>`).join("")}</div>` : empty("No events added")}</div>
-    <div class="card"><h3>Leaderboard integrity</h3><p class="small">${D.routes.integrity.checked} of your activities checked · ${D.routes.integrity.own.length} flagged</p>${D.routes.integrity.own.map(f => `<div class="li"><div class="grow"><div class="t">${fmt.date(f.date)}</div><div class="s">${esc(f.reason)}</div></div>${badge("Flagged", "warn")}</div>`).join("")}</div></div></div>`;
+    <div class="card">${cardHead("Feed")}${S.posts.length ? `<div class="list">${S.posts.map(p => `<div class="li"><div class="grow"><div class="t">${esc(p.title || "Post")}</div><div class="s">${esc(p.source)}</div></div></div>`).join("")}</div>` : empty(STR.noFeed, "Comparing with other runners comes later, on real data only. No names or ranks are ever generated.")}</div>
+    <div class="card">${cardHead("Clubs")}${S.clubs.length ? `<div class="list">${S.clubs.map(c => `<div class="li"><div class="grow"><div class="t">${esc(c.name || c.id)}</div><div class="s">${esc(c.source)}</div></div></div>`).join("")}</div>` : empty(STR.noClubs)}</div>
+    <div class="card">${cardHead("Leaderboards")}${empty(STR.noLeaderboard, "Segment leaderboards render only from supplied participant data")}</div></div>
+    <div class="stack"><div class="card">${cardHead("My challenges")}${S.own_challenges.length ? S.own_challenges.map(goalRow).join("") : empty(STR.noChallenges, "Distance, time or session goals for a period show here as personal challenges")}</div>
+    <div class="card">${cardHead("Group challenges")}${S.challenges.length ? `<div class="list">${S.challenges.map(c => `<div class="li"><div class="grow"><div class="t">${esc(c.name || c.id)}</div><div class="s">${esc(c.source)}</div></div></div>`).join("")}</div>` : empty(STR.noChallenges)}</div>
+    <div class="card">${cardHead("Events & races")}${S.races.length ? `<div class="list">${S.races.map(r => `<div class="li"><span class="prio ${esc(r.priority || "")}">${esc(r.priority || "–")}</span><div class="grow"><div class="t">${esc(r.name)}</div><div class="s">${fmt.date(r.date, { day: "numeric", month: "short", year: "numeric" })}${r.distance_m ? " · " + fmt.dist(r.distance_m) : ""}</div></div></div>`).join("")}</div>` : empty("No events added")}</div>
+    <div class="card">${cardHead("Leaderboard integrity", `<span class="small muted">${D.routes.integrity.own.length} of ${D.routes.integrity.checked} flagged</span>`)}${D.routes.integrity.own.map(f => `<div class="li"><div class="grow"><div class="t">${fmt.date(f.date)}</div><div class="s">${esc(f.reason)}</div></div>${badge("Flagged", "warn")}</div>`).join("")}</div></div></div>`;
 }
 
 /* ---------------- activity detail ---------------- */
@@ -68,10 +71,11 @@ AG.screens.activity = {
     const det = D.activities.details[a.id];
     if (!det) return `<div class="card">${feedCard(a)}</div>${empty("Details not embedded", `Only the latest ${D.meta.detail_max_activities} activities carry full streams in this snapshot`)}`;
     const tab = chipVal("act-detail-tab", "summary");
-    const head = `<div class="card"><div class="row"><span class="icon-dot" style="color:${sportColor(a.family)}">${sportIcon(a.family)}</span><div class="grow"><div class="cap">${fmt.dateLong(a.date)} · ${fmt.time(a.start)}${det.device ? " · " + esc(det.device) : ""}</div><div style="font-size:20px;font-weight:800">${esc(det.insights.headline)}</div></div>${editBtn("act-edit", a.id, "Quick edit")}</div>${a.race ? `<div class="row" style="margin-top:8px">${badge("Race", "accent")}${a.private ? badge("Private", "") : ""}</div>` : a.private ? `<div style="margin-top:8px">${badge("Private", "")}</div>` : ""}</div>`;
-    const tabs = seg("act-detail-tab", [["summary", "Summary"], ["analysis", "Analysis"], ["chat", "Chat"], ["planned", "Planned"]], tab);
+    const tags = [a.race ? badge("Race", "accent") : "", a.private ? badge("Private", "est") : ""].join("");
+    const head = `<div class="page-head"><div class="row" style="gap:12px;min-width:0"><span class="icon-dot" style="color:${sportColor(a.family)}">${sportIcon(a.family)}</span><div class="grow"><h2 class="page-title" style="font-size:22px">${esc(det.insights.headline)}</h2><div class="small muted">${fmt.dateLong(a.date)} · ${fmt.time(a.start)}${det.device ? " · " + esc(det.device) : ""}</div></div></div><div class="row">${tags}${editBtn("act-edit", a.id, "Edit")}</div></div>`;
+    const tb = tabs("act-detail-tab", [["summary", "Summary"], ["analysis", "Analysis"], ["chat", "Chat"], ["planned", "Planned"]], tab);
     const body = { summary: actSummary, analysis: actAnalysis, chat: actChat, planned: actPlanned }[tab](a, det);
-    return `<div class="stack">${head}<div>${tabs}</div>${body}</div>`;
+    return `${head}${tb}${body}`;
   },
   after() { drawCharts(); },
 };
@@ -89,31 +93,30 @@ function actSummary(a, det) {
   const sets = (D.strength.sessions || []).find(s => s.workout_id === a.id);
   const trained = sets && sets.muscles ? sets.muscles : null;
   const rc = det.race;
-  const race = rc ? `<div class="card" style="border-color:color-mix(in srgb,var(--accent) 45%,var(--line))"><div class="spread"><h3 style="margin:0">${icon("records")} Race${rc.race_name ? " · " + esc(rc.race_name) : ""}</h3>${rc.splits_verdict ? badge(fmt.sport(rc.splits_verdict.verdict) + " split", rc.splits_verdict.verdict === "negative" ? "ok" : "") : ""}</div>
-    <div class="stats-grid s3" style="margin-top:10px">${stat("Finish", fmt.dur(rc.finish_s))}${stat("Pace", fmt.pace(rc.pace_s_per_km))}${stat("Distance", fmt.dist(rc.distance_m))}</div>
+  const race = rc ? `<div class="card">${cardHead("Race" + (rc.race_name ? " · " + esc(rc.race_name) : ""), rc.splits_verdict ? badge(fmt.sport(rc.splits_verdict.verdict) + " split", rc.splits_verdict.verdict === "negative" ? "ok" : "est") : "", rc.prediction ? `The prediction uses your ${fmt.distLabel(rc.prediction.source.distance_m)} on ${fmt.date(rc.prediction.source.date)}, from efforts before race day only.` : "")}
+    <div class="stats-grid s3">${stat("Finish", fmt.dur(rc.finish_s))}${stat("Pace", fmt.pace(rc.pace_s_per_km))}${stat("Distance", fmt.dist(rc.distance_m))}</div>
     <table class="tbl" style="margin-top:8px"><tr><th></th><th class="r">Time</th><th class="r">Pace</th><th class="r">Δ</th></tr>
     ${rc.goal_time_s ? `<tr><td>Your goal</td><td class="r">${fmt.dur(rc.goal_time_s)}</td><td class="r">${fmt.pace(rc.planned_pace_s_per_km)}</td><td class="r">${fmt.signed(rc.vs_goal_s, 0)} s</td></tr>` : ""}
-    ${rc.prediction ? `<tr><td>Prediction going in ${badge("Estimate", "est")}</td><td class="r">${fmt.dur(rc.prediction.time_s)}</td><td class="r">${fmt.pace(rc.prediction.pace_s_per_km)}</td><td class="r">${fmt.signed(rc.vs_prediction_s, 0)} s</td></tr>` : ""}</table>
-    <p class="cap">${rc.prediction ? `Prediction from your ${fmt.distLabel(rc.prediction.source.distance_m)} on ${fmt.date(rc.prediction.source.date)} (efforts before race day only).` : "No qualifying efforts before race day for a prediction."}${rc.goal_time_s ? "" : " Add a goal time to the race in Plan to compare."}</p></div>` : "";
+    ${rc.prediction ? `<tr><td>Prediction</td><td class="r">${fmt.dur(rc.prediction.time_s)}</td><td class="r">${fmt.pace(rc.prediction.pace_s_per_km)}</td><td class="r">${fmt.signed(rc.vs_prediction_s, 0)} s</td></tr>` : ""}</table>
+</div>` : "";
   return `<div class="cols"><div class="stack">${race}
-    <div class="card"><div class="stats-grid s4">${grid}</div>${a.load ? `<div class="spread" style="margin-top:8px">${estBadge(a.load)}<span class="cap">${esc(a.load.method === "trimp_stream" ? "Load from heart-rate stream" : a.load.method === "trimp_avg_hr" ? "Load from average HR (estimate)" : a.load.method === "session_rpe" ? "Load from RPE (estimate)" : a.load.note || "")}</span>${prov(a.load, "Load")}</div>` : ""}</div>
-    ${p ? `<div class="card" style="background:${p.compliance === "as_planned" ? "color-mix(in srgb,var(--ok) 10%,var(--surface))" : "var(--surface)"}"><div class="spread"><h3 style="margin:0">Compliance</h3>${badge(fmt.sport(p.compliance || "planned"), p.compliance === "as_planned" ? "ok" : "warn")}</div>
-      <table class="tbl" style="margin-top:8px"><tr><th></th><th class="r">Plan</th><th class="r">Actual</th></tr>
+    <div class="card">${cardHead("Overview", a.load ? prov(a.load, "Load") : "")}<div class="stats-grid s4">${grid}</div></div>
+    ${p ? `<div class="card">${cardHead("Plan vs actual", badge(fmt.sport(p.compliance || "planned"), p.compliance === "as_planned" ? "ok" : "warn"))}
+      <table class="tbl"><tr><th></th><th class="r">Plan</th><th class="r">Actual</th></tr>
       <tr><td>Duration</td><td class="r">${fmt.dur(p.duration_s)}</td><td class="r">${fmt.dur(p.actual_duration_s)}</td></tr>
       <tr><td>Load</td><td class="r">${isNum(p.planned_load) ? fmt.n(p.planned_load) : "—"}</td><td class="r">${isNum(p.actual_load) ? fmt.n(p.actual_load) : "—"}</td></tr>
       ${p.distance_m || p.actual_distance_m ? `<tr><td>Distance</td><td class="r">${p.distance_m ? fmt.dist(p.distance_m) : "—"}</td><td class="r">${fmt.dist(p.actual_distance_m)}</td></tr>` : ""}</table></div>` : ""}
-    ${ins.facts.length ? `<div class="card"><h3>${icon("coach")} Activity summary</h3>${ins.facts.map(f => `<div class="li"><div class="grow small">${esc(f.text)}</div></div>`).join("")}<p class="cap">Built only from this activity's measured data and your own history.</p></div>` : ""}
-    <div class="card"><h3>Improvements</h3>${ins.improvements.length ? ins.improvements.map(i => insightCard(i.text, null)).join("") : `<p class="small muted">Solid execution — no flags from your data.</p>`}</div>
-    ${trained ? `<div class="card"><h3>Muscles trained</h3>${muscleMap({}, "freshness", trained)}</div>` : a.family === "strength" ? `<div class="card">${empty(STR.noExercise, "Log sets in the Strength Builder to see trained muscles")}</div>` : ""}
+    ${ins.facts.length || ins.improvements.length ? `<div class="card">${cardHead("Summary", "", "Built only from this activity's measured data and your own history.")}<div class="list">${ins.facts.map(f => `<div class="li"><div class="grow small">${esc(f.text)}</div></div>`).join("")}${ins.improvements.map(i => `<div class="li"><span class="spark-dot">${icon("coach")}</span><div class="grow small" style="font-weight:600">${esc(i.text)}</div></div>`).join("")}</div></div>` : ""}
+    ${trained ? `<div class="card">${cardHead("Muscles trained")}${muscleMap({}, "freshness", trained)}</div>` : a.family === "strength" ? `<div class="card">${empty(STR.noExercise, "Log sets in the Strength Builder to see trained muscles")}</div>` : ""}
     </div><div class="stack">
     <div class="card">${det.map ? mapSvg(det.map, { label: "Activity route" }) : empty(STR.noRoute, a.family === "strength" ? "Indoor session" : "No GPS samples")}</div>
-    ${zones ? `<div class="card"><h3>Heart-rate zones</h3>${zones.map((z, i) => `<div class="row" style="gap:8px;margin:4px 0"><span class="small" style="width:28px">${z.name}</span><div class="bar thin" style="flex:1"><i style="width:${z.s / ztot * 100}%;background:var(--z${i + 1})"></i></div><span class="small num" style="width:52px;text-align:right">${fmt.mins(z.s)}</span></div>`).join("")}</div>` : ""}
-    ${det.efforts && det.efforts.length ? `<div class="card"><h3>Best efforts</h3><div class="list">${det.efforts.map(e => `<div class="li"><div class="grow"><div class="t">${fmt.distLabel(e.distance_m)}</div></div><div class="r">${fmt.dur(e.time_s)} ${e.pr ? badge("PR", "accent") : e.rank ? badge("#" + e.rank, "") : ""}</div></div>`).join("")}</div></div>` : ""}
-    ${det.matched ? `<div class="card"><h3>Matched runs</h3><p class="small">Rank ${det.matched.rank} of ${det.matched.count} on this ${det.matched.match_kind === "approximate" ? "distance (approximate match)" : "route"}</p>
+    ${zones ? `<div class="card">${cardHead("Heart-rate zones")}${zones.map((z, i) => `<div class="row" style="gap:8px;margin:4px 0"><span class="small" style="width:28px">${z.name}</span><div class="bar thin" style="flex:1"><i style="width:${z.s / ztot * 100}%;background:var(--z${i + 1})"></i></div><span class="small num" style="width:52px;text-align:right">${fmt.mins(z.s)}</span></div>`).join("")}</div>` : ""}
+    ${det.efforts && det.efforts.length ? `<div class="card">${cardHead("Best efforts")}<div class="list">${det.efforts.map(e => `<div class="li"><div class="grow"><div class="t">${fmt.distLabel(e.distance_m)}</div></div><div class="r">${fmt.dur(e.time_s)} ${e.pr ? badge("PR", "accent") : e.rank ? badge("#" + e.rank, "") : ""}</div></div>`).join("")}</div></div>` : ""}
+    ${det.matched ? `<div class="card">${cardHead("Matched runs", `<span class="small muted">${det.matched.rank} of ${det.matched.count}${det.matched.match_kind === "approximate" ? " · approximate" : ""}</span>`)}
       ${chart({ id: "matched", label: "Pace on matched runs", x: det.matched.rows.map(r => r.date), h: 140, invertY: true,
         series: [{ name: "Pace", color: "var(--accent)", values: det.matched.rows.map(r => r.pace_s_per_km), dots: true }], fmtX: d => fmt.date(d), fmtY: v => fmt.pace(v), fmtYAxis: v => fmt.pace(v, false) })}</div>` : ""}
-    ${det.weather ? `<div class="card"><h3>Weather</h3><div class="stats-grid s3">${stat("Temp", fmt.temp(det.weather.temp_c))}${stat("Humidity", fmt.pct(det.weather.humidity_pct))}${stat("Wind", isNum(det.weather.wind_kph) ? fmt.n(det.weather.wind_kph) + " km/h" : "—")}</div><p class="cap">${esc(det.weather.conditions || "")} · from imported data${det.weather.source ? " (" + esc(det.weather.source) + ")" : ""}</p></div>` : ""}
-    <div class="card"><h3>How did it feel?</h3>${rpeForm(a, det)}</div></div></div>`;
+    ${det.weather ? `<div class="card">${cardHead("Weather", det.weather.conditions ? `<span class="small muted">${esc(det.weather.conditions)}</span>` : "")}<div class="stats-grid s3">${stat("Temp", fmt.temp(det.weather.temp_c))}${stat("Humidity", fmt.pct(det.weather.humidity_pct))}${stat("Wind", isNum(det.weather.wind_kph) ? fmt.n(det.weather.wind_kph) + " km/h" : "—")}</div></div>` : ""}
+    <div class="card">${cardHead("How did it feel?")}${rpeForm(a, det)}</div></div></div>`;
 }
 
 function rpeForm(a, det) {
@@ -126,7 +129,7 @@ function rpeForm(a, det) {
     <div><div class="small muted" style="margin-bottom:6px">Feel</div><div class="rpe-faces">${faces.map(([v, l]) => `<button type="button" data-feel="${v}" aria-pressed="${String(ann.feel) === v}">${l}</button>`).join("")}</div></div>
     <label>Comment <textarea name="comment" rows="2" placeholder="How the session went">${esc(ann.comment || "")}</textarea></label>
     <label class="row" style="flex-direction:row;align-items:center"><input type="checkbox" name="private" ${ann.private ? "checked" : ""} style="width:auto"> Private</label>
-    <button class="btn" type="submit" ${AG.online ? "" : "disabled"}>Save</button>${offlineNote()}</form>`;
+    ${AG.online ? `<div class="actions" style="margin-top:0"><button class="btn" type="submit">Save</button></div>` : ""}</form>`;
 }
 document.addEventListener("click", e => {
   const f = e.target.closest("[data-feel]");
@@ -155,24 +158,24 @@ function actAnalysis(a, det) {
     ["gct_ms", "Ground contact", "var(--warn)", v => fmt.n(v) + " ms"], ["vo_cm", "Vertical oscillation", "var(--warn)", v => fmt.n(v, 1) + " cm"],
     ["stride_m", "Stride length", "var(--warn)", v => fmt.n(v, 2) + " m"], ["temp_c", "Temperature", "var(--warn)", v => fmt.temp(v)],
   ].filter(m => s[m[0]] && s[m[0]].some(isNum));
-  const charts = metrics.map(([k, name, color, f, inv]) => `<div class="card"><div class="spread"><h3 style="margin:0">${esc(name)}</h3>${k === "gap_s_per_km" ? badge("Approximate", "est") : ""}</div>
+  const charts = metrics.map(([k, name, color, f, inv]) => `<div class="card">${cardHead(esc(name), k === "gap_s_per_km" ? badge("Approximate", "est") : "")}
     ${chart({ id: "an-" + k, label: name + " over the activity", x: xs, h: 130, invertY: !!inv, series: [{ name, color, values: s[k], area: k === "elev_m", areaOpacity: .18 }],
       fmtX: fx, fmtXAxis: fxa, fmtY: f, fmtYAxis: inv ? v => fmt.pace(v, false) : undefined,
       band: k === "hr" && det.zones ? { low: det.zones[1].low, high: det.zones[1].high, color: "color-mix(in srgb, var(--z2) 14%, transparent)", name: "Zone 2" } : null })}</div>`).join("");
   const sp = (IMPERIAL ? det.splits_mi : det.splits) || [];
   const fastest = Math.min(...sp.filter(x => !x.partial).map(x => x.pace_s_per_km).filter(isNum));
-  const splits = sp.length ? `<div class="card"><div class="spread"><h3 style="margin:0">Splits</h3>${det.verdict ? `<span class="split-verdict ${det.verdict.verdict === "negative" ? "up" : det.verdict.verdict === "positive" ? "down" : "muted"}">${esc(det.verdict.verdict)} split</span>` : ""}</div>
-    <table class="tbl" style="margin-top:6px"><tr><th>${IMPERIAL ? "Mi" : "Km"}</th><th>Pace</th><th></th><th class="r">Elev</th><th class="r">HR</th></tr>${sp.map(x => `<tr><td>${x.partial ? fmt.distNum(x.distance_m, 2) : x.n}</td><td>${fmt.pace(x.pace_s_per_km, false)}</td><td style="width:40%"><div class="pace-bar" style="width:${isNum(x.pace_s_per_km) ? Math.max(8, Math.min(100, fastest / x.pace_s_per_km * 100)) : 0}%"></div></td><td class="r">${isNum(x.elev_delta_m) ? fmt.signed(IMPERIAL ? x.elev_delta_m * 3.28 : x.elev_delta_m, 0) : "—"}</td><td class="r">${isNum(x.avg_hr) ? x.avg_hr : "—"}</td></tr>`).join("")}</table>
-    ${det.verdict ? `<p class="cap">Second half ${fmt.signed(det.verdict.diff_pct, 1)}% vs first half.</p>` : ""}</div>` : "";
-  const laps = det.laps.length ? `<div class="card"><h3>Laps</h3><table class="tbl"><tr><th>#</th><th class="r">Time</th><th class="r">Distance</th><th class="r">Pace</th><th class="r">HR</th></tr>${det.laps.map(l => `<tr><td>${l.n}</td><td class="r">${fmt.dur(l.time_s)}</td><td class="r">${fmt.dist(l.distance_m)}</td><td class="r">${fmt.pace(l.pace_s_per_km, false)}</td><td class="r">${l.avg_hr || "—"}</td></tr>`).join("")}</table></div>` : "";
-  const iv = det.intervals.length ? `<div class="card"><h3>Intervals</h3><table class="tbl"><tr><th>Rep</th><th class="r">Time</th><th class="r">Distance</th><th class="r">Pace</th><th class="r">HR</th></tr>${det.intervals.map(l => `<tr><td>${l.n}</td><td class="r">${fmt.dur(l.time_s)}</td><td class="r">${fmt.dist(l.distance_m)}</td><td class="r">${fmt.pace(l.pace_s_per_km, false)}</td><td class="r">${l.avg_hr || "—"}</td></tr>`).join("")}</table><p class="cap">Detected from sustained pace above your threshold.</p></div>` : "";
-  const seg = det.segments && det.segments.length ? `<div class="card"><h3>Multisport</h3><table class="tbl">${det.segments.map(sg => `<tr><td>${esc(fmt.sport(sg.sport))}</td><td class="r">${fmt.dur(sg.end_s - sg.start_s)}</td><td class="r">${fmt.dist(sg.distance_m)}</td></tr>`).join("")}</table></div>` : "";
-  const curves = `${det.hr_curve ? `<div class="card"><h3>Heart-rate curve</h3>${chart({ id: "hrc", type: "curve", label: "Best average heart rate by duration", points: det.hr_curve, h: 140, name: "Best avg HR", color: "var(--bad)", fmtY: v => fmt.n(v) + " bpm" })}</div>` : ""}
-    <div class="card"><h3>Power curve</h3>${det.power_curve ? chart({ id: "pwc", type: "curve", label: "Best average power by duration", points: det.power_curve, h: 140, name: "Best avg power", color: "var(--accent)", fmtY: v => fmt.n(v) + " W" }) : `<p class="small muted">${STR.noPower} — power curve omitted.</p>`}</div>`;
-  const extra = `<div class="card"><div class="stats-grid s4">${stat("Efficiency factor", isNum(det.efficiency_factor) ? fmt.n(det.efficiency_factor, 2) : "—")}${stat("Intensity", isNum(det.intensity_pct) ? det.intensity_pct + "%" : "—")}${stat("HR drift", isNum(det.decoupling_pct) ? fmt.n(det.decoupling_pct, 1) + "%" : "—")}${stat("HR recovery", isNum(det.hr_recovery) ? det.hr_recovery + " bpm" : "—")}</div>
-    <p class="cap">Efficiency = speed per heartbeat${det.gap ? " (grade-adjusted)" : ""}. Intensity vs ${esc(det.intensity_basis || "threshold")}. HR drift = first vs second half pace:HR.</p></div>`;
-  const pz = det.pace_zones ? `<div class="card"><h3>Pace zones</h3>${det.pace_zones.map((z, i) => `<div class="row" style="gap:8px;margin:4px 0"><span class="small" style="width:28px">${z.name}</span><div class="bar thin" style="flex:1"><i style="width:${z.s / (det.pace_zones.reduce((t, x) => t + x.s, 0) || 1) * 100}%;background:var(--z${i + 1})"></i></div><span class="small num" style="width:52px;text-align:right">${fmt.mins(z.s)}</span></div>`).join("")}</div>` : "";
-  return `<div class="cols"><div class="stack">${charts}</div><div class="stack">${extra}${splits}${laps}${iv}${seg}${pz}${curves}${det.map ? `<div class="card"><h3>Replay</h3>${flyover(det)}</div>` : ""}</div></div>`;
+  const splits = sp.length ? `<div class="card">${cardHead("Splits", det.verdict ? badge(`${fmt.sport(det.verdict.verdict)} split · ${fmt.signed(det.verdict.diff_pct, 1)}%`, det.verdict.verdict === "negative" ? "ok" : det.verdict.verdict === "positive" ? "warn" : "est") : "")}
+    <table class="tbl"><tr><th>${IMPERIAL ? "Mi" : "Km"}</th><th>Pace</th><th></th><th class="r">Elev</th><th class="r">HR</th></tr>${sp.map(x => `<tr><td>${x.partial ? fmt.distNum(x.distance_m, 2) : x.n}</td><td>${fmt.pace(x.pace_s_per_km, false)}</td><td style="width:40%"><div class="pace-bar" style="width:${isNum(x.pace_s_per_km) ? Math.max(8, Math.min(100, fastest / x.pace_s_per_km * 100)) : 0}%"></div></td><td class="r">${isNum(x.elev_delta_m) ? fmt.signed(IMPERIAL ? x.elev_delta_m * 3.28 : x.elev_delta_m, 0) : "—"}</td><td class="r">${isNum(x.avg_hr) ? x.avg_hr : "—"}</td></tr>`).join("")}</table>
+</div>` : "";
+  const laps = det.laps.length ? `<div class="card">${cardHead("Laps")}<table class="tbl"><tr><th>#</th><th class="r">Time</th><th class="r">Distance</th><th class="r">Pace</th><th class="r">HR</th></tr>${det.laps.map(l => `<tr><td>${l.n}</td><td class="r">${fmt.dur(l.time_s)}</td><td class="r">${fmt.dist(l.distance_m)}</td><td class="r">${fmt.pace(l.pace_s_per_km, false)}</td><td class="r">${l.avg_hr || "—"}</td></tr>`).join("")}</table></div>` : "";
+  const iv = det.intervals.length ? `<div class="card">${cardHead("Intervals", "", "Detected from sustained pace above your threshold.")}<table class="tbl"><tr><th>Rep</th><th class="r">Time</th><th class="r">Distance</th><th class="r">Pace</th><th class="r">HR</th></tr>${det.intervals.map(l => `<tr><td>${l.n}</td><td class="r">${fmt.dur(l.time_s)}</td><td class="r">${fmt.dist(l.distance_m)}</td><td class="r">${fmt.pace(l.pace_s_per_km, false)}</td><td class="r">${l.avg_hr || "—"}</td></tr>`).join("")}</table></div>` : "";
+  const seg = det.segments && det.segments.length ? `<div class="card">${cardHead("Multisport")}<table class="tbl">${det.segments.map(sg => `<tr><td>${esc(fmt.sport(sg.sport))}</td><td class="r">${fmt.dur(sg.end_s - sg.start_s)}</td><td class="r">${fmt.dist(sg.distance_m)}</td></tr>`).join("")}</table></div>` : "";
+  const curves = `${det.hr_curve ? `<div class="card">${cardHead("Heart-rate curve")}${chart({ id: "hrc", type: "curve", label: "Best average heart rate by duration", points: det.hr_curve, h: 140, name: "Best avg HR", color: "var(--bad)", fmtY: v => fmt.n(v) + " bpm" })}</div>` : ""}
+    ${det.power_curve ? `<div class="card">${cardHead("Power curve")}${chart({ id: "pwc", type: "curve", label: "Best average power by duration", points: det.power_curve, h: 140, name: "Best avg power", color: "var(--accent)", fmtY: v => fmt.n(v) + " W" })}</div>` : ""}`;
+  const extra = `<div class="card">${cardHead("Efficiency", "", `Efficiency factor is speed per heartbeat${det.gap ? ", grade-adjusted" : ""}. Intensity compares with your ${esc(det.intensity_basis || "threshold")}. HR drift compares the pace-to-heart-rate ratio of the first and second half.`)}<div class="stats-grid s4">${stat("Efficiency", isNum(det.efficiency_factor) ? fmt.n(det.efficiency_factor, 2) : "—")}${stat("Intensity", isNum(det.intensity_pct) ? det.intensity_pct + "%" : "—")}${stat("HR drift", isNum(det.decoupling_pct) ? fmt.n(det.decoupling_pct, 1) + "%" : "—")}${stat("HR recovery", isNum(det.hr_recovery) ? det.hr_recovery + " bpm" : "—")}</div>
+</div>`;
+  const pz = det.pace_zones ? `<div class="card">${cardHead("Pace zones")}${det.pace_zones.map((z, i) => `<div class="row" style="gap:8px;margin:4px 0"><span class="small" style="width:28px">${z.name}</span><div class="bar thin" style="flex:1"><i style="width:${z.s / (det.pace_zones.reduce((t, x) => t + x.s, 0) || 1) * 100}%;background:var(--z${i + 1})"></i></div><span class="small num" style="width:52px;text-align:right">${fmt.mins(z.s)}</span></div>`).join("")}</div>` : "";
+  return `<div class="cols"><div class="stack">${charts}</div><div class="stack">${extra}${splits}${laps}${iv}${seg}${pz}${curves}${det.map ? `<div class="card">${cardHead("Replay")}${flyover(det)}</div>` : ""}</div></div>`;
 }
 
 function flyover(det) {
@@ -210,13 +213,13 @@ function flyover(det) {
 function actChat(a, det) {
   return `<div class="card">${AG.llm ? "" : empty(STR.noCoachLLM, "Set AGAME_LLM_PROVIDER on your server to ask questions about this activity. Answers use only AGame's computed data.")}
     <div class="chat" style="margin-top:12px">${det.insights.facts.map(f => `<div class="msg coach">${esc(f.text)}</div>`).join("")}${det.insights.improvements.map(f => `<div class="msg coach">${esc(f.text)}</div>`).join("")}</div>
-    <form class="composer" style="margin-top:12px" data-coach-form data-activity="${esc(a.id)}"><label class="sr" for="ac-q">Ask about this activity</label><textarea id="ac-q" name="q" placeholder="Ask about this activity" ${AG.online ? "" : "disabled"}></textarea><div class="spread"><span class="cap">Grounded in this activity's data</span><button class="btn sm" ${AG.online ? "" : "disabled"}>Ask</button></div></form></div>`;
+    <form class="composer" style="margin-top:12px" data-coach-form data-activity="${esc(a.id)}"><label class="sr" for="ac-q">Ask about this activity</label><textarea id="ac-q" name="q" placeholder="Ask about this activity" ${AG.online ? "" : "disabled"}></textarea><div class="spread"><span></span><button class="btn sm" ${AG.online ? "" : "disabled"}>Ask</button></div></form></div>`;
 }
 
 function actPlanned(a, det) {
   const p = det.planned;
   if (!p) return `<div class="card">${empty("Unplanned", "No planned session matched this activity")}</div>`;
-  return `<div class="card"><div class="spread"><div><div class="tag">${esc(p.label || p.type)}</div><b style="font-size:18px">${esc(p.title || p.label)}</b></div>${badge(fmt.sport(p.compliance), p.compliance === "as_planned" ? "ok" : "warn")}</div>
+  return `<div class="card">${cardHead(esc(p.title || p.label), badge(fmt.sport(p.compliance), p.compliance === "as_planned" ? "ok" : "warn"))}
     ${p.objective ? `<p class="small muted">${esc(p.objective)}</p>` : ""}${stepList(p.steps)}
     <table class="tbl" style="margin-top:10px"><tr><th></th><th class="r">Plan</th><th class="r">Actual</th></tr><tr><td>Duration</td><td class="r">${fmt.dur(p.duration_s)}</td><td class="r">${fmt.dur(p.actual_duration_s)}</td></tr><tr><td>Load</td><td class="r">${isNum(p.planned_load) ? fmt.n(p.planned_load) : "—"}</td><td class="r">${isNum(p.actual_load) ? fmt.n(p.actual_load) : "—"}</td></tr></table></div>`;
 }

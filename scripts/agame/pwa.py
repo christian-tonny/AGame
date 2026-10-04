@@ -8,10 +8,16 @@ from pathlib import Path
 from agame.paths import REPO_ROOT
 
 ICON_THEMES = {
-    "default": {"bg": (11, 11, 12), "fg": (252, 82, 0)},
-    "light": {"bg": (243, 243, 245), "fg": (232, 74, 0)},
-    "orange": {"bg": (252, 82, 0), "fg": (255, 255, 255)},
+    "default": {"bg": (255, 107, 26), "bg2": (232, 67, 10), "fg": (255, 255, 255)},
+    "dark": {"bg": (24, 24, 27), "bg2": (11, 11, 12), "fg": (252, 82, 0)},
+    "light": {"bg": (255, 255, 255), "bg2": (238, 238, 242), "fg": (232, 74, 0)},
 }
+ICON_THEMES["orange"] = ICON_THEMES["default"]
+
+# The AGame mark on a 100-unit tile: an "A" whose crossbar is a heartbeat line. web/app.js draws the same paths.
+LOGO_LEGS = [(28, 78), (50, 22), (72, 78)]
+LOGO_PULSE = [(17, 62), (35, 62), (41, 51), (49, 72), (55, 62), (83, 62)]
+LOGO_LEG_W, LOGO_PULSE_W, LOGO_RADIUS = 10, 6.5, 23
 
 
 def _png(width, height, pixel_fn):
@@ -28,50 +34,47 @@ def _png(width, height, pixel_fn):
 
 
 def icon_png(size, theme="default", maskable=False):
-    """A rounded square with an upward chevron mark ('A')."""
+    """The AGame mark on a rounded tile (full bleed and inset when maskable), antialiased."""
     t = ICON_THEMES.get(theme, ICON_THEMES["default"])
-    bg, fg = t["bg"], t["fg"]
-    r = 0 if maskable else size * 0.22
-    pad = size * (0.28 if maskable else 0.2)
-    lw = size * 0.11
+    k = size / 100.0
+    inset = 0.8 if maskable else 1.0
+    off = size * (1 - inset) / 2
 
-    def inside_round(x, y):
-        cx, cy = x + 0.5, y + 0.5
-        if r == 0:
-            return True
-        for ox, oy in ((r, r), (size - r, r), (r, size - r), (size - r, size - r)):
-            if (cx < r or cx > size - r) and (cy < r or cy > size - r):
-                if (cx - ox) ** 2 + (cy - oy) ** 2 > r * r and ((cx < r and ox == r) or (cx > size - r and ox == size - r)) and ((cy < r and oy == r) or (cy > size - r and oy == size - r)):
-                    return False
-        return True
-
-    apex = (size / 2, pad)
-    left = (pad, size - pad)
-    right = (size - pad, size - pad)
+    def pt(p):
+        return (off + p[0] * k * inset, off + p[1] * k * inset)
+    segs = [(pt(a), pt(b), LOGO_LEG_W * k * inset / 2) for a, b in zip(LOGO_LEGS, LOGO_LEGS[1:])]
+    segs += [(pt(a), pt(b), LOGO_PULSE_W * k * inset / 2) for a, b in zip(LOGO_PULSE, LOGO_PULSE[1:])]
+    r = 0 if maskable else LOGO_RADIUS * k
 
     def dist_seg(px, py, a, b):
         ax, ay = a
         bx, by = b
         dx, dy = bx - ax, by - ay
         tt = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)))
-        qx, qy = ax + tt * dx, ay + tt * dy
-        return ((px - qx) ** 2 + (py - qy) ** 2) ** 0.5
+        return ((px - ax - tt * dx) ** 2 + (py - ay - tt * dy) ** 2) ** 0.5
 
-    bar_y = size * 0.62
+    def tile_cov(cx, cy):
+        if r == 0:
+            return 1.0
+        qx = min(max(cx, r), size - r)
+        qy = min(max(cy, r), size - r)
+        d = ((cx - qx) ** 2 + (cy - qy) ** 2) ** 0.5
+        return max(0.0, min(1.0, r - d + 0.5))
 
     def pix(x, y):
-        if not inside_round(x, y):
-            return (0, 0, 0, 0)
         cx, cy = x + 0.5, y + 0.5
-        d = min(dist_seg(cx, cy, apex, left), dist_seg(cx, cy, apex, right))
-        on = d <= lw / 2
-        if not on and abs(cy - bar_y) <= lw / 2.4:
-            # cross bar between the legs
-            span = (cy - pad) / (size - 2 * pad)
-            half = span * (size / 2 - pad)
-            on = abs(cx - size / 2) <= half
-        c = fg if on else bg
-        return (c[0], c[1], c[2], 255)
+        a = tile_cov(cx, cy)
+        if a <= 0:
+            return (0, 0, 0, 0)
+        g = (cx + cy) / (2 * size)
+        bg = [t["bg"][c] + (t["bg2"][c] - t["bg"][c]) * g for c in range(3)]
+        cov = 0.0
+        for p0, p1, hw in segs:
+            cov = max(cov, min(1.0, max(0.0, hw - dist_seg(cx, cy, p0, p1) + 0.5)))
+            if cov >= 1.0:
+                break
+        col = [round(bg[c] + (t["fg"][c] - bg[c]) * cov) for c in range(3)]
+        return (col[0], col[1], col[2], round(255 * a))
     return _png(size, size, pix)
 
 
