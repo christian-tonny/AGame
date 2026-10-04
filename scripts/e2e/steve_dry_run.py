@@ -8,7 +8,7 @@ Morning 3 (2026-10-04): sleep has not synced yet (must build, degraded, and say 
 
 For each morning: update_from_healthkit.py -> validate_data.py -> build_dashboard.py, then read
 dist/build_report.json and dist/morning_summary.json like Steve would. Prints a JSON log and exits
-non-zero if any step behaves differently from the runbook (docs/deployment.md).
+non-zero if any step behaves differently from the runbook (README.md §4).
 
   python3 scripts/e2e/steve_dry_run.py [--keep DIR]
 """

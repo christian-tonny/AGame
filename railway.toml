@@ -1,5 +1,5 @@
 # Railway deployment. Attach a volume mounted at /data (Service → Volumes) and set the
-# AGAME_* variables from .env.example in the service's Variables tab. See docs/deployment.md.
+# AGAME_* variables from .env.example in the service's Variables tab. See README.md §7.
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"

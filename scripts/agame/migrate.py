@@ -1,6 +1,6 @@
 """In-memory schema migrations.
 
-Policy (docs/data-contract.md): every file carries schema_version (semver).
+Policy (README.md §5): every file carries schema_version (semver).
 - Same major, lower minor/patch -> migrate in memory with a warning, then validate.
 - Version newer than this code knows -> hard failure (never guess).
 Migrations are pure functions registered per (domain, from_version).

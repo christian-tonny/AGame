@@ -1,6 +1,6 @@
 """Zones, session load (Banister TRIMP), Fitness/Fatigue/Form, Cardio Status, weekly effort.
 
-Definitions (docs/calculations.md):
+Definitions (README.md §6):
 - HR zones from HR max (5-zone) or LTHR (7-zone); never from an age formula.
 - Session load = Banister TRIMP from the HR stream. Avg-HR TRIMP when only averages exist
   (estimated). Session-RPE x minutes x k when no HR at all (estimated). Else missing.

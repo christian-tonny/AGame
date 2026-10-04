@@ -1,6 +1,6 @@
 """Idempotent merge of a HealthKit batch (produced by Steve) into the data directory.
 
-Batch format: docs/data-contract.md §"HealthKit batch". Key rules:
+Batch format: README.md §5 "HealthKit batch". Key rules:
 - Every record carries a source_id. Known source_id + identical content -> skipped.
 - Known source_id + different content -> conflict, NOT applied (imports are immutable).
 - Idempotency key = date + sha256(sorted source IDs). A batch already imported is a no-op.

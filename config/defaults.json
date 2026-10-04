@@ -1,5 +1,5 @@
 {
-  "_doc": "Algorithm parameters. Not personal data. profile.json may override any key under 'overrides'. See docs/calculations.md.",
+  "_doc": "Algorithm parameters. Not personal data. profile.json may override any key under 'overrides'. See README.md §6.",
   "version": "1.0.0",
   "sync": {"agent_name": "Steve", "_doc": "Name shown in the UI for the agent that imports HealthKit data each morning."},
   "periods": {
