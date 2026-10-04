@@ -7,6 +7,7 @@ from datetime import timedelta
 from agame import timeutil as tu
 from agame.compute import metric
 from agame.compute import load as loadm
+from agame.compute import memo
 from agame.compute import privacy
 from agame.compute.ctx import RUN_SPORTS, mean, median, sport_family
 from agame.values import mv
@@ -157,6 +158,18 @@ def splits(ctx, w, unit_m=1000.0):
     return out
 
 
+def source_splits(w):
+    """Splits the source measured itself (Apple's 1 km workout segments), used when the workout has no samples."""
+    out = []
+    for sp in w.get("splits") or []:
+        t = sp.get("moving_s") or sp.get("duration_s")
+        d = sp.get("distance_m")
+        out.append({"n": sp["index"] + 1, "distance_m": d, "time_s": round(t, 1) if t else None,
+                    "pace_s_per_km": round(t / d * 1000.0, 1) if (t and d) else None, "avg_hr": round(sp["avg_hr"]) if sp.get("avg_hr") else None,
+                    "elev_delta_m": None, "partial": False, "source": "device"})
+    return out
+
+
 def split_verdict(ctx, w):
     s = w.get("samples") or {}
     pts = _clean(s.get("t"), s.get("dist_m"))
@@ -192,6 +205,11 @@ def gap_summary(ctx, w):
 
 
 def curve(ctx, w, key, durations):
+    sk = memo.samples_key(w)
+    return memo.get(f"curve:{sk}:{key}:{durations}" if sk else None, lambda: _curve(w, key, durations))
+
+
+def _curve(w, key, durations):
     s = w.get("samples") or {}
     pts = _clean(s.get("t"), s.get(key))
     if len(pts) < 10:
@@ -264,9 +282,10 @@ def laps(ctx, w):
     for i, lp in enumerate(ls):
         dur = lp["end_s"] - lp["start_s"]
         hr = [h for ti, h in hrp if lp["start_s"] <= ti <= lp["end_s"]]
+        avg = round(mean(hr)) if hr else (round(lp["avg_hr"]) if lp.get("avg_hr") else None)
         out.append({"n": i + 1, "time_s": round(dur), "distance_m": lp.get("distance_m"), "label": lp.get("label"),
                     "pace_s_per_km": round(dur / lp["distance_m"] * 1000) if lp.get("distance_m") else None,
-                    "avg_hr": round(mean(hr)) if hr else None})
+                    "avg_hr": avg})
     return out
 
 
@@ -367,7 +386,8 @@ def all_best_efforts(ctx):
         for D in dists if fam == "run" else ([1000, 5000, 10000, 20000, 40000] if fam == "ride" else [100, 400, 1000, 1500]):
             if (w.get("distance_m") or 0) < D:
                 continue
-            tt = best_effort_time(s.get("t"), s.get("dist_m"), D)
+            sk = memo.samples_key(w)
+            tt = memo.get(f"effort:{sk}:{D}" if sk else None, lambda: best_effort_time(s.get("t"), s.get("dist_m"), D))
             if tt:
                 out.setdefault(fam, {}).setdefault(D, []).append({"workout_id": w["source_id"], "date": w["_date"].isoformat(), "time_s": round(tt, 1),
                                                                     "pace_s_per_km": round(tt / D * 1000.0, 1), "name": w.get("name")})
@@ -537,8 +557,9 @@ def detail(ctx, w):
         "row": row(ctx, w, ws),
         "zones": loadm.workout_zones(ctx, w),
         "pace_zones": pace_zone_time(ctx, w),
-        "splits": splits(ctx, w) if w["_family"] in ("run", "walk") else [],
+        "splits": (splits(ctx, w) or source_splits(w)) if w["_family"] in ("run", "walk") else [],
         "splits_mi": splits(ctx, w, 1609.344) if w["_family"] in ("run", "walk") else [],
+        "has_samples": len((s.get("t") or [])) >= 2,
         "verdict": split_verdict(ctx, w) if w["_family"] == "run" else None,
         "laps": laps(ctx, w),
         "intervals": detect_intervals(ctx, w) if w["_family"] == "run" else [],

@@ -97,6 +97,29 @@ class Build(unittest.TestCase):
         self.assertNotEqual(subprocess.run(cli + ["--date", "not-a-date"], capture_output=True).returncode, 0)
 
 
+class Cache(unittest.TestCase):
+    def test_cached_build_is_byte_identical_to_an_uncached_one(self):
+        from agame.compute import memo
+        files = ("fitness_dashboard.html", "morning_summary.json", "weekly_review.json", "widgets.json")
+        out = {}
+        orig = memo.get
+        try:
+            memo.clear()
+            memo.get = lambda key, compute: compute()
+            d0 = Path(tempfile.mkdtemp(dir=_TMPROOT))
+            build(synthetic_dir(), d0, BUILD_DATE)
+            out["uncached"] = {f: (d0 / f).read_bytes() for f in files}
+        finally:
+            memo.get = orig
+        d1 = Path(tempfile.mkdtemp(dir=_TMPROOT))
+        build(synthetic_dir(), d1, BUILD_DATE)  # fills the cache
+        memo.clear()
+        build(synthetic_dir(), d1, BUILD_DATE)  # reads it back from dist/.cache
+        out["cached"] = {f: (d1 / f).read_bytes() for f in files}
+        self.assertTrue((d1 / ".cache" / "memo.json").is_file())
+        self.assertEqual(out["cached"], out["uncached"])
+
+
 class Honesty(unittest.TestCase):
     def test_missing_values_are_null_never_zero(self):
         for kind in ("synthetic", "empty"):

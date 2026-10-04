@@ -290,10 +290,12 @@ def validate_data(data_dir, build_date=None):
     for w in warnings:
         rep.warn("", "/", w)
     schemas = _schemas()
+    from agame.compute import memo
     for dom, payload in data.items():
-        errs = Validator(schemas[dom]).validate(payload)
-        for e in errs:
-            rep.err(_fname(dom), e.pointer, e.message)
+        key = f"schema:{dom}:{memo.digest(schemas[dom])}:{memo.digest(payload)}"
+        errs = memo.get(key, lambda: [[e.pointer, e.message] for e in Validator(schemas[dom]).validate(payload)])
+        for pointer, message in errs:
+            rep.err(_fname(dom), pointer, message)
     if rep.ok:
         semantic_checks(data, rep, build_date)
     return rep, data
