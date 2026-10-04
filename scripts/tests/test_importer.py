@@ -113,6 +113,26 @@ class Importer(unittest.TestCase):
         with self.assertRaises(BatchError):
             apply_batch(self.d, b)
 
+    def test_nutrition_records_need_source_ids(self):
+        b = day_batch("2026-10-02")
+        b["samples"]["nutrition"] = {"water": [{"t": "2026-10-02T08:00:00+02:00", "ml": 500, "source_id": None}]}
+        with self.assertRaises(BatchError):
+            apply_batch(self.d, b)
+
+    def test_batch_cannot_carry_user_entered_records(self):
+        b = day_batch("2026-10-02")
+        b["samples"]["body"][0]["kind"] = "user_entered"
+        with self.assertRaises(BatchError):
+            apply_batch(self.d, b)
+
+    def test_no_workout_today_is_not_missing(self):
+        b = day_batch("2026-10-02")
+        b["samples"]["workouts"] = []
+        apply_batch(self.d, b)
+        cur = json.loads((self.d / "current.json").read_text())
+        self.assertEqual(cur["domains"]["workouts"]["status"], "ok")
+        self.assertEqual(cur["domains"]["workouts"]["note"], "No new samples")
+
     def test_cli_exit_codes(self):
         f = self.d / "batch.json"
         f.write_text(json.dumps(day_batch("2026-10-02")))

@@ -71,7 +71,7 @@ def _degraded_reasons(snap):
         reasons.append("last night's sleep not synced yet")
     for dom in ("metrics", "sleep", "workouts"):
         st = ds["domains"].get(dom, {}).get("status")
-        if st in ("missing", "stale") and snap["meta"]["fixture"] != "empty":
+        if st in ("missing", "stale") and snap["meta"]["fixture"] != "empty" and not (dom == "sleep" and ds["sleep_missing"]):
             reasons.append(f"{dom}: {st}")
     return reasons
 

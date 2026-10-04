@@ -356,10 +356,10 @@ class Gen:
                 for hh in (8, 11, 15, 18):
                     if d == self.end and hh > 8:
                         break
-                    water.append({"t": _ts(self.day_dt(d, hh)), "ml": 500, "source_id": None, "kind": "user_entered"})
-                caffeine.append({"t": _ts(self.day_dt(d, 8, 15)), "mg": 95, "source_id": None, "kind": "user_entered"})
+                    water.append({"t": _ts(self.day_dt(d, hh)), "ml": 500, "source_id": f"manual-water-{d.isoformat()}-{hh}", "kind": "user_entered"})
+                caffeine.append({"t": _ts(self.day_dt(d, 8, 15)), "mg": 95, "source_id": f"manual-caffeine-{d.isoformat()}-am", "kind": "user_entered"})
                 if rng.random() < 0.3 and d != self.end:
-                    caffeine.append({"t": _ts(self.day_dt(d, 15, 30)), "mg": 95, "source_id": None, "kind": "user_entered"})
+                    caffeine.append({"t": _ts(self.day_dt(d, 15, 30)), "mg": 95, "source_id": f"manual-caffeine-{d.isoformat()}-pm", "kind": "user_entered"})
             day_i += 1
         # intraday HR for the last 3 days (stress / energy)
         for back in range(1, 4):

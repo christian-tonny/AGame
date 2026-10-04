@@ -76,9 +76,21 @@ def _check_batch(batch):
         for r in batch["samples"].get(dom) or []:
             if not isinstance(r, dict) or not r.get(key):
                 raise BatchError(f"{dom}: every record needs a {key}")
+    nut = batch["samples"].get("nutrition") or {}
+    for fld in ("water", "caffeine"):
+        for r in nut.get(fld) or []:
+            if not isinstance(r, dict) or not r.get("source_id"):
+                raise BatchError(f"nutrition.{fld}: every record needs a source_id")
+    for r in nut.get("meals") or []:
+        if not isinstance(r, dict) or not r.get("id") or not r.get("source_id"):
+            raise BatchError("nutrition.meals: every meal needs an id and a source_id")
     for f in batch["samples"].get("routes") or []:
         if not (f.get("properties") or {}).get("id"):
             raise BatchError("routes: every feature needs properties.id")
+    recs = [r for dom in ("sleep", "workouts", "body") for r in batch["samples"].get(dom) or []]
+    recs += [r for fld in ("meals", "water", "caffeine") for r in nut.get(fld) or []]
+    if any(isinstance(r, dict) and r.get("kind") == "user_entered" for r in recs):
+        raise BatchError("HealthKit batches cannot contain user_entered records; those are made in the app")
 
 
 def _merge_list(existing, incoming, key, label, summary):
@@ -218,13 +230,16 @@ def apply_batch(data_dir, batch, dry_run=False):
             if dom == "sleep":
                 received = any(n.get("date") == batch["date"] or (tu.parse_ts(n["end"]).date() == bdate) for n in new["sleep"]["nights"])
             prev = domains.get(dom, {})
+            event_based = dom in ("workouts", "body", "nutrition")  # nothing new is normal for these
+            if event_based and not received:
+                received = True
             domains[dom] = {
                 "last_sync": gen_at if dom in touched else prev.get("last_sync"),
                 "last_sample": new[dom].get("as_of") if dom in touched else prev.get("last_sample"),
                 "expected_for": batch["date"],
                 "received": bool(received),
                 "status": "ok" if received else ("partial" if dom in touched else "missing"),
-                "note": None if received else ("Sleep not synced yet" if dom == "sleep" else "No new samples"),
+                "note": ("No new samples" if dom not in touched else None) if received else ("Sleep not synced yet" if dom == "sleep" else "No new samples"),
             }
     counts = {k: v for k, v in summary["added"].items() if v}
     new["current"].setdefault("imports", []).append({"idempotency_key": key, "date": batch["date"], "at": gen_at, "counts": counts})

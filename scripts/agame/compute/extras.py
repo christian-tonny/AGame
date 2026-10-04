@@ -357,7 +357,10 @@ def data_status(ctx):
                     "source": p.get("source")}
     sleep_missing = ((cur.get("sleep") or {}).get("expected_for") == ctx.d.isoformat() and (cur.get("sleep") or {}).get("received") is False) \
         or (out["sleep"]["status"] == "missing" and out["sleep"]["received"] is False)
-    morning = max((v["last_sync"] for v in out.values() if v.get("last_sync")), default=None)
+    hk = ("metrics", "sleep", "workouts", "body", "nutrition")
+    imports = (ctx.data.get("current") or {}).get("imports") or []
+    morning = max([i["at"] for i in imports if i.get("at")] + [out[d]["last_sync"] for d in hk if out[d].get("last_sync")],
+                  key=lambda ts: tu.parse_ts(ts), default=None)
     synced_today = bool(morning and tu.local_date(morning, ctx.tz) == ctx.d)
     overall = "ok" if synced_today and not sleep_missing else ("partial" if synced_today else ("stale" if morning else "missing"))
     return {"domains": out, "last_sync": morning, "synced_today": synced_today, "sleep_missing": sleep_missing, "overall": overall}
