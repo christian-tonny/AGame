@@ -333,7 +333,7 @@ The Docker image holds code only, with no data and no secrets. Data lives on a v
    curl -fsS -X POST -H "Authorization: Bearer $AGAME_AGENT_TOKEN" -H "Content-Type: application/json" \
         --data @docs/examples/muse-v1-batch.json "$AGAME_BASE_URL/api/import" | python3 -m json.tool | head -40
    ```
-   The last call imports the example (one real night, walk and day of metrics from 4 October). It is safe to leave in place: your own data for that day replaces it with the same ids, or skip it if your Volume already holds real data.
+   The last call imports the example (an anonymised night, walk and day of metrics for 4 October) and should answer `200` with `exit_code` 2 and "Last night's sleep hasn't synced". **Run it only on an empty volume, then reset the volume** (`railway volume delete --volume <name> --yes && railway volume add --mount-path /data`): the example's night would otherwise stand in for your real night of 4 October. On a volume with real data, check the import path with `--data '{"format": "muse.v1"}'` instead, which must answer `400` and write nothing.
 6. **Sign in on the phone:** open `https://<your-app>` in Safari, sign in with Google, then Share → Add to Home Screen. The session lasts 30 days and renews every time you open the app.
 7. **Profile:** set time zone, HR max or LTHR, sleep need and targets (Profile → Edit). Without HR max there are no zones, by design.
 8. **Backfill:** Profile → Import Apple Health export, with the `export.zip` from the Health app (Profile picture → Export All Health Data).
