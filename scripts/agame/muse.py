@@ -10,6 +10,7 @@ A value outside its range is rejected with a reason. It is never rescaled on a g
 Fixtures with real Muse records: scripts/tests/fixtures/muse-*.json.
 """
 
+import json
 from datetime import datetime, timezone
 
 from agame import timeutil as tu
@@ -276,7 +277,16 @@ def _workout(rec, tz, rejected):
         w["weather"] = {"temp_c": _r(temp, 1), "humidity_pct": _r(hum, 0), "source": "healthkit"}
     splits, laps = [], []
     segs = rec.get("segments") or rec.get("workout_segments") or []
-    for s in sorted(segs, key=lambda x: num(x.get("start_epoch_sec")) or 0):
+    if isinstance(segs, str):  # Muse's query tool returns segments as a JSON string
+        try:
+            segs = json.loads(segs)
+        except ValueError:
+            rejected.append({"domain": "workouts", "source_id": rid, "field": "segments", "reason": "segments is not valid JSON"})
+            segs = []
+    if not isinstance(segs, list):
+        rejected.append({"domain": "workouts", "source_id": rid, "field": "segments", "reason": "segments must be a list or a JSON string of a list"})
+        segs = []
+    for s in sorted((x for x in segs if isinstance(x, dict)), key=lambda x: num(x.get("start_epoch_sec")) or 0):
         try:
             s0, s1 = num(s.get("start_epoch_sec")), num(s.get("end_epoch_sec"))
         except MuseError as e:

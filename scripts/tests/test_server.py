@@ -311,6 +311,20 @@ class Agent(ServerCase):
         st, _, _, _ = self.req("POST", "/api/import", {"format": "muse.v1"}, headers=self.bearer())
         self.assertEqual(st, 400)
 
+    def test_an_unexpected_error_is_a_json_500_not_a_dropped_connection(self):
+        from unittest import mock
+        with mock.patch("agame.importer.apply_batch", side_effect=RuntimeError("boom")):
+            st, h, body, _ = self.req("POST", "/api/import", self.muse(), headers=self.bearer())
+        self.assertEqual(st, 500)
+        self.assertTrue(h["Content-Type"].startswith("application/json"))
+        self.assertEqual(body["error"], "internal error")
+        self.assertIn("Retry once", body["next"])
+        with mock.patch("agame.checkins.report", side_effect=RuntimeError("boom")):
+            st, _, body, _ = self.req("GET", "/api/agent/checkins", headers=self.bearer())
+        self.assertEqual((st, body["error"]), (500, "internal error"))
+        st, _, body, _ = self.req("GET", "/api/agent/checkins?now=garbage", headers=self.bearer())
+        self.assertEqual(st, 400, body)
+
     def test_signed_in_requests_renew_the_session(self):
         _, _, _, cookies = self.req("GET", "/api/ping", cookie=self.session_cookie())
         self.assertTrue(any(c.startswith(auth.SESSION_COOKIE + "=") and "Max-Age=2592000" in c for c in cookies))

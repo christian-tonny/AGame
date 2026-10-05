@@ -14,6 +14,7 @@ import re
 import secrets
 import threading
 import time
+import traceback
 import urllib.parse
 from datetime import datetime
 from http import HTTPStatus
@@ -49,6 +50,8 @@ LOGO_SVG = ('<svg class="mark" width="64" height="64" viewBox="0 0 100 100" aria
             '<path d="M17 62H35L41 51L49 72L55 62H83" fill="none" stroke="#fff" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/></svg>')
 SIGNIN_HTML = SIGNIN_HTML.replace("{logo}", LOGO_SVG)
 AGENT_BLOCKED_ACTIONS = {"privacy.zone_remove"}
+INTERNAL_ERROR = {"error": "internal error",
+                  "next": "Retry once after a minute; repeating the same request is safe. If it fails again, tell the owner."}
 JOBS = {}
 GZIP_TYPES = ("text/html", "application/javascript", "text/javascript", "application/json", "application/manifest+json")
 
@@ -254,6 +257,9 @@ def make_handler(cfg, state=None):
                     return self._agent_get(path, q)
                 except EntryError as e:
                     return self._send(e.status, {"error": e.message, "details": e.details})
+                except Exception:  # never drop the connection on an agent read
+                    traceback.print_exc()
+                    return self._send(500, INTERNAL_ERROR)
             user = self._user()
             if not user:
                 return self._deny(api)
@@ -280,6 +286,9 @@ def make_handler(cfg, state=None):
                     return self._send(200, rep)
             except EntryError as e:
                 return self._send(e.status, {"error": e.message, "details": e.details})
+            except Exception:
+                traceback.print_exc()
+                return self._send(500, INTERNAL_ERROR)
             return self._send(404, {"error": "not found"}) if api else self._send(404, "Not found", "text/plain")
 
         def do_POST(self):
@@ -363,6 +372,9 @@ def make_handler(cfg, state=None):
                     return self._coach(body, store)
             except EntryError as e:
                 return self._send(e.status, {"error": e.message, "details": e.details})
+            except Exception:  # an agent can only act on a status code, so never drop the connection
+                traceback.print_exc()
+                return self._send(500, INTERNAL_ERROR)
             return self._send(404, {"error": "not found"})
 
         # -------------------------------------------------------------- agent
@@ -386,7 +398,10 @@ def make_handler(cfg, state=None):
         def _checkins(self, q):
             data, _, _ = load_all(cfg.data_dir)
             tz = tu.tzinfo(((data.get("profile") or {}).get("locale") or {}).get("timezone") or tu.DEFAULT_TZ)
-            now = tu.parse_ts(q["now"]).astimezone(tz) if q.get("now") else datetime.now(tz).replace(microsecond=0)
+            try:
+                now = tu.parse_ts(q["now"]).astimezone(tz) if q.get("now") else datetime.now(tz).replace(microsecond=0)
+            except ValueError:
+                raise EntryError(400, "now must be an ISO time with an offset, for example 2026-10-05T06:15:00+02:00")
             try:
                 window = max(1, min(1440, int(q.get("window_min", 15))))
             except ValueError:

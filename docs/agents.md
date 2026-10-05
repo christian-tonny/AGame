@@ -21,7 +21,7 @@ Contents: [Setup](#setup) · [Every morning](#every-morning) · [What you send](
 | **08:00** | Only if the 06:15 response had `morning_summary.sleep_missing: true` or `exit_code: 2` with sleep in `build_report.degraded_reasons`: run the same query again and import again. If the summary changed, send me a short update. |
 | **13:00** | Only if 08:00 still had sleep missing: one last try. If it is still missing, stop for the day and tell me once that last night's sleep never synced. |
 
-Your phone has to be online for Health to backfill, which is why the first run is 06:15 and not earlier. If your query tool reports that data is not synced and offers its own backfill or sync action (for example `backfill_data_source`), run it first, then re-run the query, then import. Import anyway if it still reports `complete: false`; AGame marks that day as still syncing and your next send updates it.
+My phone has to be online for Health to backfill, which is why the first run is 06:15 and not earlier. If your query tool reports that data is not synced and offers its own backfill or sync action (for example `backfill_data_source`), run it first, then re-run the query, then import. Import anyway if it still reports `complete: false`; AGame marks that day as still syncing and your next send updates it.
 
 **What to send each run:** everything since your last successful import, and **always at least the last 3 days** (today and the two days before). Re-sending is safe: an identical batch is a no-op, and a newer copy of a record replaces the older one. Never trim a record because you sent it before.
 

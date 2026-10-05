@@ -51,6 +51,17 @@ class Adapter(unittest.TestCase):
         self.assertEqual(len(w["splits"]), 1)
         self.assertEqual(w["splits"][0]["duration_s"], FIELDS["example_workout_segment"]["end_epoch_sec"] - FIELDS["example_workout_segment"]["start_epoch_sec"])
 
+    def test_segments_as_a_json_string_become_splits(self):
+        env = envelope()
+        env["workouts"]["records"][0]["segments"] = json.dumps([FIELDS["example_workout_segment"]])
+        batch, rejected, _ = muse.to_batch(env)
+        self.assertEqual(rejected, [])
+        self.assertEqual(len(batch["samples"]["workouts"][0]["splits"]), 1)
+        env["workouts"]["records"][0]["segments"] = "{not json"
+        batch, rejected, _ = muse.to_batch(env)
+        self.assertTrue(any(r.get("field") == "segments" for r in rejected))
+        self.assertEqual(len(batch["samples"]["workouts"]), 1)
+
     def test_out_of_range_is_rejected_not_converted(self):
         env = envelope()
         env["daily_metrics"]["records"][0]["oxygen_saturation_average"] = 97.1  # percent instead of a fraction
