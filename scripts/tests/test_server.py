@@ -325,6 +325,16 @@ class Agent(ServerCase):
         st, _, body, _ = self.req("GET", "/api/agent/checkins?now=garbage", headers=self.bearer())
         self.assertEqual(st, 400, body)
 
+    def test_a_non_ascii_or_masked_token_is_a_clean_401(self):
+        for token in ("••••••••", "<AGAME_AGENT_TOKEN>", "tökén"):
+            hdr = {"Authorization": "Bearer " + token}
+            raw = hdr["Authorization"].encode("utf-8").decode("latin-1")  # http.client sends header bytes as latin-1
+            st, _, body, _ = self.req("GET", "/api/agent/checkins", headers={"Authorization": raw})
+            self.assertEqual(st, 401, (token, body))
+            st, _, body, _ = self.req("POST", "/api/import", self.muse(), headers={"Authorization": raw})
+            self.assertEqual(st, 401, (token, body))
+            self.assertIn("invalid agent token", body["error"])
+
     def test_signed_in_requests_renew_the_session(self):
         _, _, _, cookies = self.req("GET", "/api/ping", cookie=self.session_cookie())
         self.assertTrue(any(c.startswith(auth.SESSION_COOKIE + "=") and "Max-Age=2592000" in c for c in cookies))

@@ -211,9 +211,11 @@ def make_handler(cfg, state=None):
             if not auth_h.startswith("Bearer "):
                 return False
             import hmac as _h
-            if cfg.agent_token and _h.compare_digest(auth_h[7:].strip(), cfg.agent_token):
+            # compare bytes: compare_digest raises on non-ASCII str, and a pasted mask or placeholder must be a plain 401
+            given = auth_h[7:].strip().encode("utf-8", "replace")
+            if cfg.agent_token and _h.compare_digest(given, cfg.agent_token.encode("utf-8")):
                 return True
-            raise EntryError(401, "invalid agent token")
+            raise EntryError(401, "invalid agent token: send the AGAME_AGENT_TOKEN value itself as Authorization: Bearer <token>")
 
         def _same_origin_json(self):
             if (self.headers.get("Content-Type") or "").split(";")[0].strip() != "application/json":
@@ -232,6 +234,20 @@ def make_handler(cfg, state=None):
             self.do_GET()
 
         def do_GET(self):
+            self._guarded(self._get)
+
+        def _guarded(self, fn, *args):
+            """Last line of defence: an agent can only act on a status code, so no request may end without one."""
+            try:
+                fn(*args)
+            except Exception:
+                traceback.print_exc()
+                try:
+                    self._send(500, INTERNAL_ERROR)
+                except Exception:
+                    pass
+
+        def _get(self):
             self._refresh = None
             path = urllib.parse.urlparse(self.path).path
             q = dict(urllib.parse.parse_qsl(urllib.parse.urlparse(self.path).query))
@@ -292,13 +308,13 @@ def make_handler(cfg, state=None):
             return self._send(404, {"error": "not found"}) if api else self._send(404, "Not found", "text/plain")
 
         def do_POST(self):
-            return self._mutate("POST")
+            self._guarded(self._mutate, "POST")
 
         def do_PATCH(self):
-            return self._mutate("PATCH")
+            self._guarded(self._mutate, "PATCH")
 
         def do_DELETE(self):
-            return self._mutate("DELETE")
+            self._guarded(self._mutate, "DELETE")
 
         def _mutate(self, method):
             self._refresh = None
