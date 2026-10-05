@@ -63,7 +63,7 @@ class ServerCase(unittest.TestCase):
         build(cls.data, cls.dist, BUILD_DATE)
         env = {"AGAME_OIDC_ISSUER": ISS, "AGAME_OIDC_CLIENT_ID": "client-id", "AGAME_OIDC_CLIENT_SECRET": "x", "AGAME_OWNER_EMAIL": OWNER,
                "AGAME_SESSION_SECRET": SECRET, "AGAME_BASE_URL": "http://127.0.0.1", "AGAME_UPLOAD_TOKEN": TOKEN, "AGAME_AGENT_TOKEN": AGENT,
-               "AGAME_AGENT_TOKEN_SHA256": "ffff, " + __import__("hashlib").sha256(SURROGATE.encode()).hexdigest().upper()}
+               "AGAME_AGENT_TOKEN_HASHES": "ffff, " + __import__("hashlib").sha256(SURROGATE.encode()).hexdigest().upper()}
         cls.cfg = Config(cls.data, cls.dist, dev=False, host="127.0.0.1", port=0, env=env)
         cls.idp = FakeIdP()
         cls.cfg.oidc._open = cls.idp

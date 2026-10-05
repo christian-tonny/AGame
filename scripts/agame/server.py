@@ -70,7 +70,7 @@ class Config:
         self.upload_token = env.get("AGAME_UPLOAD_TOKEN") or ""
         self.agent_token = env.get("AGAME_AGENT_TOKEN") or ""
         # extra agent credentials as SHA-256 hex, e.g. a platform's stable stand-in for the key; the values never live here
-        self.agent_token_sha256 = [h.strip().lower() for h in (env.get("AGAME_AGENT_TOKEN_SHA256") or "").split(",") if h.strip()]
+        self.agent_token_hashes = [h.strip().lower() for h in (env.get("AGAME_AGENT_TOKEN_HASHES") or "").split(",") if h.strip()]
         self.secure = self.base_url.startswith("https://")
         missing = [k for k in REQUIRED_ENV if not env.get(k)]
         if not dev and missing:
@@ -219,7 +219,7 @@ def make_handler(cfg, state=None):
             if cfg.agent_token and _h.compare_digest(given, cfg.agent_token.encode("utf-8")):
                 return True
             digest = hashlib.sha256(given).hexdigest()
-            if any(_h.compare_digest(digest, h) for h in cfg.agent_token_sha256):
+            if any(_h.compare_digest(digest, h) for h in cfg.agent_token_hashes):
                 return True
             raw = auth_h[7:].strip()
             print(f"agent token refused: length {len(raw)} (expected {len(cfg.agent_token)}), plain ascii {raw.isascii()}, "
