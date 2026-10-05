@@ -215,6 +215,9 @@ def make_handler(cfg, state=None):
             given = auth_h[7:].strip().encode("utf-8", "replace")
             if cfg.agent_token and _h.compare_digest(given, cfg.agent_token.encode("utf-8")):
                 return True
+            raw = auth_h[7:].strip()
+            print(f"agent token refused: length {len(raw)} (expected {len(cfg.agent_token)}), plain ascii {raw.isascii()}, "
+                  f"starts with another 'Bearer' {raw.lower().startswith('bearer')}", flush=True)  # shape only, never the value
             raise EntryError(401, "invalid agent token: send the AGAME_AGENT_TOKEN value itself as Authorization: Bearer <token>")
 
         def _same_origin_json(self):
