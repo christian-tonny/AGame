@@ -7,6 +7,7 @@ SameSite=Lax and Secure on HTTPS.
 """
 
 import gzip
+import hashlib
 import json
 import mimetypes
 import os
@@ -218,7 +219,8 @@ def make_handler(cfg, state=None):
             raw = auth_h[7:].strip()
             print(f"agent token refused: length {len(raw)} (expected {len(cfg.agent_token)}), plain ascii {raw.isascii()}, "
                   f"starts with another 'Bearer' {raw.lower().startswith('bearer')}, "
-                  f"is the token's start {bool(raw) and cfg.agent_token.startswith(raw)}, is its end {bool(raw) and cfg.agent_token.endswith(raw)}",
+                  f"is the token's start {bool(raw) and cfg.agent_token.startswith(raw)}, is its end {bool(raw) and cfg.agent_token.endswith(raw)}, "
+                  f"platform surrogate {raw.startswith('hsurr:')}, fingerprint {hashlib.sha256(raw.encode('utf-8', 'replace')).hexdigest()[:8]}",
                   flush=True)  # shape only, never the value
             raise EntryError(401, "invalid agent token: send the AGAME_AGENT_TOKEN value itself as Authorization: Bearer <token>")
 
