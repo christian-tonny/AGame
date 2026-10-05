@@ -22,6 +22,7 @@ OWNER = "owner@example.com"
 SECRET = "s" * 40
 TOKEN = "upload-token-for-tests"
 AGENT = "agent-token-for-tests"
+SURROGATE = "hsurr:0123456789abcdef0123456789abcdef"
 
 
 def _jwt(claims):
@@ -61,7 +62,8 @@ class ServerCase(unittest.TestCase):
         cls.dist = cls.data / "dist"
         build(cls.data, cls.dist, BUILD_DATE)
         env = {"AGAME_OIDC_ISSUER": ISS, "AGAME_OIDC_CLIENT_ID": "client-id", "AGAME_OIDC_CLIENT_SECRET": "x", "AGAME_OWNER_EMAIL": OWNER,
-               "AGAME_SESSION_SECRET": SECRET, "AGAME_BASE_URL": "http://127.0.0.1", "AGAME_UPLOAD_TOKEN": TOKEN, "AGAME_AGENT_TOKEN": AGENT}
+               "AGAME_SESSION_SECRET": SECRET, "AGAME_BASE_URL": "http://127.0.0.1", "AGAME_UPLOAD_TOKEN": TOKEN, "AGAME_AGENT_TOKEN": AGENT,
+               "AGAME_AGENT_TOKEN_SHA256": "ffff, " + __import__("hashlib").sha256(SURROGATE.encode()).hexdigest().upper()}
         cls.cfg = Config(cls.data, cls.dist, dev=False, host="127.0.0.1", port=0, env=env)
         cls.idp = FakeIdP()
         cls.cfg.oidc._open = cls.idp
@@ -334,6 +336,14 @@ class Agent(ServerCase):
             st, _, body, _ = self.req("POST", "/api/import", self.muse(), headers={"Authorization": raw})
             self.assertEqual(st, 401, (token, body))
             self.assertIn("invalid agent token", body["error"])
+
+    def test_an_extra_credential_given_as_a_hash_works_with_the_same_limits(self):
+        st, _, _, _ = self.req("GET", "/api/agent/checkins", headers=self.bearer(SURROGATE))
+        self.assertEqual(st, 200)
+        st, _, _, _ = self.req("DELETE", "/api/entries/journal.entries/x", headers=self.bearer(SURROGATE))
+        self.assertEqual(st, 403)
+        st, _, _, _ = self.req("GET", "/api/agent/checkins", headers=self.bearer(SURROGATE[:-1] + "0"))
+        self.assertEqual(st, 401)
 
     def test_signed_in_requests_renew_the_session(self):
         _, _, _, cookies = self.req("GET", "/api/ping", cookie=self.session_cookie())

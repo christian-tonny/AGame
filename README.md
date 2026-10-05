@@ -306,6 +306,7 @@ The Docker image holds code only, with no data and no secrets. Data lives on a v
 | `AGAME_SESSION_SECRET` | 32+ random characters (`python3 -c "import secrets;print(secrets.token_urlsafe(48))"`) |
 | `AGAME_BASE_URL` | `https://<your-app>` (HTTPS turns on Secure cookies and HSTS) |
 | `AGAME_AGENT_TOKEN` | Random token the agent (Muse) sends as `Authorization: Bearer …` for `/api/import`, `/api/agent/*`, `/api/entries` and `/api/actions` |
+| `AGAME_AGENT_TOKEN_SHA256` | Optional. Extra agent credentials, as comma-separated SHA-256 hashes. For an agent platform that sends its own stable stand-in instead of the saved key (Muse's connector sends an `hsurr:…` surrogate). The refusal log prints the hash of a refused token, so the value itself is never handled. Remove it once the platform sends the real key |
 | `AGAME_UPLOAD_TOKEN` | Optional. A different random token for `push_snapshot.py` (manual restores only, never the daily routine) |
 | `AGAME_LLM_PROVIDER`, `ANTHROPIC_API_KEY` | Optional Coach chat: set the provider to `anthropic`, and build with `INSTALL_COACH=1` (Railway: add it as a build variable). Model defaults to `claude-opus-5-5`; override with `AGAME_LLM_MODEL` |
 
