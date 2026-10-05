@@ -34,7 +34,9 @@ def make_export(path, entity=False):
               rec("HKQuantityTypeIdentifierStepCount", d.replace(hour=10), 5000, "count", "iPhone"),
               rec("HKQuantityTypeIdentifierStepCount", d.replace(hour=10), 6000, "count", "Apple Watch"),
               rec("HKQuantityTypeIdentifierDietarySodium", d.replace(hour=12), 900, "mg", "MyFood"),
-              rec("HKQuantityTypeIdentifierOxygenSaturation", d.replace(hour=4), 0.97, "%")]
+              rec("HKQuantityTypeIdentifierOxygenSaturation", d.replace(hour=4), 0.97, "%"),
+              rec("HKQuantityTypeIdentifierAppleSleepingWristTemperature", d.replace(hour=4), 95.9, "degF"),
+              rec("HKQuantityTypeIdentifierVO2Max", d.replace(hour=9), 48.5, "mL/min·kg")]
     night = d.replace(hour=23) - timedelta(days=1)
     for i, st in enumerate(["AsleepCore", "AsleepDeep", "AsleepREM", "AsleepCore"]):
         a = night + timedelta(minutes=90 * i)
@@ -79,6 +81,8 @@ class AppleExport(unittest.TestCase):
         self.assertEqual([p["v"] for p in m["hrv_sdnn_ms"]], [35.0])  # daily average, like Muse's series
         self.assertEqual(m["steps"][0]["source_id"], "healthkit_daily_steps_2026-09-20")
         self.assertAlmostEqual(m["spo2_pct"][0]["v"], 97.0)
+        self.assertAlmostEqual(m["wrist_temp_c"][0]["v"], 35.5, places=2)  # °F export converted, never guessed
+        self.assertAlmostEqual(m["vo2max_ml_kg_min"][0]["v"], 48.5)
         nut = self.load("nutrition.json")["daily_totals"][0]
         self.assertAlmostEqual(nut["sodium_mg"], 900.0)
         nights = self.load("sleep.json")["nights"]

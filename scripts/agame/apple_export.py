@@ -37,6 +37,7 @@ UNIT = {
     "m": ("m", 1), "cm": ("m", 0.01), "km": ("m", 1000), "mi": ("m", 1609.344), "ft": ("m", 0.3048), "mL": ("mL", 1), "L": ("mL", 1000),
     "fl_oz_us": ("mL", 29.5735), "degC": ("C", 1), "mmHg": ("mmHg", 1), "mg/dL": ("mg/dL", 1), "W": ("W", 1), "min": ("min", 1),
     "m/s": ("m/s", 1), "km/hr": ("m/s", 1 / 3.6), "mi/hr": ("m/s", 0.44704), "ml/(kg*min)": ("ml/kg/min", 1),
+    "mL/min·kg": ("ml/kg/min", 1), "mL/(kg·min)": ("ml/kg/min", 1),
 }
 # HK type -> (muse field it stands in for, expected stored unit, aggregation per day)
 DAILY = {
@@ -101,6 +102,11 @@ def _ts(s):
 
 
 def _conv(value, unit):
+    if unit == "degF":  # the only unit here with an offset
+        try:
+            return (float(value) - 32) * 5 / 9, "C"
+        except (TypeError, ValueError):
+            return None, None
     u = UNIT.get(unit)
     if u is None:
         return None, None
