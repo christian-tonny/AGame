@@ -72,7 +72,7 @@ Think of it like a kitchen. The data folder is the pantry. Python is the cook. T
   - Missing data shows as "—" with a reason. It is never shown as 0.
 - **No hard-coded people or targets.** Names, dates, zones, thresholds and targets come from data files or `config/defaults.json`. Even the agent's name comes from config (`sync.agent_name`).
 - **Imports are immutable.** HealthKit records keep their `source_id` and are never edited in place. Your own entries are `kind: user_entered` and can be edited, undone, exported and deleted. Every change is logged with before/after values.
-- **Nothing sensitive before sign-in.** The server shows only a sign-in page and `/healthz` until the owner signs in with Google (OpenID Connect).
+- **Nothing sensitive before sign-in.** The server shows only a sign-in page and `/healthz` until the owner signs in with the passphrase (or Google, if configured).
 - **Map privacy.** Privacy zones and start/end trimming are applied in Python, so raw coordinates never reach the HTML.
 - **Edits are named actions, not browser logic.** Simple edits go to `/api/entries/<collection>`. Anything that needs a decision goes to `/api/actions/<name>` (`scripts/agame/actions.py`), for example turning a template session into a real one, applying a Workout Wizard pick, copying a day of meals, or accepting a threshold. One action is one undo step.
 
@@ -293,16 +293,16 @@ All parameters are in `config/defaults.json`. Each metric is registered once (`@
 
 The Docker image holds code only, with no data and no secrets. Data lives on a volume.
 
-1. **Google sign-in.** In Google Cloud Console → APIs & Services → Credentials, create an OAuth client (type Web application). Set the redirect URI to `https://<your-app>/auth/callback`.
+1. **Sign-in.** Pick a passphrase only you know and hash it: `python3 -m agame.auth hash-passphrase` (from `scripts/`). Google sign-in is optional: for it, create an OAuth client in Google Cloud Console (type Web application, redirect URI `https://<your-app>/auth/callback`, your account under Test users).
 2. **Railway.** Create a service from this repo (it uses the `Dockerfile` and `railway.toml`). Then:
    - attach a **volume mounted at `/data`**
    - set these variables (names are also in `.env.example`):
 
 | Variable | Value |
 |---|---|
-| `AGAME_OIDC_ISSUER` | `https://accounts.google.com` |
-| `AGAME_OIDC_CLIENT_ID` / `AGAME_OIDC_CLIENT_SECRET` | From step 1 |
-| `AGAME_OWNER_EMAIL` | The only Google account allowed in |
+| `AGAME_OWNER_PASSPHRASE_HASH` | The `pbkdf2_sha256$…` line from step 1. Sign in with the passphrase; the server never stores it. Five wrong tries from one address lock that address out for 15 minutes |
+| `AGAME_OIDC_ISSUER`, `AGAME_OIDC_CLIENT_ID`, `AGAME_OIDC_CLIENT_SECRET` | Optional Google sign-in: `https://accounts.google.com` and the OAuth client from step 1. All three or none |
+| `AGAME_OWNER_EMAIL` | The owner's email: the identity in the session, and the only Google account allowed in |
 | `AGAME_SESSION_SECRET` | 32+ random characters (`python3 -c "import secrets;print(secrets.token_urlsafe(48))"`) |
 | `AGAME_BASE_URL` | `https://<your-app>` (HTTPS turns on Secure cookies and HSTS) |
 | `AGAME_AGENT_TOKEN` | Random token the agent (Muse) sends as `Authorization: Bearer …` for `/api/import`, `/api/agent/*`, `/api/entries` and `/api/actions` |
@@ -322,9 +322,9 @@ The Docker image holds code only, with no data and no secrets. Data lives on a v
    python3 -c "import secrets;print('AGAME_AGENT_TOKEN', secrets.token_urlsafe(32))"
    ```
    (`AGAME_UPLOAD_TOKEN` only if you want manual restores; make it a third, different value.)
-2. **Google OAuth client** (step 1 above) with redirect `https://<your-app>/auth/callback`.
+2. **Passphrase:** `cd scripts && python3 -m agame.auth hash-passphrase`. Keep the passphrase in your password manager and set the printed hash as `AGAME_OWNER_PASSPHRASE_HASH`.
 3. **Railway service** from this repo on branch `design-cleanup` (or `main` once merged). **Volume** mounted at `/data`. Leave `AGAME_DATA_DIR` and `AGAME_DIST_DIR` unset; the image points them at the volume.
-4. **Variables:** `AGAME_OIDC_ISSUER=https://accounts.google.com`, `AGAME_OIDC_CLIENT_ID`, `AGAME_OIDC_CLIENT_SECRET`, `AGAME_OWNER_EMAIL`, `AGAME_SESSION_SECRET`, `AGAME_BASE_URL=https://<your-app>`, `AGAME_AGENT_TOKEN`. Optional: `AGAME_UPLOAD_TOKEN`, Coach chat variables.
+4. **Variables:** `AGAME_OWNER_PASSPHRASE_HASH`, `AGAME_OWNER_EMAIL`, `AGAME_SESSION_SECRET`, `AGAME_BASE_URL=https://<your-app>`, `AGAME_AGENT_TOKEN`. Optional: the three `AGAME_OIDC_*` for Google sign-in, `AGAME_UPLOAD_TOKEN`, Coach chat variables.
 5. **Deploy**, wait for `/healthz` to pass, then run the smoke test from your laptop:
    ```bash
    export AGAME_BASE_URL=https://<your-app> AGAME_AGENT_TOKEN=<token>
@@ -335,7 +335,7 @@ The Docker image holds code only, with no data and no secrets. Data lives on a v
         --data @docs/examples/muse-v1-batch.json "$AGAME_BASE_URL/api/import" | python3 -m json.tool | head -40
    ```
    The last call imports the example (an anonymised night, walk and day of metrics for 4 October) and should answer `200` with `exit_code` 2 and "Last night's sleep hasn't synced". **Run it only on an empty volume, then reset the volume** (`railway volume delete --volume <name> --yes && railway volume add --mount-path /data`): the example's night would otherwise stand in for your real night of 4 October. On a volume with real data, check the import path with `--data '{"format": "muse.v1"}'` instead, which must answer `400` and write nothing.
-6. **Sign in on the phone:** open `https://<your-app>` in Safari, sign in with Google, then Share → Add to Home Screen. The session lasts 30 days and renews every time you open the app.
+6. **Sign in on the phone:** open `https://<your-app>` in Safari, enter the passphrase, then Share → Add to Home Screen. The session lasts 30 days and renews every time you open the app.
 7. **Profile:** set time zone, HR max or LTHR, sleep need and targets (Profile → Edit). Without HR max there are no zones, by design.
 8. **Backfill:** Profile → Import Apple Health export, with the `export.zip` from the Health app (Profile picture → Export All Health Data).
 9. **Hand Muse** the base URL, the agent token and `docs/agents.md`.

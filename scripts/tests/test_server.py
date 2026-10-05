@@ -55,6 +55,8 @@ class FakeIdP:
 
 class ServerCase(unittest.TestCase):
     data_source = staticmethod(empty_dir)
+    extra_env = {}
+    without_google = False
 
     @classmethod
     def setUpClass(cls):
@@ -64,9 +66,14 @@ class ServerCase(unittest.TestCase):
         env = {"AGAME_OIDC_ISSUER": ISS, "AGAME_OIDC_CLIENT_ID": "client-id", "AGAME_OIDC_CLIENT_SECRET": "x", "AGAME_OWNER_EMAIL": OWNER,
                "AGAME_SESSION_SECRET": SECRET, "AGAME_BASE_URL": "http://127.0.0.1", "AGAME_UPLOAD_TOKEN": TOKEN, "AGAME_AGENT_TOKEN": AGENT,
                "AGAME_AGENT_TOKEN_HASHES": "ffff, " + __import__("hashlib").sha256(SURROGATE.encode()).hexdigest().upper()}
+        env.update(cls.extra_env)
+        if cls.without_google:
+            for k in ("AGAME_OIDC_ISSUER", "AGAME_OIDC_CLIENT_ID", "AGAME_OIDC_CLIENT_SECRET"):
+                env.pop(k)
         cls.cfg = Config(cls.data, cls.dist, dev=False, host="127.0.0.1", port=0, env=env)
         cls.idp = FakeIdP()
-        cls.cfg.oidc._open = cls.idp
+        if cls.cfg.oidc:
+            cls.cfg.oidc._open = cls.idp
         cls.httpd = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(cls.cfg, State(cls.cfg)))
         cls.port = cls.httpd.server_address[1]
         cls.cfg.base_url = f"http://127.0.0.1:{cls.port}"
@@ -195,6 +202,52 @@ class SignIn(ServerCase):
         _, h, _, cookies = self.req("GET", "/auth/logout", cookie=self.session_cookie())
         self.assertEqual(h["Location"], "/auth/signin")
         self.assertTrue(any("Max-Age=0" in c for c in cookies))
+
+
+PASSPHRASE = "correct-horse-battery-staple"
+
+
+class Passphrase(ServerCase):
+    extra_env = {"AGAME_OWNER_PASSPHRASE_HASH": auth.hash_passphrase(PASSPHRASE, iterations=1000)}
+    without_google = True
+
+    def form(self, pw, headers=None):
+        h = {"Content-Type": "application/x-www-form-urlencoded", "X-Forwarded-For": headers.pop("ip") if headers and "ip" in headers else "203.0.113.9"}
+        h.update(headers or {})
+        return self.req("POST", "/auth/passphrase", urllib.parse.urlencode({"passphrase": pw}).encode(), headers=h)
+
+    def test_starts_without_google_and_shows_only_the_passphrase_form(self):
+        self.assertIsNone(self.cfg.oidc)
+        st, _, page, _ = self.req("GET", "/auth/signin")
+        self.assertEqual(st, 200)
+        self.assertIn('name="passphrase"', page)
+        self.assertNotIn("/auth/login", page)
+
+    def test_right_passphrase_signs_in_and_wrong_one_does_not(self):
+        st, h, _, cookies = self.form("wrong guess", {"ip": "203.0.113.10"})
+        self.assertEqual((st, h["Location"]), (302, "/auth/signin?e=wrong"))
+        self.assertFalse(any(c.startswith(auth.SESSION_COOKIE + "=") for c in cookies))
+        st, h, _, cookies = self.form(PASSPHRASE, {"ip": "203.0.113.11"})
+        self.assertEqual((st, h["Location"]), (302, "/fitness_dashboard.html"))
+        session = next(c for c in cookies if c.startswith(auth.SESSION_COOKIE + "="))
+        self.assertIn("Max-Age=2592000", session)
+        st, _, _, _ = self.req("GET", "/api/ping", cookie=session.split(";")[0])
+        self.assertEqual(st, 200)
+
+    def test_repeated_failures_are_slowed_down(self):
+        for _ in range(5):
+            self.form("nope", {"ip": "203.0.113.12"})
+        st, h, _, _ = self.form(PASSPHRASE, {"ip": "203.0.113.12"})
+        self.assertEqual(h["Location"], "/auth/signin?e=wait")
+
+    def test_cross_origin_sign_in_is_refused(self):
+        st, _, _, _ = self.form(PASSPHRASE, {"ip": "203.0.113.13", "Origin": "https://evil.example"})
+        self.assertEqual(st, 403)
+
+    def test_needs_a_passphrase_or_google(self):
+        env = {"AGAME_OWNER_EMAIL": OWNER, "AGAME_SESSION_SECRET": SECRET, "AGAME_BASE_URL": "https://x.example"}
+        with self.assertRaises(SystemExit):
+            Config(self.data, self.dist, dev=False, env=env)
 
 
 class Edits(ServerCase):

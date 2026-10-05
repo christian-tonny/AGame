@@ -61,6 +61,27 @@ class Signer:
         return obj
 
 
+PASSPHRASE_ITERATIONS = 600_000
+
+
+def hash_passphrase(passphrase, salt=None, iterations=PASSPHRASE_ITERATIONS):
+    """pbkdf2_sha256$<iterations>$<salt>$<hash>: what AGAME_OWNER_PASSPHRASE_HASH holds. The passphrase itself is never stored."""
+    salt = salt or secrets.token_bytes(16)
+    dk = hashlib.pbkdf2_hmac("sha256", passphrase.encode("utf-8"), salt, iterations)
+    return f"pbkdf2_sha256${iterations}${_b64e(salt)}${_b64e(dk)}"
+
+
+def check_passphrase(passphrase, stored):
+    try:
+        algo, iters, salt, want = stored.split("$")
+        if algo != "pbkdf2_sha256":
+            return False
+        dk = hashlib.pbkdf2_hmac("sha256", passphrase.encode("utf-8"), _b64d(salt), int(iters))
+    except (ValueError, TypeError):
+        return False
+    return hmac.compare_digest(_b64e(dk), want)
+
+
 def new_session(signer, email):
     now = int(time.time())
     return signer.sign({"email": email, "iat": now, "exp": now + SESSION_TTL, "sid": secrets.token_hex(8)})
@@ -143,3 +164,14 @@ class OIDC:
         if verified in ("true", True):
             verified = True
         return email, bool(verified)
+
+
+if __name__ == "__main__":
+    import getpass
+    import sys
+    if sys.argv[1:] != ["hash-passphrase"]:
+        sys.exit("usage: python3 -m agame.auth hash-passphrase   (reads the passphrase, prints AGAME_OWNER_PASSPHRASE_HASH)")
+    pw = getpass.getpass("Passphrase: ") if sys.stdin.isatty() else sys.stdin.readline().rstrip("\n")
+    if len(pw) < 12:
+        sys.exit("use at least 12 characters")
+    print(hash_passphrase(pw))

@@ -33,7 +33,9 @@ from agame.jsonio import atomic_write_many, canonical_dumps
 from agame.paths import DATA_FILES
 
 STATIC = {"fitness_dashboard.html", "manifest.webmanifest", "fitness_sw.js"}
-REQUIRED_ENV = ["AGAME_OIDC_ISSUER", "AGAME_OIDC_CLIENT_ID", "AGAME_OIDC_CLIENT_SECRET", "AGAME_OWNER_EMAIL", "AGAME_SESSION_SECRET", "AGAME_BASE_URL"]
+REQUIRED_ENV = ["AGAME_OWNER_EMAIL", "AGAME_SESSION_SECRET", "AGAME_BASE_URL"]
+OIDC_ENV = ["AGAME_OIDC_ISSUER", "AGAME_OIDC_CLIENT_ID", "AGAME_OIDC_CLIENT_SECRET"]
+PASSPHRASE_FAILS, PASSPHRASE_WINDOW_S = 5, 900
 
 SIGNIN_HTML = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -41,8 +43,15 @@ SIGNIN_HTML = """<!doctype html><html lang="en"><head><meta charset="utf-8"><met
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#1d1e22;color:#f4f4f6;font:16px -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}
 main{text-align:center;padding:24px}.mark{display:block;margin:0 auto 16px}
 a{display:inline-block;margin-top:20px;padding:12px 20px;border-radius:12px;background:#f2561a;color:#140700;text-decoration:none;font-weight:700}
-p{color:#a3a3ab;max-width:320px}</style></head><body><main>{logo}<h1>AGame</h1>
-{msg}<a href="/auth/login">Sign in</a></main></body></html>"""
+p{color:#a3a3ab;max-width:320px}
+form{display:grid;gap:12px;margin-top:20px;width:min(320px,86vw)}
+input{font:inherit;padding:12px 14px;border-radius:12px;border:1px solid #3b3e46;background:#2f3239;color:#f4f4f6}
+button{font:inherit;font-weight:700;padding:12px 20px;border:0;border-radius:12px;background:#f2561a;color:#140700}
+</style></head><body><main>{logo}<h1>AGame</h1>
+{msg}{forms}</main></body></html>"""
+PASSPHRASE_FORM = """<form method="post" action="/auth/passphrase"><label for="pw" style="position:absolute;left:-999px">Passphrase</label>
+<input id="pw" name="passphrase" type="password" autocomplete="current-password" placeholder="Passphrase" required autofocus><button>Sign in</button></form>"""
+GOOGLE_LINK = """<a href="/auth/login">Sign in with Google</a>"""
 
 
 LOGO_SVG = ('<svg class="mark" width="64" height="64" viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="t" x1="0" y1="0" x2="1" y2="1">'
@@ -54,6 +63,7 @@ AGENT_BLOCKED_ACTIONS = {"privacy.zone_remove"}
 INTERNAL_ERROR = {"error": "internal error",
                   "next": "Retry once after a minute; repeating the same request is safe. If it fails again, tell the owner."}
 JOBS = {}
+PASSPHRASE_TRIES = {}
 GZIP_TYPES = ("text/html", "application/javascript", "text/javascript", "application/json", "application/manifest+json")
 
 
@@ -72,13 +82,16 @@ class Config:
         # extra agent credentials as SHA-256 hex, e.g. a platform's stable stand-in for the key; the values never live here
         self.agent_token_hashes = [h.strip().lower() for h in (env.get("AGAME_AGENT_TOKEN_HASHES") or "").split(",") if h.strip()]
         self.secure = self.base_url.startswith("https://")
+        self.passphrase_hash = (env.get("AGAME_OWNER_PASSPHRASE_HASH") or "").strip()
         missing = [k for k in REQUIRED_ENV if not env.get(k)]
+        if not self.passphrase_hash and not all(env.get(k) for k in OIDC_ENV):
+            missing.append("AGAME_OWNER_PASSPHRASE_HASH (or all of " + ", ".join(OIDC_ENV) + ")")
         if not dev and missing:
             raise SystemExit("refusing to start: missing environment variables " + ", ".join(missing) + " (use --dev for local, unauthenticated use on 127.0.0.1)")
         secret = env.get("AGAME_SESSION_SECRET") or ("dev-" + "x" * 40 if dev else "")
         self.signer = auth.Signer(secret)
         self.oidc = None
-        if env.get("AGAME_OIDC_ISSUER"):
+        if all(env.get(k) for k in OIDC_ENV):
             self.oidc = auth.OIDC(env["AGAME_OIDC_ISSUER"], env.get("AGAME_OIDC_CLIENT_ID", ""), env.get("AGAME_OIDC_CLIENT_SECRET", ""),
                                   self.base_url + "/auth/callback")
         self.tiles_origin = None
@@ -266,8 +279,10 @@ def make_handler(cfg, state=None):
             if path == "/healthz":
                 return self._send(200, {"ok": True})
             if path == "/auth/signin":
-                msg = '<p style="color:#ff453a">' + {"denied": "That account is not allowed.", "error": "Sign-in failed. Try again."}.get(q.get("e"), "") + "</p>" if q.get("e") else ""
-                return self._send(200, SIGNIN_HTML.replace("{msg}", msg), "text/html", api=True)
+                msg = '<p style="color:#ff453a">' + {"denied": "That account is not allowed.", "error": "Sign-in failed. Try again.", "wrong": "That passphrase didn't match.",
+                                                        "wait": "Too many tries. Wait 15 minutes."}.get(q.get("e"), "") + "</p>" if q.get("e") else ""
+                forms = (PASSPHRASE_FORM if cfg.passphrase_hash else "") + (GOOGLE_LINK if cfg.oidc else "")
+                return self._send(200, SIGNIN_HTML.replace("{msg}", msg).replace("{forms}", forms), "text/html", api=True)
             if path == "/auth/login":
                 if not cfg.oidc:
                     return self._send(503, "Sign-in is not configured", "text/plain")
@@ -335,6 +350,8 @@ def make_handler(cfg, state=None):
                 return self._upload()
             if path == "/auth/logout":
                 return self._logout()
+            if path == "/auth/passphrase" and method == "POST":
+                return self._passphrase()
             if not path.startswith("/api/"):
                 return self._send(405, {"error": "method not allowed"})
             try:
@@ -561,6 +578,31 @@ def make_handler(cfg, state=None):
                 return self._redirect("/auth/signin?e=denied", [clear])
             sess = auth.new_session(cfg.signer, email)
             return self._redirect("/fitness_dashboard.html", [clear, auth.cookie_header(auth.SESSION_COOKIE, sess, auth.SESSION_TTL, cfg.secure)])
+
+        def _client_ip(self):
+            fwd = (self.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+            return fwd or self.client_address[0]
+
+        def _passphrase(self):
+            """Owner sign-in without Google: one passphrase, checked against its PBKDF2 hash, with failed tries rate-limited per IP."""
+            if not cfg.passphrase_hash:
+                return self._send(404, "Not found", "text/plain")
+            origin = self.headers.get("Origin")
+            if origin and origin.rstrip("/") != cfg.base_url and not cfg.dev:
+                return self._send(403, "cross-origin sign-in refused", "text/plain")
+            ip, now = self._client_ip(), time.time()
+            recent = [t for t in PASSPHRASE_TRIES.get(ip, []) if now - t < PASSPHRASE_WINDOW_S]
+            if len(recent) >= PASSPHRASE_FAILS:
+                return self._redirect("/auth/signin?e=wait")
+            n = int(self.headers.get("Content-Length") or 0)
+            form = dict(urllib.parse.parse_qsl(self.rfile.read(min(n, 4096)).decode("utf-8", "replace"))) if n else {}
+            if not auth.check_passphrase(form.get("passphrase", ""), cfg.passphrase_hash):
+                PASSPHRASE_TRIES[ip] = recent + [now]
+                time.sleep(1)
+                return self._redirect("/auth/signin?e=wrong")
+            PASSPHRASE_TRIES.pop(ip, None)
+            sess = auth.new_session(cfg.signer, cfg.owner)
+            return self._redirect("/fitness_dashboard.html", [auth.cookie_header(auth.SESSION_COOKIE, sess, auth.SESSION_TTL, cfg.secure)])
 
         def _logout(self):
             return self._redirect("/auth/signin", [auth.cookie_header(auth.SESSION_COOKIE, "", 0, cfg.secure)])
