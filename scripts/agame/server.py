@@ -168,7 +168,9 @@ def make_handler(cfg, state=None):
             img = "'self' data:" + (f" {cfg.tiles_origin}" if cfg.tiles_origin else "")
             self.send_header("Content-Security-Policy", f"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src {img}; connect-src 'self'; manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
             self.send_header("X-Content-Type-Options", "nosniff")
-            self.send_header("Referrer-Policy", "no-referrer")
+            # same-origin, not no-referrer: under no-referrer Safari sends Origin: null on our own form posts and fetches,
+            # which the same-origin checks would refuse; other sites still get no referrer
+            self.send_header("Referrer-Policy", "same-origin")
             self.send_header("X-Frame-Options", "DENY")
             self.send_header("Permissions-Policy", "geolocation=(), camera=(), microphone=()")
             if cfg.secure:
@@ -588,7 +590,8 @@ def make_handler(cfg, state=None):
             if not cfg.passphrase_hash:
                 return self._send(404, "Not found", "text/plain")
             origin = self.headers.get("Origin")
-            if origin and origin.rstrip("/") != cfg.base_url and not cfg.dev:
+            # a privacy setting can still make a browser send Origin: null; only another site's origin is refused
+            if origin and origin != "null" and origin.rstrip("/") != cfg.base_url and not cfg.dev:
                 return self._send(403, "cross-origin sign-in refused", "text/plain")
             ip, now = self._client_ip(), time.time()
             recent = [t for t in PASSPHRASE_TRIES.get(ip, []) if now - t < PASSPHRASE_WINDOW_S]

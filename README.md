@@ -343,7 +343,7 @@ The Docker image holds code only, with no data and no secrets. Data lives on a v
 Locally with Docker: `docker build -t agame . && docker run -p 8080:8080 -v agame-data:/data --env-file .env agame`.
 
 **Security headers:**
-- strict CSP (no external scripts or images), `frame-ancestors 'none'`, `nosniff`, `no-referrer`
+- strict CSP (no external scripts or images), `frame-ancestors 'none'`, `nosniff`, `Referrer-Policy: same-origin`
 - `no-store` on API responses
 - HttpOnly + SameSite=Lax session cookies
 - edits need JSON and a same-origin request

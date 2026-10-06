@@ -240,6 +240,15 @@ class Passphrase(ServerCase):
         st, h, _, _ = self.form(PASSPHRASE, {"ip": "203.0.113.12"})
         self.assertEqual(h["Location"], "/auth/signin?e=wait")
 
+    def test_pages_send_a_referrer_policy_that_keeps_our_own_origin(self):
+        _, h, _, _ = self.req("GET", "/auth/signin")
+        self.assertEqual(h["Referrer-Policy"], "same-origin")
+
+    def test_safari_form_post_with_null_origin_signs_in(self):
+        st, h, _, cookies = self.form(PASSPHRASE, {"ip": "203.0.113.14", "Origin": "null"})
+        self.assertEqual((st, h["Location"]), (302, "/fitness_dashboard.html"))
+        self.assertTrue(any(c.startswith(auth.SESSION_COOKIE + "=") for c in cookies))
+
     def test_cross_origin_sign_in_is_refused(self):
         st, _, _, _ = self.form(PASSPHRASE, {"ip": "203.0.113.13", "Origin": "https://evil.example"})
         self.assertEqual(st, 403)
